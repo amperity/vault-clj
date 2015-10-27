@@ -7,6 +7,7 @@
   :deploy-branches ["master"]
 
   :dependencies
-  [[clj-http "2.0.0"]
+  [[cheshire "5.5.0"]
+   [clj-http "2.0.0"]
    [org.clojure/clojure "1.7.0"]
    [org.clojure/tools.logging "0.3.1"]])
