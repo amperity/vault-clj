@@ -4,6 +4,7 @@
   :license {:name "Apache License"
             :url "http://www.apache.org/licenses/LICENSE-2.0"}
 
+  :signing {:gpg-key "platform@counsyl.com"}
   :deploy-branches ["master"]
 
   :dependencies
