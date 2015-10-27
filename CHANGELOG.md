@@ -12,4 +12,4 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 - Initial library implementation.
 
 [unreleased]: https://github.com/counsyl/vault-clj/compare/0.1.0...HEAD
-[0.1.0]: https://github.com/counsyl/vault-clj/tree/0.1.0
+[0.1.0]: https://github.com/counsyl/vault-clj/releases/tag/0.1.0
