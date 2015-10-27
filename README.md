@@ -5,6 +5,8 @@ A Clojure library for interacting with the [Vault](https://vaultproject.io/)
 secret management system. So far, this focuses on the app-id authentication
 scheme use-case.
 
+This library very new, so expect API changes as it develops!
+
 ## Usage
 
 ```clojure
