@@ -1,4 +1,4 @@
-(ns vault-clj.core
+(ns vault.client
   "Protocol for interacting with Vault to fetch secrets using the HTTP API. This
   client is focused on the app-id authentication scheme."
   (:require

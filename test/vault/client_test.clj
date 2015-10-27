@@ -1,7 +1,7 @@
-(ns vault-clj.core-test
+(ns vault.client-test
   (:require
     [clojure.test :refer :all]
-    [vault-clj.core :as vault]))
+    [vault.client :as vault]))
 
 
 (deftest client-instantiation
