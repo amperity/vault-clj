@@ -14,11 +14,13 @@
 
   (authenticate!
     [client app-id user-id]
-    "Returns an updated client authenticated with the given credentials.")
+    "Updates the client's internal state by authenticating with the given
+    credentials.")
 
   (read-secret
     [client path]
     "Reads a secret from a specific path."))
+
 
 
 ;; ## HTTP API Client
@@ -44,9 +46,9 @@
 
   (read-secret
     [this path]
-    (when-not path
+    (when-not (string? path)
       (throw (IllegalArgumentException.
-               "Cannot read nil secret path.")))
+               (str "Secret path must be a string, got: " (pr-str path)))))
     (when-not @token
       (throw (IllegalStateException.
                (str "Cannot read path " path " with unauthenticated client."))))
@@ -68,4 +70,7 @@
 (defn http-client
   "Constructs a new HTTP Vault client."
   [api-url]
+  (when-not (string? api-url)
+    (throw (IllegalArgumentException.
+             (str "Vault api-url must be a string, got: " (pr-str api-url)))))
   (HTTPClient. api-url (atom nil)))
