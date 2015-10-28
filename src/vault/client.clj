@@ -56,9 +56,8 @@
                      {:headers {"X-Vault-Token" @token}
                       :accept :json
                       :as :json})]
-      (log/debugf "Leased %s for %d seconds"
-                  (get-in response [:body :lease_id])
-                  (get-in response [:body :lease_duration]))
+      (log/infof "Read %s (valid for %d seconds)"
+                 path (get-in response [:body :lease_duration]))
       (get-in response [:body :data]))))
 
 
