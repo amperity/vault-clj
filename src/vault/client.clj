@@ -19,6 +19,10 @@
 
     - :app-id {:app \"lambda_ci\", :user \"...\"}")
 
+  (list-secrets
+    [client path]
+    "List the secrets located under a path.")
+
   (read-secret
     [client path]
     "Reads a secret from a specific path."))
