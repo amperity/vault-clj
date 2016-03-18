@@ -31,6 +31,22 @@
 
 ;; ## HTTP API Client
 
+(defn- check-path!
+  "Validates that the given path."
+  [path]
+  (when-not (string? path)
+    (throw (IllegalArgumentException.
+             (str "Secret path must be a string, got: " (pr-str path))))))
+
+
+(defn- check-auth!
+  "Validates that the client is authenticated."
+  [token]
+  (when-not @token
+    (throw (IllegalStateException.
+             "Cannot read path with unauthenticated client."))))
+
+
 (defrecord HTTPClient
   [api-url token]
 
@@ -54,14 +70,24 @@
       this))
 
 
+  (list-secrets
+    [this path]
+    (check-path! path)
+    (check-auth! token)
+    (let [response (http/get (str api-url "/v1/" path)
+                     {:query-params {:list true}
+                      :headers {"X-Vault-Token" @token}
+                      :accept :json
+                      :as :json})]
+      (log/infof "List %s (%d results)"
+                 path (count (get-in response [:body :data])))
+      (get-in response [:body :data :keys])))
+
+
   (read-secret
     [this path]
-    (when-not (string? path)
-      (throw (IllegalArgumentException.
-               (str "Secret path must be a string, got: " (pr-str path)))))
-    (when-not @token
-      (throw (IllegalStateException.
-               (str "Cannot read path " path " with unauthenticated client."))))
+    (check-path! path)
+    (check-auth! token)
     (let [response (http/get (str api-url "/v1/" path)
                      {:headers {"X-Vault-Token" @token}
                       :accept :json
