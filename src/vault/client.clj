@@ -17,6 +17,7 @@
     "Updates the client's internal state by authenticating with the given
     credentials. Possible arguments:
 
+    - :token \"...\"
     - :app-id {:app \"lambda_ci\", :user \"...\"}")
 
   (list-secrets
@@ -41,10 +42,32 @@
 
 (defn- check-auth!
   "Validates that the client is authenticated."
-  [token]
-  (when-not @token
+  [token-ref]
+  (when-not @token-ref
     (throw (IllegalStateException.
              "Cannot read path with unauthenticated client."))))
+
+
+(defn- authenticate-token!
+  [token-ref token]
+  (when-not (string? token)
+    (throw (IllegalArgumentException. "Token credential must be a string")))
+  ; TODO: test auth?
+  (reset! token-ref token))
+
+
+(defn- authenticate-app!
+  [api-url token-ref credentials]
+  (let [{:keys [app user]} credentials
+        response (http/post (str api-url "/v1/auth/app-id/login")
+                   {:form-params {:app_id app, :user_id user}
+                    :content-type :json
+                    :accept :json
+                    :as :json})]
+    (when-let [client-token (get-in response [:body :auth :client_token])]
+      (log/infof "Successfully authenticated to Vault app-id %s for policies: %s"
+                 app (str/join ", " (get-in response [:body :auth :policies])))
+      (reset! token-ref client-token))))
 
 
 (defrecord HTTPClient
@@ -54,20 +77,15 @@
 
   (authenticate!
     [this auth-type credentials]
-    ; TODO: support token and ldap
-    (when (not= auth-type :app-id)
-      (throw (RuntimeException. "Only :app-id authentication is supported right now")))
-    (let [{:keys [app user]} credentials
-          response (http/post (str api-url "/v1/auth/app-id/login")
-                     {:form-params {:app_id app, :user_id user}
-                      :content-type :json
-                      :accept :json
-                      :as :json})]
-      (when-let [client-token (get-in response [:body :auth :client_token])]
-        (log/infof "Successfully authenticated to Vault app-id %s for policies: %s"
-                   app (str/join ", " (get-in response [:body :auth :policies])))
-        (reset! token client-token))
-      this))
+    (case auth-type
+      :token (authenticate-token! token credentials)
+      :app-id (authenticate-app! api-url token credentials)
+      ; TODO: support LDAP auth
+
+      ; Unknown type
+      (throw (ex-info (str "Unsupported auth-type " (pr-str auth-type))
+                      {:auth-type auth-type})))
+    this)
 
 
   (list-secrets
@@ -78,10 +96,10 @@
                      {:query-params {:list true}
                       :headers {"X-Vault-Token" @token}
                       :accept :json
-                      :as :json})]
-      (log/infof "List %s (%d results)"
-                 path (count (get-in response [:body :data])))
-      (get-in response [:body :data :keys])))
+                      :as :json})
+          data (get-in response [:body :data :keys])]
+      (log/infof "List %s (%d results)" path (count data))
+      data))
 
 
   (read-secret
