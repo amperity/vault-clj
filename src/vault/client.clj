@@ -13,9 +13,11 @@
   "Protocol for fetching secrets from Vault."
 
   (authenticate!
-    [client app-id user-id]
+    [client auth-type credentials]
     "Updates the client's internal state by authenticating with the given
-    credentials.")
+    credentials. Possible arguments:
+
+    - :app-id {:app \"lambda_ci\", :user \"...\"}")
 
   (read-secret
     [client path]
@@ -31,15 +33,19 @@
   Client
 
   (authenticate!
-    [this app-id user-id]
-    (let [response (http/post (str api-url "/v1/auth/app-id/login")
-                     {:form-params {:app_id app-id, :user_id user-id}
+    [this auth-type credentials]
+    ; TODO: support token and ldap
+    (when (not= auth-type :app-id)
+      (throw (RuntimeException. "Only :app-id authentication is supported right now")))
+    (let [{:keys [app user]} credentials
+          response (http/post (str api-url "/v1/auth/app-id/login")
+                     {:form-params {:app_id app, :user_id user}
                       :content-type :json
                       :accept :json
                       :as :json})]
       (when-let [client-token (get-in response [:body :auth :client_token])]
         (log/infof "Successfully authenticated to Vault app-id %s for policies: %s"
-                   app-id (str/join ", " (get-in response [:body :auth :policies])))
+                   app (str/join ", " (get-in response [:body :auth :policies])))
         (reset! token client-token))
       this))
 
