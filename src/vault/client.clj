@@ -33,11 +33,12 @@
 ;; ## HTTP API Client
 
 (defn- check-path!
-  "Validates that the given path."
+  "Validates that the given path is a non-empty string."
   [path]
-  (when-not (string? path)
+  (when-not (and (string? path) (not (empty? path)))
     (throw (IllegalArgumentException.
-             (str "Secret path must be a string, got: " (pr-str path))))))
+             (str "Secret path must be a non-empty string, got: "
+                  (pr-str path))))))
 
 
 (defn- check-auth!
@@ -49,14 +50,16 @@
 
 
 (defn- authenticate-token!
+  "Updates the token ref by storing the given auth token."
   [token-ref token]
   (when-not (string? token)
     (throw (IllegalArgumentException. "Token credential must be a string")))
-  ; TODO: test auth?
   (reset! token-ref token))
 
 
 (defn- authenticate-app!
+  "Updates the token ref by making a request to authenticate with an app-id and
+  secret user-id."
   [api-url token-ref credentials]
   (let [{:keys [app user]} credentials
         response (http/post (str api-url "/v1/auth/app-id/login")
