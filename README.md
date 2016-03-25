@@ -24,7 +24,7 @@ Leiningen, add the following dependency to your project definition:
 => client
 #vault.client.HTTPClient {:api-url "https://vault.example.com", :token #<Atom@5cca1513 nil>}
 
-=> (vault/authenticate! client "my_app" "0000-userid-000")
+=> (vault/authenticate! client :app-id {:app "my_app", :user "0000-userid-000"})
 ; INFO: Successfully authenticated to Vault app-id my_app for policies: my-policy
 #vault.client.HTTPClient {:api-url "https://vault.example.com", :token #<Atom@5cca1513 "8c807a17-7232-4c48-d7a6-c6a7f76bcccc">}
 
