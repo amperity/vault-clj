@@ -9,7 +9,7 @@
                (vault/http-client nil)))
   (is (thrown? IllegalArgumentException
                (vault/http-client :foo)))
-  (is (instance? vault_clj.core.HTTPClient
+  (is (instance? vault.client.HTTPClient
                  (vault/http-client "https://vault.example.com"))))
 
 

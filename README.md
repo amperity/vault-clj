@@ -7,6 +7,13 @@ scheme use-case.
 
 This library very new, so expect API changes as it develops!
 
+## Installation
+
+Library releases are published on Clojars. To use the latest version with
+Leiningen, add the following dependency to your project definition:
+
+[![Clojars Project](http://clojars.org/counsyl/vault-clj/latest-version.svg)](http://clojars.org/counsyl/vault-clj)
+
 ## Usage
 
 ```clojure
