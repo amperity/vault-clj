@@ -25,9 +25,10 @@
     [client path]
     "List the secrets located under a path.")
 
-  (write-secret
+  (write-secret!
     [client path data]
-    "Writes secret(s) to a specific path. data should be a map.")
+    "Writes secret(s) to a specific path. data should be a map.
+    Returns a boolean indicating whether the write was successful.")
 
   (read-secret
     [client path]
@@ -125,7 +126,7 @@
       (log/infof "List %s (%d results)" path (count data))
       data))
 
-  (write-secret
+  (write-secret!
     [this path data]
     (check-path! path)
     (check-auth! token)
