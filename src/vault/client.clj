@@ -145,6 +145,7 @@
     [this path]
     (check-path! path)
     (check-auth! token)
+    ; TODO: caching logic?
     (let [response (http/get (str api-url "/v1/" path)
                      {:headers {"X-Vault-Token" @token}
                       :accept :json
