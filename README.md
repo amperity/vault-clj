@@ -12,7 +12,7 @@ This library very new, so expect API changes as it develops!
 Library releases are published on Clojars. To use the latest version with
 Leiningen, add the following dependency to your project definition:
 
-[![Clojars Project](http://clojars.org/counsyl/vault-clj/latest-version.svg)](http://clojars.org/counsyl/vault-clj)
+[![Clojars Project](http://clojars.org/amperity/vault-clj/latest-version.svg)](http://clojars.org/amperity/vault-clj)
 
 ## Usage
 
@@ -34,7 +34,7 @@ Leiningen, add the following dependency to your project definition:
 
 ## License
 
-Copyright © 2015 Counsyl, Inc
+Copyright © 2016 Amperity, Inc
 
 Distributed under the Apache License, Version 2.0. See the LICENSE file
 for more information.

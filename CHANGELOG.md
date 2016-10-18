@@ -23,6 +23,6 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 ### Added
 - Initial library implementation.
 
-[Unreleased]: https://github.com/counsyl/vault-clj/compare/0.2.0...HEAD
-[0.2.0]: https://github.com/counsyl/vault-clj/compare/0.1.0...0.2.0
-[0.1.0]: https://github.com/counsyl/vault-clj/releases/tag/0.1.0
+[Unreleased]: https://github.com/amperity/vault-clj/compare/0.2.0...HEAD
+[0.2.0]: https://github.com/amperity/vault-clj/compare/0.1.0...0.2.0
+[0.1.0]: https://github.com/amperity/vault-clj/releases/tag/0.1.0
