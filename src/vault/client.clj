@@ -27,8 +27,8 @@
 
   (write-secret!
     [client path data]
-    "Writes secret(s) to a specific path. data should be a map.
-    Returns a boolean indicating whether the write was successful.")
+    "Writes secret data to a specific path. `data` should be a map. Returns a
+    boolean indicating whether the write was successful.")
 
   (read-secret
     [client path]
@@ -63,21 +63,6 @@
   (reset! token-ref token))
 
 
-(defn- authenticate-app!
-  "Updates the token ref by making a request to authenticate with an app-id and
-  secret user-id."
-  [api-url token-ref credentials]
-  (let [{:keys [app user]} credentials
-        response (http/post (str api-url "/v1/auth/app-id/login")
-                   {:form-params {:app_id app, :user_id user}
-                    :content-type :json
-                    :accept :json
-                    :as :json})]
-    (when-let [client-token (get-in response [:body :auth :client_token])]
-      (log/infof "Successfully authenticated to Vault app-id %s for policies: %s"
-                 app (str/join ", " (get-in response [:body :auth :policies])))
-      (reset! token-ref client-token))))
-
 (defn- authenticate-userpass!
   "Updates the token ref by making a request to authenticate with a username
   and password."
@@ -94,6 +79,22 @@
       (reset! token-ref client-token))))
 
 
+(defn- authenticate-app!
+  "Updates the token ref by making a request to authenticate with an app-id and
+  secret user-id."
+  [api-url token-ref credentials]
+  (let [{:keys [app user]} credentials
+        response (http/post (str api-url "/v1/auth/app-id/login")
+                   {:form-params {:app_id app, :user_id user}
+                    :content-type :json
+                    :accept :json
+                    :as :json})]
+    (when-let [client-token (get-in response [:body :auth :client_token])]
+      (log/infof "Successfully authenticated to Vault app-id %s for policies: %s"
+                 app (str/join ", " (get-in response [:body :auth :policies])))
+      (reset! token-ref client-token))))
+
+
 (defrecord HTTPClient
   [api-url token]
 
@@ -105,7 +106,6 @@
       :token (authenticate-token! token credentials)
       :app-id (authenticate-app! api-url token credentials)
       :userpass (authenticate-userpass! api-url token credentials)
-      ; TODO: support LDAP auth
 
       ; Unknown type
       (throw (ex-info (str "Unsupported auth-type " (pr-str auth-type))
@@ -123,8 +123,9 @@
                       :accept :json
                       :as :json})
           data (get-in response [:body :data :keys])]
-      (log/infof "List %s (%d results)" path (count data))
+      (log/debugf "List %s (%d results)" path (count data))
       data))
+
 
   (write-secret!
     [this path data]
@@ -136,7 +137,7 @@
                       :content-type :json
                       :accept :json
                       :as :json})]
-      (log/infof "Wrote %s" path)
+      (log/debug "Wrote secret" path)
       (= (:status response) 204)))
 
 
@@ -148,8 +149,8 @@
                      {:headers {"X-Vault-Token" @token}
                       :accept :json
                       :as :json})]
-      (log/infof "Read %s (valid for %d seconds)"
-                 path (get-in response [:body :lease_duration]))
+      (log/debugf "Read %s (valid for %d seconds)"
+                  path (get-in response [:body :lease_duration]))
       (get-in response [:body :data]))))
 
 
