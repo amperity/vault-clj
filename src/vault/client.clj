@@ -18,11 +18,17 @@
     credentials. Possible arguments:
 
     - :token \"...\"
+    - :userpass {:username \"user\", :password \"hunter2\"}
     - :app-id {:app \"lambda_ci\", :user \"...\"}")
 
   (list-secrets
     [client path]
     "List the secrets located under a path.")
+
+  (write-secret!
+    [client path data]
+    "Writes secret data to a specific path. `data` should be a map. Returns a
+    boolean indicating whether the write was successful.")
 
   (read-secret
     [client path]
@@ -57,6 +63,22 @@
   (reset! token-ref token))
 
 
+(defn- authenticate-userpass!
+  "Updates the token ref by making a request to authenticate with a username
+  and password."
+  [api-url token-ref credentials]
+  (let [{:keys [username password]} credentials
+        response (http/post (str api-url "/v1/auth/userpass/login/" username)
+                   {:form-params {:password password}
+                    :content-type :json
+                    :accept :json
+                    :as :json})]
+    (when-let [client-token (get-in response [:body :auth :client_token])]
+      (log/infof "Successfully authenticated to Vault as %s for policies: %s"
+                 username (str/join ", " (get-in response [:body :auth :policies])))
+      (reset! token-ref client-token))))
+
+
 (defn- authenticate-app!
   "Updates the token ref by making a request to authenticate with an app-id and
   secret user-id."
@@ -83,7 +105,7 @@
     (case auth-type
       :token (authenticate-token! token credentials)
       :app-id (authenticate-app! api-url token credentials)
-      ; TODO: support LDAP auth
+      :userpass (authenticate-userpass! api-url token credentials)
 
       ; Unknown type
       (throw (ex-info (str "Unsupported auth-type " (pr-str auth-type))
@@ -101,20 +123,35 @@
                       :accept :json
                       :as :json})
           data (get-in response [:body :data :keys])]
-      (log/infof "List %s (%d results)" path (count data))
+      (log/debugf "List %s (%d results)" path (count data))
       data))
+
+
+  (write-secret!
+    [this path data]
+    (check-path! path)
+    (check-auth! token)
+    (let [response (http/post (str api-url "/v1/" path)
+                     {:headers {"X-Vault-Token" @token}
+                      :form-params data
+                      :content-type :json
+                      :accept :json
+                      :as :json})]
+      (log/debug "Wrote secret" path)
+      (= (:status response) 204)))
 
 
   (read-secret
     [this path]
     (check-path! path)
     (check-auth! token)
+    ; TODO: caching logic?
     (let [response (http/get (str api-url "/v1/" path)
                      {:headers {"X-Vault-Token" @token}
                       :accept :json
                       :as :json})]
-      (log/infof "Read %s (valid for %d seconds)"
-                 path (get-in response [:body :lease_duration]))
+      (log/debugf "Read %s (valid for %d seconds)"
+                  path (get-in response [:body :lease_duration]))
       (get-in response [:body :data]))))
 
 
