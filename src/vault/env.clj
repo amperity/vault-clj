@@ -2,6 +2,8 @@
   "Code to resolve secrets from a map of environment configuration. This is
   useful for service startup configs using the app-id authentication scheme.
 
+  Writing secrets to environmental configuration is supported via `write!`.
+
   If a client is not provided, the code initializes one from the `VAULT_URL`,
   `VAULT_APP_ID`, and `VAULT_USER_ID` environment variables."
   (:require
@@ -29,6 +31,20 @@
       client)))
 
 
+(defn- uncache!
+  "Uncaches a secret."
+  [cache path]
+  (when cache
+    (swap! cache dissoc path)))
+
+
+(defn- cache!
+  "Caches a secret."
+  [cache path secret]
+  (when cache
+    (swap! cache assoc path secret)))
+
+
 (defn- read-secret
   "Reads a secret path from Vault, caching the value in the client."
   [client path]
@@ -36,12 +52,26 @@
     (or (and cache (get @cache path))
         (try
           (let [secret (vault/read-secret client path)]
-            (swap! cache assoc path secret)
+            (cache! cache path secret)
             secret)
           (catch Exception ex
             (log/error ex "Failed to resolve environment secret:" path
                        (str (:body (ex-data ex))))
             (throw ex))))))
+
+
+(defn- write-secret!
+  "Writes a secret path to Vault, caching the value in the client.
+  Throws if there is an error."
+  [client path secret]
+  (let [cache (::cache client)]
+    (if (vault/write-secret! client path secret)
+      (cache! cache path secret)
+      (do
+        (uncache! cache path)
+        (throw (ex-info (str "Failed to write secret")
+                        {:path path})))))
+  nil)
 
 
 (defn- resolve-uri
@@ -90,3 +120,13 @@
        (resolve-secrets client env secrets))
      ; No secrets, return env directly.
      env)))
+
+
+(defn write!
+  "Writes a secret to environmental configuration. `secret` should be a map. 
+  Throws if there is an error."
+  ([env path secret]
+   (write! nil env path secret))
+  ([client env path secret]
+   (let [client (or client (init-client env))]
+     (write-secret! client path secret))))
