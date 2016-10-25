@@ -6,7 +6,13 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 
 ## [Unreleased]
 
-...
+### Added
+- The normal HTTP client supports internal lease caching directly via the
+  `vault.cache` namespace.
+
+### Fixed
+- Tokens used for direct authentication are trimmed as a precation to prevent
+  odd header-based HTTP errors.
 
 ## [0.3.0] - 2016-10-18
 
