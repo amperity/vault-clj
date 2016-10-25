@@ -61,7 +61,7 @@
   [token-ref token]
   (when-not (string? token)
     (throw (IllegalArgumentException. "Token credential must be a string")))
-  (reset! token-ref token))
+  (reset! token-ref (str/trim token)))
 
 
 (defn- authenticate-userpass!
