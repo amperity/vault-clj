@@ -4,7 +4,8 @@
   (:require
     [clj-http.client :as http]
     [clojure.string :as str]
-    [clojure.tools.logging :as log]))
+    [clojure.tools.logging :as log]
+    [vault.cache :as cache]))
 
 
 ;; ## Client Protocol
@@ -25,14 +26,14 @@
     [client path]
     "List the secrets located under a path.")
 
-  (write-secret!
-    [client path data]
-    "Writes secret data to a specific path. `data` should be a map. Returns a
-    boolean indicating whether the write was successful.")
-
   (read-secret
     [client path]
-    "Reads a secret from a specific path."))
+    "Reads a secret from a path. Returns the full map of stored secret data.")
+
+  (write-secret!
+    [client path data]
+    "Writes secret data to a path. `data` should be a map. Returns a
+    boolean indicating whether the write was successful."))
 
 
 
@@ -96,7 +97,7 @@
 
 
 (defrecord HTTPClient
-  [api-url token]
+  [api-url token cache]
 
   Client
 
@@ -127,6 +128,23 @@
       data))
 
 
+  (read-secret
+    [this path]
+    (check-path! path)
+    (check-auth! token)
+    (let [data (or (cache/lookup cache path)
+                   (let [response (http/get (str api-url "/v1/" path)
+                                    {:headers {"X-Vault-Token" @token}
+                                     :accept :json
+                                     :as :json})]
+                     (log/debugf "Read %s (valid for %d seconds)"
+                                 path (get-in response [:body :lease_duration]))
+                     (cache/store! cache (:body response))))]
+      (when-not data
+        (log/warn "No value found for secret" path))
+      data))
+
+
   (write-secret!
     [this path data]
     (check-path! path)
@@ -138,21 +156,8 @@
                       :accept :json
                       :as :json})]
       (log/debug "Wrote secret" path)
-      (= (:status response) 204)))
-
-
-  (read-secret
-    [this path]
-    (check-path! path)
-    (check-auth! token)
-    ; TODO: caching logic?
-    (let [response (http/get (str api-url "/v1/" path)
-                     {:headers {"X-Vault-Token" @token}
-                      :accept :json
-                      :as :json})]
-      (log/debugf "Read %s (valid for %d seconds)"
-                  path (get-in response [:body :lease_duration]))
-      (get-in response [:body :data]))))
+      (cache/invalidate! cache path)
+      (= (:status response) 204))))
 
 
 ;; Remove automatic constructors.
@@ -166,4 +171,4 @@
   (when-not (string? api-url)
     (throw (IllegalArgumentException.
              (str "Vault api-url must be a string, got: " (pr-str api-url)))))
-  (HTTPClient. api-url (atom nil)))
+  (HTTPClient. api-url (atom nil) (cache/new-cache)))
