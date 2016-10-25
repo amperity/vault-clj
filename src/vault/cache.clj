@@ -21,7 +21,8 @@
             expired (->> data
                          (filter #(<= (:expiry (val %)) now))
                          (map key))]
-        (log/warn "Expiring leased secrets:" (str/join \space expired))
+        (when (seq expired)
+          (log/warn "Expiring leased secrets:" (str/join \space expired)))
         (apply dissoc data expired)))))
 
 
@@ -35,14 +36,14 @@
 (defn store!
   "Stores the given secret data in the cache. Returns the stored secret data.
   If the secret has no `lease_duration` a default of 60 seconds is used."
-  [cache path secret]
-  (when (get secret "data")
-    (let [info {:lease-id (:lease_id secret)
-                :lease-duration (:lease_duration secret)
-                :renewable (:renewable secret)
+  [cache path response]
+  (when (:data response)
+    (let [info {:lease-id (:lease_id response)
+                :lease-duration (:lease_duration response)
+                :renewable (:renewable response)
                 :expiry (+ (System/currentTimeMillis)
-                           (* (:lease_duration secret 60) 1000))
-                :data (:data secret)}]
+                           (* (:lease_duration response 60) 1000))
+                :data (:data response)}]
       (swap! cache assoc path info)
       info)))
 

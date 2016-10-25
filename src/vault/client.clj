@@ -132,17 +132,17 @@
     [this path]
     (check-path! path)
     (check-auth! token)
-    (let [data (or (cache/lookup cache path)
+    (let [info (or (cache/lookup cache path)
                    (let [response (http/get (str api-url "/v1/" path)
                                     {:headers {"X-Vault-Token" @token}
                                      :accept :json
                                      :as :json})]
                      (log/debugf "Read %s (valid for %d seconds)"
                                  path (get-in response [:body :lease_duration]))
-                     (cache/store! cache (:body response))))]
-      (when-not data
+                     (cache/store! cache path (:body response))))]
+      (when-not info
         (log/warn "No value found for secret" path))
-      data))
+      (:data info)))
 
 
   (write-secret!
