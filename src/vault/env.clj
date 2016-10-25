@@ -13,13 +13,13 @@
 (def vault-prefix "vault:")
 
 
-(defn- init-client
+(defn init-app-client
   "Initialize and auth a new HTTP Vault client. Returns nil if the `:vault-url`
   is not configured. If it is, but the app-id or user-id are missing, throws an
   exception."
   [env]
   (when-let [url (env :vault-url)]
-    (let [client (assoc (vault/http-client url) ::cache (atom {}))
+    (let [client (vault/http-client url)
           app-id (env :vault-app-id)
           user-id (env :vault-user-id)]
       (when-not (and app-id user-id)
@@ -29,22 +29,7 @@
       client)))
 
 
-(defn- read-secret
-  "Reads a secret path from Vault, caching the value in the client."
-  [client path]
-  (let [cache (::cache client)]
-    (or (and cache (get @cache path))
-        (try
-          (let [secret (vault/read-secret client path)]
-            (swap! cache assoc path secret)
-            secret)
-          (catch Exception ex
-            (log/error ex "Failed to resolve environment secret:" path
-                       (str (:body (ex-data ex))))
-            (throw ex))))))
-
-
-(defn- resolve-uri
+(defn resolve-uri
   "Resolves a Vault path URI as provided to the environment. Throws an exception
   if the URI does not resolve to a non-nil value."
   [client vault-uri]
@@ -52,10 +37,10 @@
     (throw (ex-info "Cannot resolve secret without initialized client"
                     {:uri vault-uri})))
   (let [[path attr] (str/split (subs vault-uri (count vault-prefix)) #"#")
-        secret (read-secret client path)
+        secret (vault/read-secret client path)
         attr (or (keyword attr) :data)
         value (get secret attr)]
-    (when-not (some? value)
+    (when (nil? value)
       (throw (ex-info (str "No value for secret " vault-uri)
                       {:path path, :attr attr})))
     value))
@@ -86,7 +71,7 @@
   ([client env secrets]
    (if (seq secrets)
      ; Some secrets, resolve paths.
-     (let [client (or client (init-client env))]
+     (let [client (or client (init-app-client env))]
        (resolve-secrets client env secrets))
      ; No secrets, return env directly.
      env)))

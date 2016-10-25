@@ -6,6 +6,16 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 
 ## [Unreleased]
 
+### Added
+- The normal HTTP client supports internal lease caching directly via the
+  `vault.cache` namespace.
+
+### Fixed
+- Tokens used for direct authentication are trimmed as a precation to prevent
+  odd header-based HTTP errors.
+
+## [0.3.0] - 2016-10-18
+
 With this version, the project has been forked to the Amperity organization.
 
 ### Added
@@ -31,6 +41,7 @@ With this version, the project has been forked to the Amperity organization.
 ### Added
 - Initial library implementation.
 
-[Unreleased]: https://github.com/amperity/vault-clj/compare/0.2.0...HEAD
+[Unreleased]: https://github.com/amperity/vault-clj/compare/0.3.0...HEAD
+[0.3.0]: https://github.com/amperity/vault-clj/compare/0.2.0...0.3.0
 [0.2.0]: https://github.com/amperity/vault-clj/compare/0.1.0...0.2.0
 [0.1.0]: https://github.com/amperity/vault-clj/releases/tag/0.1.0
