@@ -5,6 +5,12 @@
     [clojure.tools.logging :as log]))
 
 
+(defn- now
+  "Helper method to get the current time in epoch milliseconds."
+  []
+  (System/currentTimeMillis))
+
+
 (defn new-cache
   "Creates a new stateful cache store for secrets."
   []
@@ -17,10 +23,7 @@
   (swap!
     cache
     (fn clean [data]
-      (let [now (System/currentTimeMillis)
-            expired (->> data
-                         (filter #(<= (:expiry (val %)) now))
-                         (map key))]
+      (let [expired (keep #(when (<= (:expiry (val %)) (now)) (key %)) data)]
         (when (seq expired)
           (log/warn "Expiring leased secrets:" (str/join \space expired)))
         (apply dissoc data expired)))))
@@ -40,9 +43,8 @@
   (when (:data response)
     (let [info {:lease-id (:lease_id response)
                 :lease-duration (:lease_duration response)
-                :renewable (:renewable response)
-                :expiry (+ (System/currentTimeMillis)
-                           (* (:lease_duration response 60) 1000))
+                :renewable (boolean (:renewable response))
+                :expiry (+ (now) (* (:lease_duration response 60) 1000))
                 :data (:data response)}]
       (swap! cache assoc path info)
       info)))
