@@ -8,6 +8,13 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 
 ...
 
+## [0.3.2] - 2016-10-26
+
+### Added
+- Add `delete-secret!` API support in the Client protocol.
+- `memory-client` returns a mock in-memory client implementation for testing.
+- Numerous unit tests to cover environment and caching logic.
+
 ## [0.3.1] - 2016-10-25
 
 ### Added
@@ -45,7 +52,8 @@ With this version, the project has been forked to the Amperity organization.
 ### Added
 - Initial library implementation.
 
-[Unreleased]: https://github.com/amperity/vault-clj/compare/0.3.1...HEAD
+[Unreleased]: https://github.com/amperity/vault-clj/compare/0.3.2...HEAD
+[0.3.2]: https://github.com/amperity/vault-clj/compare/0.3.1...0.3.2
 [0.3.1]: https://github.com/amperity/vault-clj/compare/0.3.0...0.3.1
 [0.3.0]: https://github.com/amperity/vault-clj/compare/0.2.0...0.3.0
 [0.2.0]: https://github.com/amperity/vault-clj/compare/0.1.0...0.2.0
