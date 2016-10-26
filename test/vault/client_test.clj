@@ -4,7 +4,7 @@
     [vault.client :as vault]))
 
 
-(deftest client-instantiation
+(deftest http-client-instantiation
   (is (thrown? IllegalArgumentException
                (vault/http-client nil)))
   (is (thrown? IllegalArgumentException
@@ -13,7 +13,7 @@
                  (vault/http-client "https://vault.example.com"))))
 
 
-(deftest secret-reading
+(deftest http-read-checks
   (let [client (vault/http-client "https://vault.example.com")]
     (is (thrown? IllegalArgumentException
                  (vault/read-secret client nil))
