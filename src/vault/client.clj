@@ -37,6 +37,46 @@
 
 
 
+;; ## Mock Memory Client
+
+(defrecord MemoryClient
+  [memory]
+
+  Client
+
+  (authenticate!
+    [this auth-type credentials]
+    this)
+
+  (list-secrets
+    [this path]
+    (filter #(str/starts-with? % (str path)) (keys @memory)))
+
+  (read-secret
+    [this path]
+    (or (get @memory path)
+        (throw (ex-info (str "No such secret: " path) {:secret path}))))
+
+  (write-secret!
+    [this path data]
+    (swap! memory assoc path data)
+    true))
+
+
+;; Remove automatic constructors.
+(ns-unmap *ns* '->MemoryClient)
+(ns-unmap *ns* 'map->MemoryClient)
+
+
+(defn memory-client
+  "Constructs a new in-memory Vault mock client."
+  ([]
+   (memory-client {}))
+  ([initial]
+   (MemoryClient. (atom initial :validator map?))))
+
+
+
 ;; ## HTTP API Client
 
 (defn- check-path!
