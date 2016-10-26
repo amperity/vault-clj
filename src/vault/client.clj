@@ -33,7 +33,57 @@
   (write-secret!
     [client path data]
     "Writes secret data to a path. `data` should be a map. Returns a
-    boolean indicating whether the write was successful."))
+    boolean indicating whether the write was successful.")
+
+  (delete-secret!
+    [client path]
+    "Removes secret data from a path. Returns a boolean indicating whether the
+    deletion was successful."))
+
+
+
+;; ## Mock Memory Client
+
+(defrecord MemoryClient
+  [memory]
+
+  Client
+
+  (authenticate!
+    [this auth-type credentials]
+    this)
+
+  (list-secrets
+    [this path]
+    (filter #(str/starts-with? % (str path)) (keys @memory)))
+
+  (read-secret
+    [this path]
+    (or (get @memory path)
+        (throw (ex-info (str "No such secret: " path) {:secret path}))))
+
+  (write-secret!
+    [this path data]
+    (swap! memory assoc path data)
+    true)
+
+  (delete-secret!
+    [this path]
+    (swap! memory dissoc path)
+    true))
+
+
+;; Remove automatic constructors.
+(ns-unmap *ns* '->MemoryClient)
+(ns-unmap *ns* 'map->MemoryClient)
+
+
+(defn memory-client
+  "Constructs a new in-memory Vault mock client."
+  ([]
+   (memory-client {}))
+  ([initial]
+   (MemoryClient. (atom initial :validator map?))))
 
 
 
@@ -156,6 +206,19 @@
                       :accept :json
                       :as :json})]
       (log/debug "Wrote secret" path)
+      (cache/invalidate! cache path)
+      (= (:status response) 204)))
+
+
+  (delete-secret!
+    [this path]
+    (check-path! path)
+    (check-auth! token)
+    (let [response (http/delete (str api-url "/v1/" path)
+                     {:headers {"X-Vault-Token" @token}
+                      :accept :json
+                      :as :json})]
+      (log/debug "Deleted secret" path)
       (cache/invalidate! cache path)
       (= (:status response) 204))))
 
