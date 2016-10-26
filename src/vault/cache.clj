@@ -53,4 +53,5 @@
 (defn invalidate!
   "Deletes a secret from the cache."
   [cache path]
-  (swap! cache dissoc path))
+  (swap! cache dissoc path)
+  nil)
