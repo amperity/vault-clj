@@ -106,6 +106,20 @@
              "Cannot read path with unauthenticated client."))))
 
 
+(defn- api-request
+  "Performs a request against the API, following redirects at most twice."
+  [method url req]
+  (let [redirects (::redirects (meta req) 0)]
+    (when (<= 2 redirects)
+      (throw (ex-info (str "Aborting Vault API request after " redirects " redirects")
+                      {:method method, :url url})))
+    (let [resp (http/request (assoc req :method method :url url))]
+      (if-let [location (and (#{303 307} (:status resp)) (get-in resp [:headers "Location"]))]
+        (do (log/debug "Retrying API request redirected to " location)
+            (recur method location (vary-meta req assoc ::redirects (inc redirects))))
+        resp))))
+
+
 (defn- authenticate-token!
   "Updates the token ref by storing the given auth token."
   [token-ref token]
@@ -119,12 +133,16 @@
   and password."
   [api-url token-ref credentials]
   (let [{:keys [username password]} credentials
-        response (http/post (str api-url "/v1/auth/userpass/login/" username)
+        response (api-request :post (str api-url "/v1/auth/userpass/login/" username)
                    {:form-params {:password password}
                     :content-type :json
                     :accept :json
                     :as :json})]
-    (when-let [client-token (get-in response [:body :auth :client_token])]
+    (let [client-token (get-in response [:body :auth :client_token])]
+      (when-not client-token
+        (throw (ex-info (str "No client token returned from non-error API response: "
+                             (:status response) " " (:reason-phrase response))
+                        {:body (:body response)})))
       (log/infof "Successfully authenticated to Vault as %s for policies: %s"
                  username (str/join ", " (get-in response [:body :auth :policies])))
       (reset! token-ref client-token))))
@@ -135,12 +153,16 @@
   secret user-id."
   [api-url token-ref credentials]
   (let [{:keys [app user]} credentials
-        response (http/post (str api-url "/v1/auth/app-id/login")
+        response (api-request :post (str api-url "/v1/auth/app-id/login")
                    {:form-params {:app_id app, :user_id user}
                     :content-type :json
                     :accept :json
                     :as :json})]
-    (when-let [client-token (get-in response [:body :auth :client_token])]
+    (let [client-token (get-in response [:body :auth :client_token])]
+      (when-not client-token
+        (throw (ex-info (str "No client token returned from non-error API response: "
+                             (:status response) " " (:reason-phrase response))
+                        {:body (:body response)})))
       (log/infof "Successfully authenticated to Vault app-id %s for policies: %s"
                  app (str/join ", " (get-in response [:body :auth :policies])))
       (reset! token-ref client-token))))
@@ -157,7 +179,6 @@
       :token (authenticate-token! token credentials)
       :app-id (authenticate-app! api-url token credentials)
       :userpass (authenticate-userpass! api-url token credentials)
-
       ; Unknown type
       (throw (ex-info (str "Unsupported auth-type " (pr-str auth-type))
                       {:auth-type auth-type})))
@@ -168,7 +189,7 @@
     [this path]
     (check-path! path)
     (check-auth! token)
-    (let [response (http/get (str api-url "/v1/" path)
+    (let [response (api-request :get (str api-url "/v1/" path)
                      {:query-params {:list true}
                       :headers {"X-Vault-Token" @token}
                       :accept :json
@@ -183,7 +204,7 @@
     (check-path! path)
     (check-auth! token)
     (let [info (or (cache/lookup cache path)
-                   (let [response (http/get (str api-url "/v1/" path)
+                   (let [response (api-request :get (str api-url "/v1/" path)
                                     {:headers {"X-Vault-Token" @token}
                                      :accept :json
                                      :as :json})]
@@ -199,7 +220,7 @@
     [this path data]
     (check-path! path)
     (check-auth! token)
-    (let [response (http/post (str api-url "/v1/" path)
+    (let [response (api-request :post (str api-url "/v1/" path)
                      {:headers {"X-Vault-Token" @token}
                       :form-params data
                       :content-type :json
@@ -214,7 +235,7 @@
     [this path]
     (check-path! path)
     (check-auth! token)
-    (let [response (http/delete (str api-url "/v1/" path)
+    (let [response (api-request :delete (str api-url "/v1/" path)
                      {:headers {"X-Vault-Token" @token}
                       :accept :json
                       :as :json})]
