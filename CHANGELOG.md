@@ -6,7 +6,13 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 
 ## [Unreleased]
 
-...
+### Changed
+- `vault.env/init-app-client` uses `VAULT_ADDR` as the primary configuration
+  variable, falling back to `VAULT_URL` for compatibility.
+
+### Fixed
+- 307 redirects from clustered Vault instances will be followed up to two times
+  in order to connect to the master.
 
 ## [0.3.2] - 2016-10-26
 
