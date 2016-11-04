@@ -8,6 +8,16 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 
 ...
 
+## [0.3.3] - 2016-11-04
+
+### Changed
+- `vault.env/init-app-client` uses `VAULT_ADDR` as the primary configuration
+  variable, falling back to `VAULT_URL` for compatibility.
+
+### Fixed
+- HTTP `307` redirects from clustered Vault instances will be followed up to two
+  times in order to connect to the correct master node.
+
 ## [0.3.2] - 2016-10-26
 
 ### Added
@@ -52,7 +62,8 @@ With this version, the project has been forked to the Amperity organization.
 ### Added
 - Initial library implementation.
 
-[Unreleased]: https://github.com/amperity/vault-clj/compare/0.3.2...HEAD
+[Unreleased]: https://github.com/amperity/vault-clj/compare/0.3.3...HEAD
+[0.3.3]: https://github.com/amperity/vault-clj/compare/0.3.2...0.3.3
 [0.3.2]: https://github.com/amperity/vault-clj/compare/0.3.1...0.3.2
 [0.3.1]: https://github.com/amperity/vault-clj/compare/0.3.0...0.3.1
 [0.3.0]: https://github.com/amperity/vault-clj/compare/0.2.0...0.3.0

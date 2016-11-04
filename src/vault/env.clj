@@ -14,11 +14,11 @@
 
 
 (defn init-app-client
-  "Initialize and auth a new HTTP Vault client. Returns nil if the `:vault-url`
+  "Initialize and auth a new HTTP Vault client. Returns nil if the `:vault-addr`
   is not configured. If it is, but the app-id or user-id are missing, throws an
   exception."
   [env]
-  (when-let [url (env :vault-url)]
+  (when-let [url (or (env :vault-addr) (env :vault-url))]
     (let [client (vault/http-client url)
           app-id (env :vault-app-id)
           user-id (env :vault-user-id)]
