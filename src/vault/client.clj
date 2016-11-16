@@ -222,10 +222,12 @@
       (reset! token-ref client-token))))
 
 (defn- build-headers
-  [token & [wrap-ttl]]
-  (merge {"X-Vault-Token" token}
-         (when wrap-ttl
-           {"X-Vault-Wrap-TTL" wrap-ttl})))
+  ([token]
+   (build-headers token {}))
+  ([token opts]
+   (merge {"X-Vault-Token" token}
+          (when-let [wrap-ttl (:wrap-ttl opts)]
+            {"X-Vault-Wrap-TTL" wrap-ttl}))))
 
 (defrecord HTTPClient
   [api-url token cache]
@@ -308,7 +310,7 @@
     [this wrap-ttl]
     (check-auth! token)
     (let [response (api-request :post (str api-url "/v1/auth/token/create")
-                                {:headers (build-headers @token wrap-ttl)
+                                {:headers (build-headers @token {:wrap-ttl wrap-ttl})
                                  :accept :json
                                  :as :json})]
       (log/debug "Created token" (when wrap-ttl "with X-Vault-Wrap-TTL" wrap-ttl))
