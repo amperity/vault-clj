@@ -56,8 +56,19 @@
   (let [f (java.text.SimpleDateFormat. "yyyy-MM-DDHH:mm:ss.SSSZ")]
     (.format f (java.util.Date.))))
 
+(defn- gen-uuid []
+  (str (java.util.UUID/randomUUID)))
+
+(defn- gen-token []
+  {:client_token (gen-uuid)
+   :accessor (gen-uuid)
+   :policies ["root"]
+   :metadata nil
+   :lease_duration 0
+   :renewable false})
+
 (defrecord MemoryClient
-  [memory]
+  [memory cubbies]
 
   Client
 
@@ -90,42 +101,30 @@
 
   (create-token!
     [this wrap-ttl]
-    {:request_id "",
-     :lease_id "",
-     :renewable false,
-     :lease_duration 0,
-     :data nil,
+    {:request_id ""
+     :lease_id ""
+     :renewable false
+     :lease_duration 0
+     :data nil
      :wrap_info
-     (when wrap-ttl {:token (java.util.UUID/randomUUID),
-                     :ttl wrap-ttl,
-                     :creation_time (gen-date),
-                     :wrapped_accessor (java.util.UUID/randomUUID)}),
-     :warnings nil,
+     (when wrap-ttl
+       (let [wrap-token (gen-uuid)]
+         (swap! cubbies assoc wrap-token (gen-token))
+         {:token wrap-token
+          :ttl wrap-ttl
+          :creation_time (gen-date)
+          :wrapped_accessor (gen-uuid)}))
+     :warnings nil
      :auth
-     (when-not wrap-ttl
-       {:client_token (java.util.UUID/randomUUID),
-        :accessor (java.util.UUID/randomUUID),
-        :policies ["root"],
-        :metadata nil,
-        :lease_duration 0,
-        :renewable false})})
+     (when-not wrap-ttl (gen-token))})
 
   (unwrap!
     [this wrap-token]
-    {:request_id (java.util.UUID/randomUUID),
-     :lease_id "",
-     :renewable false,
-     :lease_duration 0,
-     :data nil,
-     :wrap_info nil,
-     :warnings nil,
-     :auth
-     {:client_token (java.util.UUID/randomUUID),
-      :accessor (java.util.UUID/randomUUID),
-      :policies ["root"],
-      :metadata nil,
-      :lease_duration 0,
-      :renewable false}}))
+    (if-let [token (get @cubbies wrap-token)]
+      (do
+        (swap! cubbies dissoc wrap-token)
+        token)
+      (throw (ex-info "Unknown wrap-token used" {})))))
 
 
 ;; Remove automatic constructors.
@@ -136,9 +135,9 @@
 (defn memory-client
   "Constructs a new in-memory Vault mock client."
   ([]
-   (memory-client {}))
-  ([initial]
-   (MemoryClient. (atom initial :validator map?))))
+   (memory-client {} {}))
+  ([initial-memory initial-cubbies]
+   (MemoryClient. (atom initial-memory :validator map?) (atom initial-cubbies :validator map?))))
 
 
 
