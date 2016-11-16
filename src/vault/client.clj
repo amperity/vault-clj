@@ -38,14 +38,37 @@
   (delete-secret!
     [client path]
     "Removes secret data from a path. Returns a boolean indicating whether the
-    deletion was successful."))
+    deletion was successful.")
+
+  (create-token!
+    [client] [client wrap-ttl]
+    "Creates a new token.  Non-nil wrap-ttl values will be passed to the
+     X-Vault-Wrap-TTL header.  Returns the body of the successful repsonse or nil.")
+
+  (unwrap!
+    [client wrap-token]
+    "Returns the original response inside the given wrapping token."))
 
 
 
 ;; ## Mock Memory Client
+(defn- gen-date []
+  (let [f (java.text.SimpleDateFormat. "yyyy-MM-DDHH:mm:ss.SSSZ")]
+    (.format f (java.util.Date.))))
+
+(defn- gen-uuid []
+  (str (java.util.UUID/randomUUID)))
+
+(defn- gen-token []
+  {:client_token (gen-uuid)
+   :accessor (gen-uuid)
+   :policies ["root"]
+   :metadata nil
+   :lease_duration 0
+   :renewable false})
 
 (defrecord MemoryClient
-  [memory]
+  [memory cubbies]
 
   Client
 
@@ -70,7 +93,38 @@
   (delete-secret!
     [this path]
     (swap! memory dissoc path)
-    true))
+    true)
+
+  (create-token!
+    [this]
+    (create-token! this nil))
+
+  (create-token!
+    [this wrap-ttl]
+    {:request_id ""
+     :lease_id ""
+     :renewable false
+     :lease_duration 0
+     :data nil
+     :wrap_info
+     (when wrap-ttl
+       (let [wrap-token (gen-uuid)]
+         (swap! cubbies assoc wrap-token (gen-token))
+         {:token wrap-token
+          :ttl wrap-ttl
+          :creation_time (gen-date)
+          :wrapped_accessor (gen-uuid)}))
+     :warnings nil
+     :auth
+     (when-not wrap-ttl (gen-token))})
+
+  (unwrap!
+    [this wrap-token]
+    (if-let [token (get @cubbies wrap-token)]
+      (do
+        (swap! cubbies dissoc wrap-token)
+        token)
+      (throw (ex-info "Unknown wrap-token used" {})))))
 
 
 ;; Remove automatic constructors.
@@ -81,9 +135,9 @@
 (defn memory-client
   "Constructs a new in-memory Vault mock client."
   ([]
-   (memory-client {}))
-  ([initial]
-   (MemoryClient. (atom initial :validator map?))))
+   (memory-client {} {}))
+  ([initial-memory initial-cubbies]
+   (MemoryClient. (atom initial-memory :validator map?) (atom initial-cubbies :validator map?))))
 
 
 
@@ -167,6 +221,13 @@
                  app (str/join ", " (get-in response [:body :auth :policies])))
       (reset! token-ref client-token))))
 
+(defn- build-headers
+  ([token]
+   (build-headers token {}))
+  ([token opts]
+   (merge {"X-Vault-Token" token}
+          (when-let [wrap-ttl (:wrap-ttl opts)]
+            {"X-Vault-Wrap-TTL" wrap-ttl}))))
 
 (defrecord HTTPClient
   [api-url token cache]
@@ -241,7 +302,32 @@
                       :as :json})]
       (log/debug "Deleted secret" path)
       (cache/invalidate! cache path)
-      (= (:status response) 204))))
+      (= (:status response) 204)))
+
+  (create-token!
+    [this]
+    (create-token! this nil))
+
+  (create-token!
+    [this wrap-ttl]
+    (check-auth! token)
+    (let [response (api-request :post (str api-url "/v1/auth/token/create")
+                                {:headers (build-headers @token {:wrap-ttl wrap-ttl})
+                                 :accept :json
+                                 :as :json})]
+      (log/debug "Created token" (when wrap-ttl "with X-Vault-Wrap-TTL" wrap-ttl))
+      (when (= (:status response) 200)
+        (:body response))))
+
+  (unwrap!
+    [this wrap-token]
+    (let [response (api-request :post (str api-url "/v1/sys/wrapping/unwrap")
+                                {:headers (build-headers wrap-token)
+                                 :accept :json
+                                 :as :json})]
+      (log/debug "Unwrapping response")
+      (when (= (:status response) 200)
+        (:body response)))))
 
 
 ;; Remove automatic constructors.
