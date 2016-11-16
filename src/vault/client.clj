@@ -136,6 +136,8 @@
   "Constructs a new in-memory Vault mock client."
   ([]
    (memory-client {} {}))
+  ([initial-memory]
+   (memory-client initial-memory {}))
   ([initial-memory initial-cubbies]
    (MemoryClient. (atom initial-memory :validator map?) (atom initial-cubbies :validator map?))))
 
