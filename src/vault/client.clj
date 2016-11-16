@@ -52,6 +52,9 @@
 
 
 ;; ## Mock Memory Client
+(defn- gen-date []
+  (let [f (java.text.SimpleDateFormat. "yyyy-MM-DDHH:mm:ss.SSSZ")]
+    (.format f (java.util.Date.))))
 
 (defrecord MemoryClient
   [memory]
@@ -81,7 +84,9 @@
     (swap! memory dissoc path)
     true)
 
-  (create-token! [this] (create-token! this nil))
+  (create-token!
+    [this]
+    (create-token! this nil))
 
   (create-token!
     [this wrap-ttl]
@@ -91,16 +96,23 @@
      :lease_duration 0,
      :data nil,
      :wrap_info
-     {:token "87e771a4-73a5-8eda-fe59-a5cc5d41a6d2",
-      :ttl 300,
-      :creation_time "2016-11-15T16:09:05.570104718-08:00",
-      :wrapped_accessor "2bde7146-78a2-541c-a073-59d6f1535186"},
+     (when wrap-ttl {:token (java.util.UUID/randomUUID),
+                     :ttl wrap-ttl,
+                     :creation_time (gen-date),
+                     :wrapped_accessor (java.util.UUID/randomUUID)}),
      :warnings nil,
-     :auth nil})
+     :auth
+     (when-not wrap-ttl
+       {:client_token (java.util.UUID/randomUUID),
+        :accessor (java.util.UUID/randomUUID),
+        :policies ["root"],
+        :metadata nil,
+        :lease_duration 0,
+        :renewable false})})
 
   (unwrap!
     [this wrap-token]
-    {:request_id "21a1a583-a03b-f465-27a9-0461979c7aa7",
+    {:request_id (java.util.UUID/randomUUID),
      :lease_id "",
      :renewable false,
      :lease_duration 0,
@@ -108,8 +120,8 @@
      :wrap_info nil,
      :warnings nil,
      :auth
-     {:client_token "2a52fd73-5ec2-6690-0caa-ef7733c3f6cf",
-      :accessor "2bde7146-78a2-541c-a073-59d6f1535186",
+     {:client_token (java.util.UUID/randomUUID),
+      :accessor (java.util.UUID/randomUUID),
       :policies ["root"],
       :metadata nil,
       :lease_duration 0,
