@@ -321,7 +321,7 @@
                                 {:headers (build-headers wrap-token)
                                  :accept :json
                                  :as :json})]
-      (log/debug "Unwrapping response for" wrap-token)
+      (log/debug "Unwrapping response")
       (when (= (:status response) 200)
         (:body response)))))
 
