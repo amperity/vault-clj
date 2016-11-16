@@ -13,6 +13,8 @@
 (defprotocol Client
   "Protocol for fetching secrets from Vault."
 
+  ;; Authentication
+
   (authenticate!
     [client auth-type credentials]
     "Updates the client's internal state by authenticating with the given
@@ -21,6 +23,13 @@
     - :token \"...\"
     - :userpass {:username \"user\", :password \"hunter2\"}
     - :app-id {:app \"lambda_ci\", :user \"...\"}")
+
+  (create-token!
+    [client] [client wrap-ttl]
+    "Creates a new token. Setting `wrap-ttl` will return a wrapped token
+    response. Returns the body of the successful repsonse or nil.")
+
+  ;; Secret Management
 
   (list-secrets
     [client path]
@@ -40,26 +49,30 @@
     "Removes secret data from a path. Returns a boolean indicating whether the
     deletion was successful.")
 
-  (create-token!
-    [client] [client wrap-ttl]
-    "Creates a new token.  Non-nil wrap-ttl values will be passed to the
-     X-Vault-Wrap-TTL header.  Returns the body of the successful repsonse or nil.")
-
   (unwrap!
     [client wrap-token]
-    "Returns the original response inside the given wrapping token."))
+    "Returns the original response wrapped by the given token."))
 
 
 
 ;; ## Mock Memory Client
-(defn- gen-date []
+
+(defn- gen-date
+  "Generates a formatted date-time string for the current instant."
+  []
   (let [f (java.text.SimpleDateFormat. "yyyy-MM-DDHH:mm:ss.SSSZ")]
     (.format f (java.util.Date.))))
 
-(defn- gen-uuid []
+
+(defn- gen-uuid
+  "Generates a random UUID string."
+  []
   (str (java.util.UUID/randomUUID)))
 
-(defn- gen-token []
+
+(defn- mock-token-auth
+  "Generates a mock token response for use in the mock client."
+  []
   {:client_token (gen-uuid)
    :accessor (gen-uuid)
    :policies ["root"]
@@ -67,14 +80,41 @@
    :lease_duration 0
    :renewable false})
 
+
 (defrecord MemoryClient
   [memory cubbies]
 
   Client
 
+  ;; Authentication
+
   (authenticate!
     [this auth-type credentials]
     this)
+
+  (create-token!
+    [this]
+    (create-token! this nil))
+
+  (create-token!
+    [this wrap-ttl]
+    {:request_id ""
+     :lease_id ""
+     :renewable false
+     :lease_duration 0
+     :data nil
+     :wrap_info
+     (when wrap-ttl
+       (let [wrap-token (gen-uuid)]
+         (swap! cubbies assoc wrap-token (mock-token-auth))
+         {:token wrap-token
+          :ttl wrap-ttl
+          :creation_time (gen-date)
+          :wrapped_accessor (gen-uuid)}))
+     :warnings nil
+     :auth (when-not wrap-ttl (mock-token-auth))})
+
+  ;; Secret Management
 
   (list-secrets
     [this path]
@@ -94,29 +134,6 @@
     [this path]
     (swap! memory dissoc path)
     true)
-
-  (create-token!
-    [this]
-    (create-token! this nil))
-
-  (create-token!
-    [this wrap-ttl]
-    {:request_id ""
-     :lease_id ""
-     :renewable false
-     :lease_duration 0
-     :data nil
-     :wrap_info
-     (when wrap-ttl
-       (let [wrap-token (gen-uuid)]
-         (swap! cubbies assoc wrap-token (gen-token))
-         {:token wrap-token
-          :ttl wrap-ttl
-          :creation_time (gen-date)
-          :wrapped_accessor (gen-uuid)}))
-     :warnings nil
-     :auth
-     (when-not wrap-ttl (gen-token))})
 
   (unwrap!
     [this wrap-token]
@@ -160,6 +177,15 @@
   (when-not @token-ref
     (throw (IllegalStateException.
              "Cannot read path with unauthenticated client."))))
+
+
+(defn- api-headers
+  ([token]
+   (api-headers token {}))
+  ([token opts]
+   (merge {"X-Vault-Token" token}
+          (when-let [wrap-ttl (:wrap-ttl opts)]
+            {"X-Vault-Wrap-TTL" wrap-ttl}))))
 
 
 (defn- api-request
@@ -223,18 +249,13 @@
                  app (str/join ", " (get-in response [:body :auth :policies])))
       (reset! token-ref client-token))))
 
-(defn- build-headers
-  ([token]
-   (build-headers token {}))
-  ([token opts]
-   (merge {"X-Vault-Token" token}
-          (when-let [wrap-ttl (:wrap-ttl opts)]
-            {"X-Vault-Wrap-TTL" wrap-ttl}))))
 
 (defrecord HTTPClient
   [api-url token cache]
 
   Client
+
+  ;; Authenticate
 
   (authenticate!
     [this auth-type credentials]
@@ -247,20 +268,35 @@
                       {:auth-type auth-type})))
     this)
 
+  (create-token!
+    [this]
+    (create-token! this nil))
+
+  (create-token!
+    [this wrap-ttl]
+    (check-auth! token)
+    (let [response (api-request :post (str api-url "/v1/auth/token/create")
+                     {:headers (api-headers @token {:wrap-ttl wrap-ttl})
+                      :accept :json
+                      :as :json})]
+      (log/debug "Created token" (when wrap-ttl "with X-Vault-Wrap-TTL" wrap-ttl))
+      (when (= (:status response) 200)
+        (:body response))))
+
+  ;; Secret Management
 
   (list-secrets
     [this path]
     (check-path! path)
     (check-auth! token)
     (let [response (api-request :get (str api-url "/v1/" path)
-                     {:query-params {:list true}
-                      :headers {"X-Vault-Token" @token}
+                     {:headers (api-headers @token)
+                      :query-params {:list true}
                       :accept :json
                       :as :json})
           data (get-in response [:body :data :keys])]
       (log/debugf "List %s (%d results)" path (count data))
       data))
-
 
   (read-secret
     [this path]
@@ -268,7 +304,7 @@
     (check-auth! token)
     (let [info (or (cache/lookup cache path)
                    (let [response (api-request :get (str api-url "/v1/" path)
-                                    {:headers {"X-Vault-Token" @token}
+                                    {:headers (api-headers @token)
                                      :accept :json
                                      :as :json})]
                      (log/debugf "Read %s (valid for %d seconds)"
@@ -278,13 +314,12 @@
         (log/warn "No value found for secret" path))
       (:data info)))
 
-
   (write-secret!
     [this path data]
     (check-path! path)
     (check-auth! token)
     (let [response (api-request :post (str api-url "/v1/" path)
-                     {:headers {"X-Vault-Token" @token}
+                     {:headers (api-headers @token)
                       :form-params data
                       :content-type :json
                       :accept :json
@@ -293,40 +328,24 @@
       (cache/invalidate! cache path)
       (= (:status response) 204)))
 
-
   (delete-secret!
     [this path]
     (check-path! path)
     (check-auth! token)
     (let [response (api-request :delete (str api-url "/v1/" path)
-                     {:headers {"X-Vault-Token" @token}
+                     {:headers (api-headers @token)
                       :accept :json
                       :as :json})]
       (log/debug "Deleted secret" path)
       (cache/invalidate! cache path)
       (= (:status response) 204)))
 
-  (create-token!
-    [this]
-    (create-token! this nil))
-
-  (create-token!
-    [this wrap-ttl]
-    (check-auth! token)
-    (let [response (api-request :post (str api-url "/v1/auth/token/create")
-                                {:headers (build-headers @token {:wrap-ttl wrap-ttl})
-                                 :accept :json
-                                 :as :json})]
-      (log/debug "Created token" (when wrap-ttl "with X-Vault-Wrap-TTL" wrap-ttl))
-      (when (= (:status response) 200)
-        (:body response))))
-
   (unwrap!
     [this wrap-token]
     (let [response (api-request :post (str api-url "/v1/sys/wrapping/unwrap")
-                                {:headers (build-headers wrap-token)
-                                 :accept :json
-                                 :as :json})]
+                     {:headers (api-headers wrap-token)
+                      :accept :json
+                      :as :json})]
       (log/debug "Unwrapping response")
       (when (= (:status response) 200)
         (:body response)))))
