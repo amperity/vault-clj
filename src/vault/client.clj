@@ -304,7 +304,9 @@
       (cache/invalidate! cache path)
       (= (:status response) 204)))
 
-  (create-token! [this] (create-token! this nil))
+  (create-token!
+    [this]
+    (create-token! this nil))
 
   (create-token!
     [this wrap-ttl]
