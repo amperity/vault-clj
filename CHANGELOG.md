@@ -8,6 +8,13 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 
 ...
 
+## [0.3.4] - 2016-11-16
+
+### Added
+- Add `create-token!` API support in the Client protocol. Tokens can be returned
+  as [wrapped responses](https://www.vaultproject.io/docs/concepts/response-wrapping.html).
+- Add `unwrap!` API support in the Client protocol.
+
 ## [0.3.3] - 2016-11-04
 
 ### Changed
