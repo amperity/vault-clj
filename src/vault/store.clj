@@ -1,5 +1,5 @@
-(ns vault.cache
-  "Caching logic for Vault secrets and their associated leases."
+(ns vault.store
+  "Storage logic for Vault secrets and their associated leases."
   (:require
     [clojure.string :as str]
     [clojure.tools.logging :as log]))
@@ -11,17 +11,20 @@
   (System/currentTimeMillis))
 
 
-(defn new-cache
-  "Creates a new stateful cache store for secrets."
+(defn new-store
+  "Creates a new stateful store for leased secrets.
+
+  This takes the form of a reference map of secret paths to lease data,
+  including the secret data and any registered callbacks."
   []
   (atom {}))
 
 
 (defn sweep!
-  "Removes expired secrets from the cache. Returns the updated cache data."
-  [cache]
+  "Removes expired secrets from the store. Returns the updated store data."
+  [store]
   (swap!
-    cache
+    store
     (fn clean [data]
       (let [expired (keep #(when (<= (:expiry (val %)) (now)) (key %)) data)]
         (when (seq expired)
@@ -30,28 +33,27 @@
 
 
 (defn lookup
-  "Looks up the given key in the cache. Returns the secret data, if present and
-  not expired. May modify the cache by dropping expired secrets."
-  [cache path]
-  (get (sweep! cache) path))
+  "Looks up the given secret path in the store. Returns the lease data, if
+  present and not expired. May modify the store by dropping expired secrets."
+  [store path]
+  (get (sweep! store) path))
 
 
 (defn store!
-  "Stores the given secret data in the cache. Returns the stored secret data.
-  If the secret has no `lease_duration` a default of 60 seconds is used."
-  [cache path response]
+  "Stores leased secret data in the store. Returns the stored secret data."
+  [store path response]
   (when (:data response)
     (let [info {:lease-id (:lease_id response)
                 :lease-duration (:lease_duration response)
                 :renewable (boolean (:renewable response))
                 :expiry (+ (now) (* (:lease_duration response 60) 1000))
                 :data (:data response)}]
-      (swap! cache assoc path info)
+      (swap! store assoc path info)
       info)))
 
 
 (defn invalidate!
-  "Deletes a secret from the cache."
-  [cache path]
-  (swap! cache dissoc path)
+  "Removes a secret from the store."
+  [store path]
+  (swap! store dissoc path)
   nil)
