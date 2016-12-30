@@ -23,84 +23,94 @@
 
 (defn- check-auth!
   "Validates that the client is authenticated."
-  [token-ref]
-  (when-not @token-ref
+  [auth-ref]
+  (when-not (:client-token @auth-ref)
     (throw (IllegalStateException.
              "Cannot read path with unauthenticated client."))))
 
 
-(defn- api-headers
-  ([token]
-   (api-headers token {}))
-  ([token opts]
-   (merge {"X-Vault-Token" token}
-          (when-let [wrap-ttl (:wrap-ttl opts)]
-            {"X-Vault-Wrap-TTL" wrap-ttl}))))
-
-
-(defn- api-request
-  "Performs a request against the API, following redirects at most twice."
-  [method url req]
+(defn- do-api-request
+  "Performs a request against the API, following redirects at most twice. The
+  `api-url` should be the base server endpoint for Vault, and `path` should be
+  relative from the version root. Currently always uses API version `v1`."
+  [method request-url req]
   (let [redirects (::redirects (meta req) 0)]
     (when (<= 2 redirects)
       (throw (ex-info (str "Aborting Vault API request after " redirects " redirects")
-                      {:method method, :url url})))
-    (let [resp (http/request (assoc req :method method :url url))]
+                      {:method method, :url request-url})))
+    (let [resp (http/request (assoc req :method method :url request-url))]
       (if-let [location (and (#{303 307} (:status resp)) (get-in resp [:headers "Location"]))]
         (do (log/debug "Retrying API request redirected to " location)
             (recur method location (vary-meta req assoc ::redirects (inc redirects))))
         resp))))
 
 
+(defn- api-request
+  "Helper method to perform an API request with common headers and values."
+  [client method path req]
+  (check-path! path)
+  (do-api-request
+    method
+    (str (:api-url client) "/v1/" path)
+    (merge
+      {:accept :json
+       :as :json}
+      req
+      {:headers (merge {"X-Vault-Token" (:client-token @(:auth client))}
+                       (:headers req))})))
+
+
 
 ;; ## Authentication Methods
 
+(defn- api-auth!
+  [claim auth-ref response]
+  (let [auth-info (get-in response [:body :auth])]
+    (when-not (:client_token auth-info)
+      (throw (ex-info (str "No client token returned from non-error API response: "
+                           (:status response) " " (:reason-phrase response))
+                      {:body (:body response)})))
+    (log/infof "Successfully authenticated to Vault as %s for policies: %s"
+               claim (str/join ", " (:policies auth-info)))
+    (reset! auth-ref auth-info)))
+
+
 (defn- authenticate-token!
   "Updates the token ref by storing the given auth token."
-  [token-ref token]
+  [auth-ref token]
   (when-not (string? token)
     (throw (IllegalArgumentException. "Token credential must be a string")))
-  (reset! token-ref (str/trim token)))
+  (reset! auth-ref {:client-token (str/trim token)}))
 
 
 (defn- authenticate-userpass!
   "Updates the token ref by making a request to authenticate with a username
   and password."
-  [api-url token-ref credentials]
-  (let [{:keys [username password]} credentials
-        response (api-request :post (str api-url "/v1/auth/userpass/login/" username)
-                   {:form-params {:password password}
-                    :content-type :json
-                    :accept :json
-                    :as :json})]
-    (let [client-token (get-in response [:body :auth :client_token])]
-      (when-not client-token
-        (throw (ex-info (str "No client token returned from non-error API response: "
-                             (:status response) " " (:reason-phrase response))
-                        {:body (:body response)})))
-      (log/infof "Successfully authenticated to Vault as %s for policies: %s"
-                 username (str/join ", " (get-in response [:body :auth :policies])))
-      (reset! token-ref client-token))))
+  [auth-ref api-url credentials]
+  (let [{:keys [username password]} credentials]
+    (api-auth!
+      (str "user " username)
+      auth-ref
+      (do-api-request :post (str api-url "/v1/auth/userpass/login/" username)
+        {:form-params {:password password}
+         :content-type :json
+         :accept :json
+         :as :json}))))
 
 
 (defn- authenticate-app!
   "Updates the token ref by making a request to authenticate with an app-id and
   secret user-id."
-  [api-url token-ref credentials]
-  (let [{:keys [app user]} credentials
-        response (api-request :post (str api-url "/v1/auth/app-id/login")
-                   {:form-params {:app_id app, :user_id user}
-                    :content-type :json
-                    :accept :json
-                    :as :json})]
-    (let [client-token (get-in response [:body :auth :client_token])]
-      (when-not client-token
-        (throw (ex-info (str "No client token returned from non-error API response: "
-                             (:status response) " " (:reason-phrase response))
-                        {:body (:body response)})))
-      (log/infof "Successfully authenticated to Vault app-id %s for policies: %s"
-                 app (str/join ", " (get-in response [:body :auth :policies])))
-      (reset! token-ref client-token))))
+  [auth-ref api-url credentials]
+  (let [{:keys [app user]} credentials]
+    (api-auth!
+      (str "app-id " app)
+      auth-ref
+      (do-api-request :post (str api-url "/v1/auth/app-id/login")
+        {:form-params {:app_id app, :user_id user}
+         :content-type :json
+         :accept :json
+         :as :json}))))
 
 
 
@@ -161,9 +171,9 @@
   (authenticate!
     [this auth-type credentials]
     (case auth-type
-      :token (authenticate-token! token credentials)
-      :app-id (authenticate-app! api-url token credentials)
-      :userpass (authenticate-userpass! api-url token credentials)
+      :token (authenticate-token! auth credentials)
+      :app-id (authenticate-app! auth api-url credentials)
+      :userpass (authenticate-userpass! auth api-url credentials)
       ; Unknown type
       (throw (ex-info (str "Unsupported auth-type " (pr-str auth-type))
                       {:auth-type auth-type})))
@@ -179,13 +189,12 @@
     (.create-token! this nil))
 
   (create-token!
-    [this wrap-ttl]
-    (check-auth! token)
-    (let [response (api-request :post (str api-url "/v1/auth/token/create")
-                     {:headers (api-headers @token {:wrap-ttl wrap-ttl})
-                      :accept :json
-                      :as :json})]
-      (log/debug "Created token" (when wrap-ttl "with X-Vault-Wrap-TTL" wrap-ttl))
+    [this opts]
+    (check-auth! auth)
+    (let [response (api-request this :post "auth/token/create"
+                     {:headers (when-let [ttl (:wrap-ttl opts)]
+                                 {"X-Vault-Wrap-TTL" ttl})})]
+      (log/debug "Created token" (when-let [ttl (:wrap-ttl opts)] "with X-Vault-Wrap-TTL" ttl))
       (when (= (:status response) 200)
         (:body response))))
 
@@ -207,13 +216,9 @@
 
   (list-secrets
     [this path]
-    (check-path! path)
-    (check-auth! token)
-    (let [response (api-request :get (str api-url "/v1/" path)
-                     {:headers (api-headers @token)
-                      :query-params {:list true}
-                      :accept :json
-                      :as :json})
+    (check-auth! auth)
+    (let [response (api-request this :get path
+                     {:query-params {:list true}})
           data (get-in response [:body :data :keys])]
       (log/debugf "List %s (%d results)" path (count data))
       data))
@@ -224,13 +229,8 @@
 
   (read-secret
     [this path opts]
-    (check-path! path)
-    (check-auth! token)
     (let [info (or (store/lookup store path)
-                   (let [response (api-request :get (str api-url "/v1/" path)
-                                    {:headers (api-headers @token)
-                                     :accept :json
-                                     :as :json})]
+                   (let [response (api-request this :get path {})]
                      (log/debugf "Read %s (valid for %d seconds)"
                                  path (get-in response [:body :lease_duration]))
                      (store/store! store path (:body response))))]
@@ -240,26 +240,18 @@
 
   (write-secret!
     [this path data]
-    (check-path! path)
-    (check-auth! token)
-    (let [response (api-request :post (str api-url "/v1/" path)
-                     {:headers (api-headers @token)
-                      :form-params data
-                      :content-type :json
-                      :accept :json
-                      :as :json})]
+    (check-auth! auth)
+    (let [response (api-request this :post path
+                     {:form-params data
+                      :content-type :json})]
       (log/debug "Wrote secret" path)
       (store/invalidate! store path)
       (= (:status response) 204)))
 
   (delete-secret!
     [this path]
-    (check-path! path)
-    (check-auth! token)
-    (let [response (api-request :delete (str api-url "/v1/" path)
-                     {:headers (api-headers @token)
-                      :accept :json
-                      :as :json})]
+    (check-auth! auth)
+    (let [response (api-request this :delete path {})]
       (log/debug "Deleted secret" path)
       (store/invalidate! store path)
       (= (:status response) 204)))
@@ -271,10 +263,8 @@
 
   (unwrap!
     [this wrap-token]
-    (let [response (api-request :post (str api-url "/v1/sys/wrapping/unwrap")
-                     {:headers (api-headers wrap-token)
-                      :accept :json
-                      :as :json})]
+    (let [response (api-request this :post "sys/wrapping/unwrap"
+                     {:headers {"X-Vault-Token" wrap-token}})]
       (log/debug "Unwrapping response")
       (when (= (:status response) 200)
         (:body response)))))
@@ -297,7 +287,7 @@
                   (pr-str api-url)))))
   (map->HTTPClient
     (merge opts {:api-url api-url
-                 :token (atom nil)
+                 :auth (atom nil)
                  :leases (store/new-store)})))
 
 
