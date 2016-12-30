@@ -11,6 +11,27 @@
   (System/currentTimeMillis))
 
 
+(defn renewable?
+  "Determines whether a leased secret is renewable."
+  [secret]
+  (and (:renewable secret) (not (str/blank? (:lease-id secret)))))
+
+
+(defn expires-within?
+  "Determines whether the secret expires within the given number of seconds."
+  [secret duration]
+  (<= (- (:expiry secret) duration) (now)))
+
+
+(defn expired?
+  "Determines whether the secret has expired."
+  [secret]
+  (expires-within? secret 0))
+
+
+
+;; ## Secret Storage
+
 (defn new-store
   "Creates a new stateful store for leased secrets.
 
@@ -26,7 +47,7 @@
   (swap!
     store
     (fn clean [data]
-      (let [expired (keep #(when (<= (:expiry (val %)) (now)) (key %)) data)]
+      (let [expired (map key (filter (comp expired? val) data))]
         (when (seq expired)
           (log/warn "Expiring leased secrets:" (str/join \space expired)))
         (apply dissoc data expired)))))
@@ -41,15 +62,15 @@
 
 (defn store!
   "Stores leased secret data in the store. Returns the stored secret data."
-  [store path response]
-  (when (:data response)
-    (let [info {:lease-id (:lease_id response)
-                :lease-duration (:lease_duration response)
-                :renewable (boolean (:renewable response))
-                :expiry (+ (now) (* (:lease_duration response 60) 1000))
-                :data (:data response)}]
-      (swap! store assoc path info)
-      info)))
+  [store path info]
+  (when (:data info)
+    (let [secret {:lease-id (:lease_id response)
+                  :lease-duration (:lease_duration response)
+                  :renewable (boolean (:renewable response))
+                  :expiry (+ (now) (* (:lease_duration response 60) 1000))
+                  :data (:data response)}]
+      (swap! store assoc path secret)
+      secret)))
 
 
 (defn invalidate!
