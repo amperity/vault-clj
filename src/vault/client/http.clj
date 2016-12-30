@@ -106,8 +106,23 @@
 
 ;; ## HTTP Client Type
 
+;; - `:api-url`
+;;   The base URL for the Vault API endpoint.
+;; - `:auth`
+;;   An atom containing the authentication lease information, including the
+;;   client token.
+;; - `:store`
+;;   Local in-memory storage of secret leases.
+;; - `:lease-timer`
+;;   Thread which periodically checks and renews leased secrets.
+;; - `:lease-renewal-window
+;;   Period in seconds to renew leases before they expire.
+;; - `:lease-check-period`
+;;   Period in seconds to check for leases to renew.
+;; - `:lease-check-jitter`
+;;   Maximum amount in seconds to jitter the check period by.
 (defrecord HTTPClient
-  [api-url token store lease-timer]
+  [api-url auth store lease-timer]
 
   component/Lifecycle
 
