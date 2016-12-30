@@ -33,7 +33,7 @@
   [label handler period jitter]
   (log/debugf "Starting timer thread %s with period of %d seconds (~%d jitter)"
               label period jitter)
-  (doto (Thread. (timer-loop handler period jitter) label)
+  (doto (Thread. (timer-loop handler period jitter) (str label))
     (.setDaemon true)
     (.start)))
 

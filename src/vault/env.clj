@@ -7,7 +7,9 @@
   (:require
     [clojure.string :as str]
     [clojure.tools.logging :as log]
-    [vault.client :as vault]))
+    [vault.core :as vault]
+    ; For extensions to vault/new-client multimethod.
+    (vault.client memory http)))
 
 
 (def vault-prefix "vault:")
@@ -19,7 +21,7 @@
   exception."
   [env]
   (when-let [url (or (env :vault-addr) (env :vault-url))]
-    (let [client (vault/http-client url)
+    (let [client (vault/new-client url)
           app-id (env :vault-app-id)
           user-id (env :vault-user-id)]
       (when-not (and app-id user-id)

@@ -1,166 +1,16 @@
-(ns vault.client
-  "Protocol for interacting with Vault to fetch secrets using the HTTP API. This
-  client is focused on the app-id authentication scheme."
+(ns vault.client.http
   (:require
     [clj-http.client :as http]
     [clojure.string :as str]
     [clojure.tools.logging :as log]
-    [vault.cache :as cache]))
+    [com.stuartsierra.component :as component]
+    (vault
+      [core :as vault]
+      [store :as store]
+      [timer :as timer])))
 
 
-;; ## Client Protocol
-
-(defprotocol Client
-  "Protocol for fetching secrets from Vault."
-
-  ;; Authentication
-
-  (authenticate!
-    [client auth-type credentials]
-    "Updates the client's internal state by authenticating with the given
-    credentials. Possible arguments:
-
-    - :token \"...\"
-    - :userpass {:username \"user\", :password \"hunter2\"}
-    - :app-id {:app \"lambda_ci\", :user \"...\"}")
-
-  (create-token!
-    [client] [client wrap-ttl]
-    "Creates a new token. Setting `wrap-ttl` will return a wrapped token
-    response. Returns the body of the successful repsonse or nil.")
-
-  ;; Secret Management
-
-  (list-secrets
-    [client path]
-    "List the secrets located under a path.")
-
-  (read-secret
-    [client path]
-    "Reads a secret from a path. Returns the full map of stored secret data.")
-
-  (write-secret!
-    [client path data]
-    "Writes secret data to a path. `data` should be a map. Returns a
-    boolean indicating whether the write was successful.")
-
-  (delete-secret!
-    [client path]
-    "Removes secret data from a path. Returns a boolean indicating whether the
-    deletion was successful.")
-
-  (unwrap!
-    [client wrap-token]
-    "Returns the original response wrapped by the given token."))
-
-
-
-;; ## Mock Memory Client
-
-(defn- gen-date
-  "Generates a formatted date-time string for the current instant."
-  []
-  (let [f (java.text.SimpleDateFormat. "yyyy-MM-DDHH:mm:ss.SSSZ")]
-    (.format f (java.util.Date.))))
-
-
-(defn- gen-uuid
-  "Generates a random UUID string."
-  []
-  (str (java.util.UUID/randomUUID)))
-
-
-(defn- mock-token-auth
-  "Generates a mock token response for use in the mock client."
-  []
-  {:client_token (gen-uuid)
-   :accessor (gen-uuid)
-   :policies ["root"]
-   :metadata nil
-   :lease_duration 0
-   :renewable false})
-
-
-(defrecord MemoryClient
-  [memory cubbies]
-
-  Client
-
-  ;; Authentication
-
-  (authenticate!
-    [this auth-type credentials]
-    this)
-
-  (create-token!
-    [this]
-    (create-token! this nil))
-
-  (create-token!
-    [this wrap-ttl]
-    {:request_id ""
-     :lease_id ""
-     :renewable false
-     :lease_duration 0
-     :data nil
-     :wrap_info
-     (when wrap-ttl
-       (let [wrap-token (gen-uuid)]
-         (swap! cubbies assoc wrap-token (mock-token-auth))
-         {:token wrap-token
-          :ttl wrap-ttl
-          :creation_time (gen-date)
-          :wrapped_accessor (gen-uuid)}))
-     :warnings nil
-     :auth (when-not wrap-ttl (mock-token-auth))})
-
-  ;; Secret Management
-
-  (list-secrets
-    [this path]
-    (filter #(str/starts-with? % (str path)) (keys @memory)))
-
-  (read-secret
-    [this path]
-    (or (get @memory path)
-        (throw (ex-info (str "No such secret: " path) {:secret path}))))
-
-  (write-secret!
-    [this path data]
-    (swap! memory assoc path data)
-    true)
-
-  (delete-secret!
-    [this path]
-    (swap! memory dissoc path)
-    true)
-
-  (unwrap!
-    [this wrap-token]
-    (if-let [token (get @cubbies wrap-token)]
-      (do
-        (swap! cubbies dissoc wrap-token)
-        token)
-      (throw (ex-info "Unknown wrap-token used" {})))))
-
-
-;; Remove automatic constructors.
-(ns-unmap *ns* '->MemoryClient)
-(ns-unmap *ns* 'map->MemoryClient)
-
-
-(defn memory-client
-  "Constructs a new in-memory Vault mock client."
-  ([]
-   (memory-client {} {}))
-  ([initial-memory]
-   (memory-client initial-memory {}))
-  ([initial-memory initial-cubbies]
-   (MemoryClient. (atom initial-memory :validator map?) (atom initial-cubbies :validator map?))))
-
-
-
-;; ## HTTP API Client
+;; ## API Utilities
 
 (defn- check-path!
   "Validates that the given path is a non-empty string."
@@ -201,6 +51,9 @@
             (recur method location (vary-meta req assoc ::redirects (inc redirects))))
         resp))))
 
+
+
+;; ## Authentication Methods
 
 (defn- authenticate-token!
   "Updates the token ref by storing the given auth token."
@@ -250,12 +103,45 @@
       (reset! token-ref client-token))))
 
 
+
+;; ## HTTP Client Type
+
 (defrecord HTTPClient
-  [api-url token cache]
+  [api-url token store lease-timer]
 
-  Client
+  component/Lifecycle
 
-  ;; Authenticate
+  (start
+    [this]
+    (if lease-timer
+      ; Already running
+      this
+      ; Start lease heartbeat thread.
+      (let [window (:lease-renewal-window this 1200)  ; 20 minutes
+            period (:lease-check-period   this  300)  ;  5 minutes
+            jitter (:lease-check-jitter   this   60)  ;  1 minute
+            thread (timer/start! "vault-lease-timer"
+                                 #(store/renew-leases!
+                                    (partial vault/renew-lease this)
+                                    store
+                                    window)
+                                 period
+                                 jitter)]
+        (assoc this :lease-timer thread))))
+
+  (stop
+    [this]
+    (if lease-timer
+      ; Stop lease timer thread.
+      (do
+        (timer/stop! lease-timer)
+        ; TODO: revoke all outstanding leases
+        (assoc this :lease-timer nil))
+      ; Already stopped.
+      this))
+
+
+  vault/Client
 
   (authenticate!
     [this auth-type credentials]
@@ -268,9 +154,14 @@
                       {:auth-type auth-type})))
     this)
 
+  ; TODO: status
+
+
+  vault/TokenManager
+
   (create-token!
     [this]
-    (create-token! this nil))
+    (.create-token! this nil))
 
   (create-token!
     [this wrap-ttl]
@@ -283,7 +174,21 @@
       (when (= (:status response) 200)
         (:body response))))
 
-  ;; Secret Management
+  ; TODO: lookup-token
+  ; TODO: lookup-accessor
+  ; TODO: renew-token
+  ; TODO: revoke-token!
+  ; TODO: revoke-accessor!
+
+
+  vault/LeaseManager
+
+  ; TODO: list-leases
+  ; TODO: renew-lease
+  ; TODO: revoke-lease!
+
+
+  vault/SecretClient
 
   (list-secrets
     [this path]
@@ -300,16 +205,20 @@
 
   (read-secret
     [this path]
+    (.read-secret this path nil))
+
+  (read-secret
+    [this path opts]
     (check-path! path)
     (check-auth! token)
-    (let [info (or (cache/lookup cache path)
+    (let [info (or (store/lookup store path)
                    (let [response (api-request :get (str api-url "/v1/" path)
                                     {:headers (api-headers @token)
                                      :accept :json
                                      :as :json})]
                      (log/debugf "Read %s (valid for %d seconds)"
                                  path (get-in response [:body :lease_duration]))
-                     (cache/store! cache path (:body response))))]
+                     (store/store! store path (:body response))))]
       (when-not info
         (log/warn "No value found for secret" path))
       (:data info)))
@@ -325,7 +234,7 @@
                       :accept :json
                       :as :json})]
       (log/debug "Wrote secret" path)
-      (cache/invalidate! cache path)
+      (store/invalidate! store path)
       (= (:status response) 204)))
 
   (delete-secret!
@@ -337,8 +246,13 @@
                       :accept :json
                       :as :json})]
       (log/debug "Deleted secret" path)
-      (cache/invalidate! cache path)
+      (store/invalidate! store path)
       (= (:status response) 204)))
+
+
+  vault/WrappingClient
+
+  ; TODO: wrap!
 
   (unwrap!
     [this wrap-token]
@@ -351,15 +265,32 @@
         (:body response)))))
 
 
-;; Remove automatic constructors.
-(ns-unmap *ns* '->HTTPClient)
-(ns-unmap *ns* 'map->HTTPClient)
+
+;; ## Constructors
+
+;; Privatize automatic constructors.
+(alter-meta! #'->HTTPClient assoc :private true)
+(alter-meta! #'map->HTTPClient assoc :private true)
 
 
 (defn http-client
   "Constructs a new HTTP Vault client."
-  [api-url]
-  (when-not (string? api-url)
+  [api-url & {:as opts}]
+  (when-not (and (string? api-url) (str/starts-with? api-url "http"))
     (throw (IllegalArgumentException.
-             (str "Vault api-url must be a string, got: " (pr-str api-url)))))
-  (HTTPClient. api-url (atom nil) (cache/new-cache)))
+             (str "Vault api-url must be a string starting with 'http', got: "
+                  (pr-str api-url)))))
+  (map->HTTPClient
+    (merge opts {:api-url api-url
+                 :token (atom nil)
+                 :leases (store/new-store)})))
+
+
+(defmethod vault/new-client "http"
+  [location]
+  (http-client location))
+
+
+(defmethod vault/new-client "https"
+  [location]
+  (http-client location))
