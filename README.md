@@ -2,10 +2,7 @@ vault-clj
 =========
 
 A Clojure library for interacting with the [Vault](https://vaultproject.io/)
-secret management system. So far, this focuses on the app-id authentication
-scheme use-case.
-
-This library very new, so expect API changes as it develops!
+secret management system.
 
 ## Installation
 
@@ -19,10 +16,10 @@ Leiningen, add the following dependency to your project definition:
 ```clojure
 => (require '[vault.client :as vault])
 
-=> (def client (vault/http-client "https://vault.example.com"))
+=> (def client (vault/new-client "https://vault.example.com"))
 
 => client
-#vault.client.HTTPClient {:api-url "https://vault.example.com", :token #<Atom@5cca1513 nil>}
+#vault.client.http.HTTPClient {:api-url "https://vault.example.com", :token #<Atom@5cca1513 nil>}
 
 => (vault/authenticate! client :app-id {:app "my_app", :user "0000-userid-000"})
 ; INFO: Successfully authenticated to Vault app-id my_app for policies: my-policy
