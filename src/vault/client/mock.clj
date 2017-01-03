@@ -1,4 +1,4 @@
-(ns vault.client.memory
+(ns vault.client.mock
   (:require
     [clojure.string :as str]
     [clojure.tools.logging :as log]
@@ -34,7 +34,7 @@
    :renewable false})
 
 
-(defrecord MemoryClient
+(defrecord MockClient
   [memory cubbies]
 
   vault/Client
@@ -128,22 +128,23 @@
 ;; ## Constructors
 
 ;; Privatize automatic constructors.
-(alter-meta! #'->MemoryClient assoc :private true)
-(alter-meta! #'map->MemoryClient assoc :private true)
+(alter-meta! #'->MockClient assoc :private true)
+(alter-meta! #'map->MockClient assoc :private true)
 
 
-(defn memory-client
+(defn mock-client
   "Constructs a new mock in-memory Vault client."
   ([]
-   (memory-client {} {}))
+   (mock-client {} {}))
   ([initial-memory]
-   (memory-client initial-memory {}))
+   (mock-client initial-memory {}))
   ([initial-memory initial-cubbies]
-   (map->MemoryClient
+   (map->MockClient
      {:memory (atom initial-memory :validator map?)
       :cubbies (atom initial-cubbies :validator map?)})))
 
 
-(defmethod vault/new-client "mem"
+(defmethod vault/new-client "mock"
   [location]
-  (memory-client))
+  ; TODO: parse scheme-specific part as path to secrets fixture file
+  (mock-client))
