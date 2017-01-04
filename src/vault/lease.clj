@@ -98,12 +98,13 @@
     {:lease-id (:lease-id info)
      :lease-duration (:lease-duration info)
      :renewable (boolean (:renewable info))
+     ::rotate (boolean (:rotate info))
      ::expiry (.plusSeconds (now) (:lease-duration info 60))}
     (when-not (::issued secret)
       {::issued (now)})
     (when-let [data (:data info)]
       {:data data})
-    (when-let [watcher (:watch data)]
+    (when-let [watcher (:watch info)]
       (conj (::watchers secret []) watcher))))
 
 
@@ -114,10 +115,10 @@
 
 
 (defn- call-watchers!
-  [secret event]
+  [secret event-type]
   (run!
     #(try
-       (% secret event)
+       (% secret event-type)
        (catch Throwable t
          (log/error t "Error while calling secret lease watch function"
                     (.getName (class %)))))
@@ -134,6 +135,13 @@
   including the secret data and any registered callbacks."
   []
   (atom {}))
+
+
+(defn list-leases
+  "Returns a list of lease information currently stored."
+  [store]
+  (mapv (fn [[k v]] (-> v (dissoc :data) (assoc :path k)))
+        @store))
 
 
 (defn lookup
@@ -154,22 +162,17 @@
       secret)))
 
 
-(defn renew!
-  "Updates leased secret information after renewal."
+(defn update!
+  "Updates leased secret information after renewal or rotation."
   [store info]
   (when-let [lease-id (:lease-id info)]
-    (if-let [path (some-> (find-secret store lease-id) key)]
-      (let [updated (get (swap! store update path update-lease info) path)]
-        (call-watchers! updated :renew))
-      (log/error "Cannot renew lease with no matching store entry:" lease-id))))
-
-
-(defn rotate!
-  "Updates leased secret information after secret rotation."
-  [store path]
-  (when-let [secret (get @store path)]
-    (let [updated (get (swap! store update path update-lease info) path)]
-      (call-watchers! updated :rotate))))
+    (if-let [path (or (:path info) (some-> (find-secret store lease-id) key))]
+      (let [extant (get @store path)
+            secret (get (swap! store update path update-lease info) path)]
+        (if (not= lease-id (:lease-id extant))
+          (call-watchers! secret :rotate)
+          (call-watchers! secret :renew)))
+      (log/error "Cannot update lease with no matching store entry:" lease-id))))
 
 
 (defn invalidate!
@@ -182,7 +185,7 @@
 (defn sweep!
   "Removes expired secrets from the store."
   [store]
-  (when-let [expired (seq (filter (comp expired? val) @data))]
+  (when-let [expired (seq (filter (comp expired? val) @store))]
     (log/warn "Expiring leased secrets:" (str/join \space (map key expired)))
-    (apply swap! store dissoc data (map key expired))
+    (apply swap! store dissoc (map key expired))
     (run! #(call-watchers! (val %) :expire) expired)))

@@ -9,7 +9,7 @@
     [clojure.tools.logging :as log]
     [vault.core :as vault]
     ; For extensions to vault/new-client multimethod.
-    (vault.client memory http)))
+    (vault.client mock http)))
 
 
 (def vault-prefix "vault:")
