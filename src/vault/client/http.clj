@@ -3,10 +3,11 @@
     [clj-http.client :as http]
     [clojure.string :as str]
     [clojure.tools.logging :as log]
+    [clojure.walk :as walk]
     [com.stuartsierra.component :as component]
     (vault
       [core :as vault]
-      [store :as store]
+      [lease :as lease]
       [timer :as timer])))
 
 
@@ -27,6 +28,31 @@
   (when-not (:client-token @auth-ref)
     (throw (IllegalStateException.
              "Cannot read path with unauthenticated client."))))
+
+
+(defn- kebabify-keys
+  "Rewrites keyword map keys with underscores changed to dashes."
+  [value]
+  (let [kebab-kw #(-> % name (str/replace "_" "-") keyword)
+        xf-entry (juxt (comp kebab-kw key) val)]
+    (walk/postwalk
+      (fn xf-maps [x]
+        (if (map? x)
+          (into {} (map xf-entry) x)
+          x))
+      value)))
+
+
+(defn- clean-body
+  "Cleans up a response from the Vault API by rewriting some keywords and
+  dropping extraneous information. Note that this changes the `:data` in the
+  response to the original result to preserve accuracy."
+  [response]
+  (->
+    (:body response)
+    (kebabify-keys)
+    (assoc :data (:data (:body response)))
+    (->> (into {} (filter (comp some? val))))))
 
 
 (defn- do-api-request
@@ -65,13 +91,14 @@
 
 (defn- api-auth!
   [claim auth-ref response]
-  (let [auth-info (get-in response [:body :auth])]
-    (when-not (:client_token auth-info)
+  (let [auth-info (:auth (clean-body response))]
+    (when-not (:client-token auth-info)
       (throw (ex-info (str "No client token returned from non-error API response: "
                            (:status response) " " (:reason-phrase response))
                       {:body (:body response)})))
     (log/infof "Successfully authenticated to Vault as %s for policies: %s"
                claim (str/join ", " (:policies auth-info)))
+    ; TODO: record expiry time
     (reset! auth-ref auth-info)))
 
 
@@ -80,6 +107,7 @@
   [auth-ref token]
   (when-not (string? token)
     (throw (IllegalArgumentException. "Token credential must be a string")))
+  ; TODO: call API to lookup self?
   (reset! auth-ref {:client-token (str/trim token)}))
 
 
@@ -114,6 +142,41 @@
 
 
 
+;; ## Timer Logic
+
+(defn- renew-auth-token!
+  "Renews the client's authentication token when within `window` seconds of expiring."
+  [client window]
+  ; TODO: implement
+  (log/debug "TODO: check auth renewal:" @(:auth client)))
+
+
+(defn- renew-leases!
+  "Renews all the secrets within `window` seconds of expiring. Updates the
+  lease store and invokes any registered lease callbacks."
+  [client window]
+  (doseq [secret (lease/renewable-leases (:leases client) window)]
+    (try
+      (log/debug "Renewing secret lease" (:lease-id secret))
+      (vault/renew-lease client (:lease-id secret))
+      (catch Exception ex
+        (log/error ex "Failed to renew secret lease" (:lease-id secret))))))
+
+
+(defn- rotate-secrets!
+  "Re-reads all the secrets within `window` seconds of expiring. Updates
+  the lease store and invokes any registered lease callbacks."
+  [client window]
+  (doseq [secret (lease/rotatable-leases (:leases client) window)]
+    (try
+      (log/info "Rotating secret lease" (:lease-id secret))
+      (let [response (api-request client :get (:path secret) {})]
+        (lease/update! (:leases client) (clean-body response)))
+      (catch Exception ex
+        (log/error ex "Failed to rotate secret" (:lease-id secret))))))
+
+
+
 ;; ## HTTP Client Type
 
 ;; - `:api-url`
@@ -121,7 +184,7 @@
 ;; - `:auth`
 ;;   An atom containing the authentication lease information, including the
 ;;   client token.
-;; - `:store`
+;; - `:leases`
 ;;   Local in-memory storage of secret leases.
 ;; - `:lease-timer`
 ;;   Thread which periodically checks and renews leased secrets.
@@ -132,7 +195,7 @@
 ;; - `:lease-check-jitter`
 ;;   Maximum amount in seconds to jitter the check period by.
 (defrecord HTTPClient
-  [api-url auth store lease-timer]
+  [api-url auth leases lease-timer]
 
   component/Lifecycle
 
@@ -146,10 +209,10 @@
             period (:lease-check-period   this  300)  ;  5 minutes
             jitter (:lease-check-jitter   this   60)  ;  1 minute
             thread (timer/start! "vault-lease-timer"
-                                 #(store/renew-leases!
-                                    (partial vault/renew-lease this)
-                                    store
-                                    window)
+                                 #(do (renew-auth-token! this window)
+                                      (renew-leases! this window)
+                                      (rotate-secrets! this window)
+                                      (lease/sweep! leases))
                                  period
                                  jitter)]
         (assoc this :lease-timer thread))))
@@ -179,7 +242,9 @@
                       {:auth-type auth-type})))
     this)
 
-  ; TODO: status
+  (status
+    [this]
+    (clean-body (api-request this :get "sys/health" {})))
 
 
   vault/TokenManager
@@ -196,7 +261,7 @@
                                  {"X-Vault-Wrap-TTL" ttl})})]
       (log/debug "Created token" (when-let [ttl (:wrap-ttl opts)] "with X-Vault-Wrap-TTL" ttl))
       (when (= (:status response) 200)
-        (:body response))))
+        (clean-body response))))
 
   ; TODO: lookup-token
   ; TODO: lookup-accessor
@@ -207,9 +272,37 @@
 
   vault/LeaseManager
 
-  ; TODO: list-leases
-  ; TODO: renew-lease
-  ; TODO: revoke-lease!
+  (list-leases
+    [this]
+    (lease/list-leases leases))
+
+  (renew-lease
+    [this lease-id]
+    (check-auth! auth)
+    (log/debug "Renewing lease" lease-id)
+    (let [response (api-request this :put "sys/renew"
+                     {:form-params {:lease_id lease-id}
+                      :content-type :json})
+          info (clean-body response)]
+      (lease/update! leases info)
+      info))
+
+  (revoke-lease!
+    [this lease-id]
+    (log/debug "Revoking lease" lease-id)
+    (let [response (api-request this :put (str "sys/revoke/" lease-id) {})]
+      (lease/remove-lease! leases lease-id)
+      (clean-body response)))
+
+  (add-lease-watch
+    [this watch-key path watch-fn]
+    (add-watch leases watch-key (lease/lease-watcher path watch-fn))
+    this)
+
+  (remove-lease-watch
+    [this watch-key]
+    (remove-watch leases watch-key)
+    this)
 
 
   vault/SecretClient
@@ -229,11 +322,15 @@
 
   (read-secret
     [this path opts]
-    (let [info (or (store/lookup store path)
-                   (let [response (api-request this :get path {})]
+    (let [info (or (lease/lookup leases path)
+                   (let [response (api-request this :get path {})
+                         info (assoc (clean-body response)
+                                     :path path
+                                     :renew (:renew opts)
+                                     :rotate (:rotate opts))]
                      (log/debugf "Read %s (valid for %d seconds)"
-                                 path (get-in response [:body :lease_duration]))
-                     (store/store! store path (:body response))))]
+                                 path (:lease-duration info))
+                     (lease/update! leases info)))]
       (when-not info
         (log/warn "No value found for secret" path))
       (:data info)))
@@ -245,7 +342,7 @@
                      {:form-params data
                       :content-type :json})]
       (log/debug "Wrote secret" path)
-      (store/invalidate! store path)
+      (lease/remove-path! leases path)
       (= (:status response) 204)))
 
   (delete-secret!
@@ -253,7 +350,7 @@
     (check-auth! auth)
     (let [response (api-request this :delete path {})]
       (log/debug "Deleted secret" path)
-      (store/invalidate! store path)
+      (lease/remove-path! leases path)
       (= (:status response) 204)))
 
 
@@ -288,7 +385,7 @@
   (map->HTTPClient
     (merge opts {:api-url api-url
                  :auth (atom nil)
-                 :leases (store/new-store)})))
+                 :leases (lease/new-store)})))
 
 
 (defmethod vault/new-client "http"
