@@ -52,12 +52,19 @@
   (Instant/now))
 
 
-(defn- secret-lease
+(defn auth-lease
+  "Adds extra fields and sanitizes an authentication lease."
+  [auth]
+  (if-let [duration (:lease-duration auth)]
+    (assoc auth ::expiry (.plusSeconds (now) duration))
+    auth))
+
+
+(defn secret-lease
   "Adds extra fields and cleans up the secret lease info."
   [info]
   (cond->
-    {:path (:path info)
-     :lease-id (when-not (str/blank? (:lease-id info))
+    {:lease-id (when-not (str/blank? (:lease-id info))
                  (:lease-id info))
      :lease-duration (:lease-duration info)
      :renewable (boolean (:renewable info))
@@ -76,9 +83,11 @@
 (defn expires-within?
   "Determines whether the lease expires within the given number of seconds."
   [lease duration]
-  (-> (now)
-      (.plusSeconds duration)
-      (.isAfter (::expiry lease))))
+  (if-let [expiry (::expiry lease)]
+    (-> (now)
+        (.plusSeconds duration)
+        (.isAfter expiry))
+    false))
 
 
 (defn expired?
@@ -113,12 +122,15 @@
 
 
 (defn lookup
-  "Looks up the given secret path in the store. Returns the lease data, if
-  present and not expired."
-  [store path]
-  (when-let [lease (get @store path)]
-    (when-not (expired? lease)
-      lease)))
+  "Looks up the given secret path in the store by path or lease-id. Returns the
+  lease data, if present."
+  [store path-or-id]
+  (let [leases @store]
+    (or (get leases path-or-id)
+        (some->>
+          (vals leases)
+          (filter #(= path-or-id (:lease-id %)))
+          (first)))))
 
 
 (defn update!

@@ -91,14 +91,13 @@
 
 (defn- api-auth!
   [claim auth-ref response]
-  (let [auth-info (:auth (clean-body response))]
+  (let [auth-info (lease/auth-lease (:auth (clean-body response)))]
     (when-not (:client-token auth-info)
       (throw (ex-info (str "No client token returned from non-error API response: "
                            (:status response) " " (:reason-phrase response))
                       {:body (:body response)})))
     (log/infof "Successfully authenticated to Vault as %s for policies: %s"
                claim (str/join ", " (:policies auth-info)))
-    ; TODO: record expiry time
     (reset! auth-ref auth-info)))
 
 
@@ -107,7 +106,6 @@
   [auth-ref token]
   (when-not (string? token)
     (throw (IllegalArgumentException. "Token credential must be a string")))
-  ; TODO: call API to lookup self?
   (reset! auth-ref {:client-token (str/trim token)}))
 
 
@@ -144,36 +142,53 @@
 
 ;; ## Timer Logic
 
-(defn- renew-auth-token!
-  "Renews the client's authentication token when within `window` seconds of expiring."
+(defn- try-renew-lease!
+  "Attempts to renew the given secret lease. Updates the lease store or catches
+  and logs any exception."
+  [client secret]
+  (try
+    (vault/renew-lease client (:lease-id secret))
+    (catch Exception ex
+      (log/error ex "Failed to renew secret lease" (:lease-id secret)))))
+
+
+(defn- try-rotate-secret!
+  "Attempts to rotate the given secret lease. Updates the lease store or catches
+  and logs any exception."
+  [client secret]
+  (try
+    (log/info "Rotating secret lease" (:lease-id secret))
+    (let [response (api-request client :get (:path secret) {})
+          info (assoc (clean-body response) :path (:path secret))]
+      (lease/update! (:leases client) info))
+    (catch Exception ex
+      (log/error ex "Failed to rotate secret" (:lease-id secret)))))
+
+
+(defn- maintain-leases!
   [client window]
-  ; TODO: implement
-  (log/debug "TODO: check auth renewal:" @(:auth client)))
-
-
-(defn- renew-leases!
-  "Renews all the secrets within `window` seconds of expiring. Updates the
-  lease store and invokes any registered lease callbacks."
-  [client window]
-  (doseq [secret (lease/renewable-leases (:leases client) window)]
-    (try
-      (log/debug "Renewing secret lease" (:lease-id secret))
-      (vault/renew-lease client (:lease-id secret))
-      (catch Exception ex
-        (log/error ex "Failed to renew secret lease" (:lease-id secret))))))
-
-
-(defn- rotate-secrets!
-  "Re-reads all the secrets within `window` seconds of expiring. Updates
-  the lease store and invokes any registered lease callbacks."
-  [client window]
-  (doseq [secret (lease/rotatable-leases (:leases client) window)]
-    (try
-      (log/info "Rotating secret lease" (:lease-id secret))
-      (let [response (api-request client :get (:path secret) {})]
-        (lease/update! (:leases client) (clean-body response)))
-      (catch Exception ex
-        (log/error ex "Failed to rotate secret" (:lease-id secret))))))
+  (log/debug "Checking for renewable leases...")
+  ; Check auth token for renewal.
+  (let [auth @(:auth client)]
+    (when (and (:renewable auth)
+               (lease/expires-within? auth window)
+               (some :lease-id (lease/list-leases (:leases client))))
+      (try
+        (log/info "Renewing Vault client token")
+        (vault/renew-token client)
+        (catch Exception ex
+          (log/error ex "Failed to renew client token!")))))
+  ; Renew leases that are within expiry window and are configured for renewal.
+  ; Rotate secrets that are about to expire and not renewable.
+  (let [renewable (lease/renewable-leases (:leases client) window)
+        rotatable (lease/rotatable-leases (:leases client) window)]
+    (doseq [secret renewable]
+      (try-renew-lease! client secret))
+    ; Rotate leases that are within expiry window and not renewable.
+    (doseq [secret rotatable]
+      (try-rotate-secret! client secret)))
+  ; Drop any expired leases.
+  (lease/sweep! (:leases client)))
 
 
 
@@ -209,10 +224,7 @@
             period (:lease-check-period   this  300)  ;  5 minutes
             jitter (:lease-check-jitter   this   60)  ;  1 minute
             thread (timer/start! "vault-lease-timer"
-                                 #(do (renew-auth-token! this window)
-                                      (renew-leases! this window)
-                                      (rotate-secrets! this window)
-                                      (lease/sweep! leases))
+                                 #(maintain-leases! this window)
                                  period
                                  jitter)]
         (assoc this :lease-timer thread))))
@@ -265,7 +277,17 @@
 
   ; TODO: lookup-token
   ; TODO: lookup-accessor
-  ; TODO: renew-token
+
+  (renew-token
+    [this]
+    ; TODO: renew-token
+    ,,,)
+
+  (renew-token
+    [this token]
+    ; TODO: renew-token
+    ,,,)
+
   ; TODO: revoke-token!
   ; TODO: revoke-accessor!
 
@@ -280,12 +302,21 @@
     [this lease-id]
     (check-auth! auth)
     (log/debug "Renewing lease" lease-id)
-    (let [response (api-request this :put "sys/renew"
+    (let [current (lease/lookup leases lease-id)
+          response (api-request this :put "sys/renew"
                      {:form-params {:lease_id lease-id}
                       :content-type :json})
           info (clean-body response)]
-      (lease/update! leases info)
-      info))
+      (as-> (clean-body response) info
+        ; If the lease looks renewable but the lease-duration is shorter than the
+        ; existing lease, we're up against the max-ttl and the lease should not
+        ; be considered renewable.
+        (if (and (lease/renewable? info)
+                 (< (:lease-duration info)
+                    (:lease-duration current)))
+          (assoc info :renewable false)
+          info)
+        (lease/update! leases info))))
 
   (revoke-lease!
     [this lease-id]
@@ -322,7 +353,9 @@
 
   (read-secret
     [this path opts]
-    (let [info (or (lease/lookup leases path)
+    (let [info (or (when-let [lease (lease/lookup leases path)]
+                     (when-not (lease/expired? lease)
+                       lease))
                    (let [response (api-request this :get path {})
                          info (assoc (clean-body response)
                                      :path path
