@@ -107,7 +107,22 @@
 
   (revoke-lease!
     [client lease-id]
-    "Revokes the identified secret lease. Returns nil on success."))
+    "Revokes the identified secret lease. Returns nil on success.")
+
+  (add-lease-watch
+    [client watch-key path watch-fn]
+    "Registers a new watch function which will be called whenever the lease for
+    the secret at the given path is updated. The `watch-key` must be unique per
+    client, and can be used to remove the watch later.
+
+    The watch function will be called with the secret lease information
+    whenever the lease-id changes. This can be because the secret was rotated,
+    revoked, or expired. In the latter two cases, the function will be called
+    with `nil` as the argument.")
+
+  (remove-lease-watch
+    [client watch-key]
+    "Removes the watch function registered with the given key, if any."))
 
 
 (defprotocol SecretClient
@@ -125,8 +140,8 @@
 
     - `:renew` whether or not to renew this secret when the lease is near
       expiry.
-    - `:callback` function to call with updated secret data when renewing the
-      secret lease.")
+    - `:rotate` whether or not to rotate this secret when the lease is near
+      expiry and cannot be renewed.")
 
   (write-secret!
     [client path data]
