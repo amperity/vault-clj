@@ -8,7 +8,7 @@
     [clojure.string :as str]
     [clojure.tools.logging :as log]
     [vault.core :as vault]
-    ; For extensions to vault/new-client multimethod.
+    ; For extensions to vault.core/new-client multimethod.
     (vault.client mock http)))
 
 

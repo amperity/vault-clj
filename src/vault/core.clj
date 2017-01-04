@@ -93,11 +93,12 @@
 
 
 (defprotocol LeaseManager
-  "Lease management for dynamic secrets"
+  "Lease management for dynamic secrets."
 
   (list-leases
-    [client] ; TODO: opts to filter? return type?
-    "Lists the currently leased secrets this client knows about.")
+    [client]
+    "Lists the currently leased secrets this client knows about. Does not
+    return secret data.")
 
   (renew-lease
     [client lease-id]

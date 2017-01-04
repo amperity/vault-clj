@@ -95,7 +95,8 @@
   [secret info]
   (merge
     secret
-    {:lease-id (:lease-id info)
+    {:lease-id (when-not (str/blank? (:lease-id info))
+                 (:lease-id info))
      :lease-duration (:lease-duration info)
      :renewable (boolean (:renewable info))
      ::rotate (boolean (:rotate info))
