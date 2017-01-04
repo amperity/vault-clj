@@ -42,18 +42,6 @@
 ; }
 
 
-; In memory secret leases look like:
-#_
-{:data {String String}
- :lease-id String
- :lease-duration Long ; seconds
- :renewable Boolean
- ::rotate Boolean ; whether to re-read credentials on expiry
- ::issued Instant
- ::expiry Instant
- ::watchers [Fn]}
-
-
 
 ;; ## Lease Management
 
@@ -64,66 +52,45 @@
   (Instant/now))
 
 
-(defn renewable?
-  "Determines whether a leased secret is renewable."
-  [secret]
-  (and (:renewable secret) (not (str/blank? (:lease-id secret)))))
-
-
-(defn rotate?
-  "Determines whether a leased secret should be rotated on expiration."
-  [secret]
-  (::rotate secret))
-
-
-(defn expires-within?
-  "Determines whether the secret expires within the given number of seconds."
-  [secret duration]
-  (-> (now)
-      (.plusSeconds duration)
-      (.isAfter (::expiry secret))))
-
-
-(defn expired?
-  "Determines whether the secret has expired."
-  [secret]
-  (expires-within? secret 0))
-
-
-(defn- update-lease
-  "Returns the secret map updated with new lease information."
-  [secret info]
-  (merge
-    secret
-    {:lease-id (when-not (str/blank? (:lease-id info))
+(defn- secret-lease
+  "Adds extra fields and cleans up the secret lease info."
+  [info]
+  (cond->
+    {:path (:path info)
+     :lease-id (when-not (str/blank? (:lease-id info))
                  (:lease-id info))
      :lease-duration (:lease-duration info)
      :renewable (boolean (:renewable info))
-     ::rotate (boolean (:rotate info))
      ::expiry (.plusSeconds (now) (:lease-duration info 60))}
-    (when-not (::issued secret)
-      {::issued (now)})
-    (when-let [data (:data info)]
-      {:data data})
-    (when-let [watcher (:watch info)]
-      (conj (::watchers secret []) watcher))))
+    (:path info)
+      (assoc :path (:path info))
+    (:data info)
+      (assoc :data (:data info)
+             ::issued (now))
+    (some? (:renew info))
+      (assoc ::renew (boolean (:renew info)))
+    (some? (:rotate info))
+      (assoc ::rotate (boolean (:rotate info)))))
 
 
-(defn- find-secret
-  "Locates a path/lease entry by the lease-id."
-  [store lease-id]
-  (first (filter (comp #{lease-id} :lease-id val) @store)))
+(defn expires-within?
+  "Determines whether the lease expires within the given number of seconds."
+  [lease duration]
+  (-> (now)
+      (.plusSeconds duration)
+      (.isAfter (::expiry lease))))
 
 
-(defn- call-watchers!
-  [secret event-type]
-  (run!
-    #(try
-       (% secret event-type)
-       (catch Throwable t
-         (log/error t "Error while calling secret lease watch function"
-                    (.getName (class %)))))
-    (::watchers secret)))
+(defn expired?
+  "Determines whether the lease has expired."
+  [lease]
+  (expires-within? lease 0))
+
+
+(defn renewable?
+  "Determines whether a leased lease is renewable."
+  [lease]
+  (and (:renewable lease) (not (str/blank? (:lease-id lease)))))
 
 
 
@@ -149,44 +116,76 @@
   "Looks up the given secret path in the store. Returns the lease data, if
   present and not expired."
   [store path]
-  (when-let [secret (get @store path)]
-    (when-not (expired? secret)
-      secret)))
-
-
-(defn store!
-  "Stores leased secret data in the store. Returns the stored secret data."
-  [store path info]
-  (when (:data info)
-    (let [secret (update-lease nil info)]
-      (swap! store assoc path secret)
-      secret)))
+  (when-let [lease (get @store path)]
+    (when-not (expired? lease)
+      lease)))
 
 
 (defn update!
-  "Updates leased secret information after renewal or rotation."
+  "Updates secret lease information in the store."
   [store info]
   (when-let [lease-id (:lease-id info)]
-    (if-let [path (or (:path info) (some-> (find-secret store lease-id) key))]
-      (let [extant (get @store path)
-            secret (get (swap! store update path update-lease info) path)]
-        (if (not= lease-id (:lease-id extant))
-          (call-watchers! secret :rotate)
-          (call-watchers! secret :renew)))
+    (if-let [path (or (:path info)
+                      (some->>
+                        @store
+                        (filter (comp #{lease-id} :lease-id val))
+                        (first)
+                        (key)))]
+      (get (swap! store update path merge (secret-lease info)) path)
       (log/error "Cannot update lease with no matching store entry:" lease-id))))
 
 
-(defn invalidate!
-  "Removes a secret from the store."
+(defn remove-path!
+  "Removes a lease from the store by path."
   [store path]
   (swap! store dissoc path)
   nil)
 
 
+(defn remove-lease!
+  "Removes a lease from the store by id."
+  [store lease-id]
+  (swap! store (fn [data] (into {} (remove #(= lease-id (:lease-id (val %))) data))))
+  nil)
+
+
 (defn sweep!
-  "Removes expired secrets from the store."
+  "Removes expired leases from the store."
   [store]
   (when-let [expired (seq (filter (comp expired? val) @store))]
     (log/warn "Expiring leased secrets:" (str/join \space (map key expired)))
     (apply swap! store dissoc (map key expired))
-    (run! #(call-watchers! (val %) :expire) expired)))
+    store))
+
+
+(defn renewable-leases
+  "Returns a sequence of leases which are within `window` seconds of expiring,
+  are renewable, and are marked for renewal."
+  [store window]
+  (->> (list-leases store)
+       (filter ::renew)
+       (filter renewable?)
+       (filter #(expires-within? % window))))
+
+
+(defn rotatable-leases
+  "Returns a sequence of leases which are within `window` seconds of expiring,
+  are not renewable, and are marked for rotation."
+  [store window]
+  (->> (list-leases store)
+       (filter ::rotate)
+       (remove renewable?)
+       (filter #(expires-within? % window))))
+
+
+(defn lease-watcher
+  "Constructs a watch function which will call the given function with the
+  secret info at a given path when the lease changes."
+  [path watch-fn]
+  (fn watch
+    [_ _ old-state new-state]
+    (let [old-info (get old-state path)
+          new-info (get new-state path)]
+      (when (not= (:lease-id old-info)
+                  (:lease-id new-info))
+        (watch-fn new-info)))))
