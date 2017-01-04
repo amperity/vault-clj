@@ -1,12 +1,13 @@
 (ns vault.env-test
   (:require
     [clojure.test :refer :all]
-    [vault.client :as vault]
+    [vault.core :as vault]
+    [vault.client.mock :refer [mock-client]]
     [vault.env :as venv]))
 
 
 (deftest uri-resolution
-  (let [client (vault/memory-client {"some/path" {:id "foo"}})]
+  (let [client (mock-client {"some/path" {:id "foo"}})]
     (is (thrown? Exception (venv/resolve-uri nil "vault:some/path#id"))
         "resolution without client should throw")
     (is (thrown? Exception (venv/resolve-uri client "vault:some/path#nope"))
@@ -15,8 +16,8 @@
 
 
 (deftest env-loading
-  (let [client (vault/memory-client {"secret/foo" {:thing 123}
-                                     "secret/bar" {:id "abc"}})
+  (let [client (mock-client {"secret/foo" {:thing 123}
+                             "secret/bar" {:id "abc"}})
         env {:a "12345"
              :b "vault:secret/foo#thing"
              :c "vault:secret/bar#id"}]

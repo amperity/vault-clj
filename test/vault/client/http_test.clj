@@ -1,23 +1,25 @@
-(ns vault.client-test
+(ns vault.client.http-test
   (:require
     [clojure.test :refer :all]
-    [vault.client :as vault]))
+    [vault.core :as vault]
+    [vault.client.http :refer [http-client]]))
 
 
 (deftest http-client-instantiation
   (is (thrown? IllegalArgumentException
-               (vault/http-client nil)))
+               (http-client nil)))
   (is (thrown? IllegalArgumentException
-               (vault/http-client :foo)))
-  (is (instance? vault.client.HTTPClient
-                 (vault/http-client "https://vault.example.com"))))
+               (http-client :foo)))
+  (is (instance? vault.client.http.HTTPClient
+                 (http-client "https://vault.example.com"))))
 
 
 (deftest http-read-checks
-  (let [client (vault/http-client "https://vault.example.com")]
+  (let [client (http-client "https://vault.example.com")]
     (is (thrown? IllegalArgumentException
                  (vault/read-secret client nil))
         "should throw an exception on non-string path")
+    #_
     (is (thrown? IllegalStateException
                  (vault/read-secret client "secret/foo/bar"))
         "should throw an exception on unauthenticated client")))
