@@ -13,23 +13,6 @@
 
 ;; ## API Utilities
 
-(defn- check-path!
-  "Validates that the given path is a non-empty string."
-  [path]
-  (when-not (and (string? path) (not (empty? path)))
-    (throw (IllegalArgumentException.
-             (str "Secret path must be a non-empty string, got: "
-                  (pr-str path))))))
-
-
-(defn- check-auth!
-  "Validates that the client is authenticated."
-  [auth-ref]
-  (when-not (:client-token @auth-ref)
-    (throw (IllegalStateException.
-             "Cannot read path with unauthenticated client."))))
-
-
 (defn- kebabify-keys
   "Rewrites keyword map keys with underscores changed to dashes."
   [value]
@@ -74,7 +57,16 @@
 (defn- api-request
   "Helper method to perform an API request with common headers and values."
   [client method path req]
-  (check-path! path)
+  ; Check API path.
+  (when-not (and (string? path) (not (empty? path)))
+    (throw (IllegalArgumentException.
+             (str "API path must be a non-empty string, got: "
+                  (pr-str path)))))
+  ; Check client authentication.
+  (when-not (some-> client :auth deref :client-token)
+    (throw (IllegalStateException.
+             "Cannot call API path with unauthenticated client.")))
+  ; Call API with standard arguments.
   (do-api-request
     method
     (str (:api-url client) "/v1/" path)
@@ -256,7 +248,10 @@
 
   (status
     [this]
-    (clean-body (api-request this :get "sys/health" {})))
+    (clean-body
+      (do-api-request :get (str api-url "/v1/sys/health")
+        {:accept :json
+         :as :json})))
 
 
   vault/TokenManager
@@ -267,7 +262,6 @@
 
   (create-token!
     [this opts]
-    (check-auth! auth)
     (let [response (api-request this :post "auth/token/create"
                      {:headers (when-let [ttl (:wrap-ttl opts)]
                                  {"X-Vault-Wrap-TTL" ttl})})]
@@ -300,7 +294,6 @@
 
   (renew-lease
     [this lease-id]
-    (check-auth! auth)
     (log/debug "Renewing lease" lease-id)
     (let [current (lease/lookup leases lease-id)
           response (api-request this :put "sys/renew"
@@ -340,7 +333,6 @@
 
   (list-secrets
     [this path]
-    (check-auth! auth)
     (let [response (api-request this :get path
                      {:query-params {:list true}})
           data (get-in response [:body :data :keys])]
@@ -370,7 +362,6 @@
 
   (write-secret!
     [this path data]
-    (check-auth! auth)
     (let [response (api-request this :post path
                      {:form-params data
                       :content-type :json})]
@@ -380,7 +371,6 @@
 
   (delete-secret!
     [this path]
-    (check-auth! auth)
     (let [response (api-request this :delete path {})]
       (log/debug "Deleted secret" path)
       (lease/remove-path! leases path)
