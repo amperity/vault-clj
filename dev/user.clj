@@ -7,6 +7,7 @@
     [com.stuartsierra.component :as component]
     [vault.core :as vault]
     (vault.client http mock)
+    [vault.env :as venv]
     [vault.lease :as lease]))
 
 

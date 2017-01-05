@@ -1,10 +1,13 @@
 (ns vault.client.mock
   (:require
+    [clojure.edn :as edn]
+    [clojure.java.io :as io]
     [clojure.string :as str]
     [clojure.tools.logging :as log]
     [vault.core :as vault])
   (:import
     java.text.SimpleDateFormat
+    java.net.URI
     (java.util
       Date
       UUID)))
@@ -144,7 +147,24 @@
       :cubbies (atom initial-cubbies :validator map?)})))
 
 
+(defn- load-fixtures
+  "Helper method to load fixture data from a path. The path may resolve to a
+  resource on the classpath, a file on the filesystem, or be `-` to specify no
+  data."
+  [location]
+  (when (not= location "-")
+    (some->
+      (or (io/resource location)
+          (let [file (io/file location)]
+            (when (.exists file)
+              file)))
+      (slurp)
+      (edn/read-string))))
+
+
 (defmethod vault/new-client "mock"
   [location]
-  ; TODO: parse scheme-specific part as path to secrets fixture file
-  (mock-client))
+  (let [uri (URI. location)
+        location (.getSchemeSpecificPart uri)
+        data (load-fixtures location)]
+    (mock-client (or data {}))))
