@@ -38,7 +38,7 @@
 
 
 (defrecord MockClient
-  [memory cubbies]
+  [auth memory cubbies]
 
   vault/Client
 
@@ -78,18 +78,68 @@
      :warnings nil
      :auth (when-not (:wrap-ttl opts) (mock-token-auth))})
 
-  ; TODO: lookup-token
-  ; TODO: lookup-accessor
-  ; TODO: renew-token
-  ; TODO: revoke-token!
-  ; TODO: revoke-accessor!
+  (lookup-token
+    [this]
+    ; TODO: implement
+    ,,,)
+
+  (lookup-token
+    [this token]
+    ; TODO: implement
+    ,,,)
+
+  (renew-token
+    [this]
+    ; TODO: implement
+    ,,,)
+
+  (renew-token
+    [this token]
+    ; TODO: implement
+    ,,,)
+
+  (revoke-token!
+    [this]
+    ; TODO: implement
+    ,,,)
+
+  (revoke-token!
+    [this token]
+    ; TODO: implement
+    ,,,)
+
+  (lookup-accessor
+    [this token-accessor]
+    ; TODO: implement
+    ,,,)
+
+  (revoke-accessor!
+    [this token]
+    ; TODO: implement
+    ,,,)
 
 
   vault/LeaseManager
 
-  ; TODO: list-lease
-  ; TODO: renew-lease
-  ; TODO: revoke-lease!
+  (list-leases
+    [this]
+    [])
+
+  (renew-lease
+    [this lease-id]
+    {,,,})
+
+  (revoke-lease!
+    [this lease-id]
+    true)
+
+  (add-lease-watch
+    [this watch-key path watch-fn]
+    this)
+
+  (remove-lease-watch
+    [this watch-key]
+    this)
 
 
   vault/SecretClient
@@ -100,6 +150,10 @@
 
   (read-secret
     [this path]
+    (.read-secret this nil))
+
+  (read-secret
+    [this path opts]
     (or (get @memory path)
         (throw (ex-info (str "No such secret: " path) {:secret path}))))
 
@@ -116,7 +170,10 @@
 
   vault/WrappingClient
 
-  ; TODO: wrap!
+  (wrap!
+    [this data]
+    ; TODO: implement
+    {})
 
   (unwrap!
     [this wrap-token]
@@ -143,7 +200,8 @@
    (mock-client initial-memory {}))
   ([initial-memory initial-cubbies]
    (map->MockClient
-     {:memory (atom initial-memory :validator map?)
+     {:auth (atom nil)
+      :memory (atom initial-memory :validator map?)
       :cubbies (atom initial-cubbies :validator map?)})))
 
 

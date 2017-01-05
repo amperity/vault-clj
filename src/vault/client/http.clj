@@ -262,28 +262,66 @@
 
   (create-token!
     [this opts]
-    (let [response (api-request this :post "auth/token/create"
+    (let [params (->> (dissoc opts :wrap-ttl)
+                      (map (fn [[k v]] [(str/replace (name k) "-" "_") v]))
+                      (into {}))
+          response (api-request this :post "auth/token/create"
                      {:headers (when-let [ttl (:wrap-ttl opts)]
-                                 {"X-Vault-Wrap-TTL" ttl})})]
-      (log/debug "Created token" (when-let [ttl (:wrap-ttl opts)] "with X-Vault-Wrap-TTL" ttl))
+                                 {"X-Vault-Wrap-TTL" ttl})
+                      :form-params params
+                      :content-type :json})]
+      (log/debug "Created token" (when-let [ttl (:wrap-ttl opts)]
+                                   (str "with ttl " ttl)))
       (when (= (:status response) 200)
         (clean-body response))))
 
-  ; TODO: lookup-token
-  ; TODO: lookup-accessor
+  (lookup-token
+    [this]
+    (when-let [token (:client-token @auth)]
+      (clean-body (api-request this :get "auth/token/lookup-self" {}))))
+
+  (lookup-token
+    [this token]
+    (clean-body (api-request this :post "auth/token/lookup"
+                  {:form-params {:token token}
+                   :content-type :json})))
 
   (renew-token
     [this]
-    ; TODO: renew-token
-    ,,,)
+    (clean-body (api-request this :post "auth/token/renew-self" {})))
 
   (renew-token
     [this token]
-    ; TODO: renew-token
-    ,,,)
+    (clean-body (api-request this :post "auth/token/renew"
+                  {:form-params {:token token}
+                   :content-type :json})))
 
-  ; TODO: revoke-token!
-  ; TODO: revoke-accessor!
+  (revoke-token!
+    [this]
+    (when-let [token (:client-token @auth)]
+      (.revoke-token! this token)))
+
+  (revoke-token!
+    [this token]
+    (let [response (api-request this :post "auth/token/revoke"
+                     {:form-params {:token token}
+                      :content-type :json})]
+      (prn :revoke-token! (:body response))
+      (= (:status response) 204)))
+
+  (lookup-accessor
+    [this token-accessor]
+    (clean-body (api-request this :post "auth/token/lookup-accessor"
+                  {:form-params {:accessor token-accessor}
+                   :content-type :json})))
+
+  (revoke-accessor!
+    [this token-accessor]
+    (let [response (api-request this :post "auth/token/revoke-accessor"
+                     {:form-params {:accessor token-accessor}
+                      :content-type :json})]
+      (prn :revoke-accessor! (:body response))
+      (= (:status response) 204)))
 
 
   vault/LeaseManager
@@ -316,7 +354,7 @@
     (log/debug "Revoking lease" lease-id)
     (let [response (api-request this :put (str "sys/revoke/" lease-id) {})]
       (lease/remove-lease! leases lease-id)
-      (clean-body response)))
+      (= (:status response) 204)))
 
   (add-lease-watch
     [this watch-key path watch-fn]
@@ -379,7 +417,11 @@
 
   vault/WrappingClient
 
-  ; TODO: wrap!
+  (wrap!
+    [this data]
+    (clean-body (api-request this :post "sys/wrapping/wrap"
+                  {:form-data data
+                   :content-type :json})))
 
   (unwrap!
     [this wrap-token]

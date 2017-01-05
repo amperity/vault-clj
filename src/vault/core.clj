@@ -65,12 +65,6 @@
     "Returns information about the given token, or the client token if not
     specified.")
 
-  (lookup-accessor
-    [client token-accessor]
-    "Fetch the properties of the token associated with the accessor, except the
-    token ID. This is meant for purposes where there is no access to token ID
-    but there is need to fetch the properties of a token.")
-
   (renew-token
     [client]
     [client token]
@@ -84,8 +78,13 @@
     "Revokes a token and all child tokens. When the token is revoked, all
     secrets generated with it are also revoked.")
 
+  (lookup-accessor
+    [client token-accessor]
+    "Fetch the properties of the token associated with the accessor, except the
+    token ID. This is meant for purposes where there is no access to token ID
+    but there is need to fetch the properties of a token.")
+
   (revoke-accessor!
-    [client]
     [client token-accessor]
     "Revoke the token associated with the accessor and all the child tokens.
     This is meant for purposes where there is no access to token ID but there
