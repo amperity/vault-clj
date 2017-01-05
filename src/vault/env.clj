@@ -7,12 +7,25 @@
   (:require
     [clojure.string :as str]
     [clojure.tools.logging :as log]
+    [envoy.core :refer [defenv]]
     [vault.core :as vault]
     ; For extensions to vault.core/new-client multimethod.
     (vault.client mock http)))
 
 
 (def vault-prefix "vault:")
+
+(defenv :vault-addr
+  "URI specifying the location of the Vault server to use.")
+
+(defenv :vault-token
+  "A Vault authentication token which should be used directly by the client.")
+
+(defenv :vault-app-id
+  "The public half of an app-id credential for machine auth.")
+
+(defenv :vault-user-id
+  "The secret half of an app-id credential for machine auth.")
 
 
 (defn init-app-client

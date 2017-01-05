@@ -9,6 +9,7 @@
   :dependencies
   [[org.clojure/clojure "1.8.0"]
    [org.clojure/tools.logging "0.3.1"]
+   [amperity/envoy "0.2.1"]
    [cheshire "5.6.3"]
    [clj-http "2.3.0"]
    [com.stuartsierra/component "0.3.1"]]
