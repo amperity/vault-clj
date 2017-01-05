@@ -27,7 +27,6 @@
   "Token management interface supported by the \"token\" auth backend."
 
   (create-token!
-    [client]
     [client opts]
     "Creates a new token. With no arguments, this creates a child token that
     inherits the policies and settings from the current token. Options passed
@@ -157,8 +156,9 @@
   "Secret wrapping API for exchanging limited-use tokens for wrapped data."
 
   (wrap!
-    [client data] ; TODO: how to set TTL?
-    "Wraps the given user data in a single-use wrapping token.")
+    [client data ttl]
+    "Wraps the given user data in a single-use wrapping token. The wrap token
+    will be valid for `ttl` seconds and a single use.")
 
   (unwrap!
     [client wrap-token]

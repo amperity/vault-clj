@@ -274,17 +274,13 @@
 
   (status
     [this]
-    (clean-body
-      (do-api-request :get (str api-url "/v1/sys/health")
-        {:accept :json
-         :as :json})))
+    (-> (do-api-request :get (str api-url "/v1/sys/health")
+          {:accept :json
+           :as :json})
+        (clean-body)))
 
 
   vault/TokenManager
-
-  (create-token!
-    [this]
-    (.create-token! this nil))
 
   (create-token!
     [this opts]
@@ -296,31 +292,39 @@
                                  {"X-Vault-Wrap-TTL" ttl})
                       :form-params params
                       :content-type :json})]
-      (log/debug "Created token" (when-let [ttl (:wrap-ttl opts)]
-                                   (str "with ttl " ttl)))
-      (when (= (:status response) 200)
-        (clean-body response))))
+      ; Return auth info if available, or wrap info if not.
+      (or (-> response :body :auth kebabify-keys)
+          (-> response :body :wrap_info kebabify-keys)
+          (throw (ex-info "No auth or wrap-info in response body"
+                          {:body (:body response)})))))
 
   (lookup-token
     [this]
-    (when-let [token (:client-token @auth)]
-      (clean-body (api-request this :get "auth/token/lookup-self" {}))))
+    (-> (api-request this :get "auth/token/lookup-self" {})
+        (get-in [:body :data])
+        (kebabify-keys)))
 
   (lookup-token
     [this token]
-    (clean-body (api-request this :post "auth/token/lookup"
-                  {:form-params {:token token}
-                   :content-type :json})))
+    (-> (api-request this :post "auth/token/lookup"
+          {:form-params {:token token}
+           :content-type :json})
+        (get-in [:body :data])
+        (kebabify-keys)))
 
   (renew-token
     [this]
-    (clean-body (api-request this :post "auth/token/renew-self" {})))
+    (-> (api-request this :post "auth/token/renew-self" {})
+        (clean-body)
+        (:auth)))
 
   (renew-token
     [this token]
-    (clean-body (api-request this :post "auth/token/renew"
-                  {:form-params {:token token}
-                   :content-type :json})))
+    (-> (api-request this :post "auth/token/renew"
+          {:form-params {:token token}
+           :content-type :json})
+        (clean-body)
+        (:auth)))
 
   (revoke-token!
     [this]
@@ -332,21 +336,21 @@
     (let [response (api-request this :post "auth/token/revoke"
                      {:form-params {:token token}
                       :content-type :json})]
-      (prn :revoke-token! (:body response))
       (= (:status response) 204)))
 
   (lookup-accessor
     [this token-accessor]
-    (clean-body (api-request this :post "auth/token/lookup-accessor"
-                  {:form-params {:accessor token-accessor}
-                   :content-type :json})))
+    (-> (api-request this :post "auth/token/lookup-accessor"
+          {:form-params {:accessor token-accessor}
+           :content-type :json})
+        (get-in [:body :data])
+        (kebabify-keys)))
 
   (revoke-accessor!
     [this token-accessor]
     (let [response (api-request this :post "auth/token/revoke-accessor"
                      {:form-params {:accessor token-accessor}
                       :content-type :json})]
-      (prn :revoke-accessor! (:body response))
       (= (:status response) 204)))
 
 
@@ -362,8 +366,7 @@
     (let [current (lease/lookup leases lease-id)
           response (api-request this :put "sys/renew"
                      {:form-params {:lease_id lease-id}
-                      :content-type :json})
-          info (clean-body response)]
+                      :content-type :json})]
       (as-> (clean-body response) info
         ; If the lease looks renewable but the lease-duration is shorter than the
         ; existing lease, we're up against the max-ttl and the lease should not
@@ -444,18 +447,22 @@
   vault/WrappingClient
 
   (wrap!
-    [this data]
-    (clean-body (api-request this :post "sys/wrapping/wrap"
-                  {:form-data data
-                   :content-type :json})))
+    [this data ttl]
+    (-> (api-request this :post "sys/wrapping/wrap"
+          {:headers {"X-Vault-Wrap-TTL" ttl}
+           :form-params data
+           :content-type :json})
+        (get-in [:body :wrap_info])
+        (kebabify-keys)))
 
   (unwrap!
     [this wrap-token]
     (let [response (api-request this :post "sys/wrapping/unwrap"
                      {:headers {"X-Vault-Token" wrap-token}})]
-      (log/debug "Unwrapping response")
-      (when (= (:status response) 200)
-        (:body response)))))
+      (or (-> response :body :auth kebabify-keys)
+          (-> response :body :data)
+          (throw (ex-info "No auth info or data in response body"
+                          {:body (:body response)}))))))
 
 
 

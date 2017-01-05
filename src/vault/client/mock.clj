@@ -57,10 +57,6 @@
   vault/TokenManager
 
   (create-token!
-    [this]
-    (.create-token! this nil))
-
-  (create-token!
     [this opts]
     {:request-id ""
      :lease-id ""
@@ -171,16 +167,18 @@
   vault/WrappingClient
 
   (wrap!
-    [this data]
-    ; TODO: implement
-    {})
+    [this data ttl]
+    (let [wrap-token (gen-uuid)]
+      (swap! cubbies assoc wrap-token data)
+      {:token wrap-token
+       :ttl 3600  ; ideally, set this from `ttl`
+       :creation-time (gen-date)}))
 
   (unwrap!
     [this wrap-token]
-    (if-let [token (get @cubbies wrap-token)]
-      (do
-        (swap! cubbies dissoc wrap-token)
-        token)
+    (if-let [data (get @cubbies wrap-token)]
+      (do (swap! cubbies dissoc wrap-token)
+          data)
       (throw (ex-info "Unknown wrap-token used" {})))))
 
 
