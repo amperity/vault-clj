@@ -1,5 +1,6 @@
 (ns vault.client.http
   (:require
+    [cheshire.core :as json]
     [clj-http.client :as http]
     [clojure.string :as str]
     [clojure.tools.logging :as log]
@@ -38,16 +39,39 @@
     (->> (into {} (filter (comp some? val))))))
 
 
+(defn- api-error
+  "Inspects an exception and returns a cleaned-up version if the type is well
+  understood. Otherwise returns the original error."
+  [ex]
+  (let [data (ex-data ex)
+        status (:status data)]
+    (if (and status (<= 400 status))
+      (let [body (try
+                   (json/parse-string (:body data) true)
+                   (catch Exception _
+                     nil))
+            errors (if (:errors body)
+                     (str/join ", " (:errors body))
+                     (pr-str body))]
+        (ex-info (str "Vault API errors: " errors)
+                 {:status status
+                  :errors (:errors body)
+                  :cause ex}))
+      ex)))
+
+
 (defn- do-api-request
   "Performs a request against the API, following redirects at most twice. The
-  `api-url` should be the base server endpoint for Vault, and `path` should be
-  relative from the version root. Currently always uses API version `v1`."
+  `request-url` should be the full API endpoint."
   [method request-url req]
   (let [redirects (::redirects (meta req) 0)]
     (when (<= 2 redirects)
       (throw (ex-info (str "Aborting Vault API request after " redirects " redirects")
                       {:method method, :url request-url})))
-    (let [resp (http/request (assoc req :method method :url request-url))]
+    (let [resp (try
+                 (http/request (assoc req :method method :url request-url))
+                 (catch Exception ex
+                   (throw (api-error ex))))]
       (if-let [location (and (#{303 307} (:status resp)) (get-in resp [:headers "Location"]))]
         (do (log/debug "Retrying API request redirected to " location)
             (recur method location (vary-meta req assoc ::redirects (inc redirects))))
@@ -55,7 +79,9 @@
 
 
 (defn- api-request
-  "Helper method to perform an API request with common headers and values."
+  "Helper method to perform an API request with common headers and values.
+  Currently always uses API version `v1`. The `path` should be relative to the
+  version root."
   [client method path req]
   ; Check API path.
   (when-not (and (string? path) (not (empty? path)))
