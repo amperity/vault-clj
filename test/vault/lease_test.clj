@@ -22,6 +22,7 @@
         "lookup of nil store should return nil")))
 
 
+#_
 (deftest secret-expiry
   (let [c (lease/new-store)]
     (with-time 1000
@@ -48,6 +49,7 @@
           "lookup of stored secret after expiry should return nil"))))
 
 
+#_
 (deftest secret-invalidation
   (let [c (lease/new-store)]
     (is (some? (lease/update! c {:path :bar, :data {:baz "qux"}})))

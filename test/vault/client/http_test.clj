@@ -19,7 +19,6 @@
     (is (thrown? IllegalArgumentException
                  (vault/read-secret client nil))
         "should throw an exception on non-string path")
-    #_
     (is (thrown? IllegalStateException
                  (vault/read-secret client "secret/foo/bar"))
         "should throw an exception on unauthenticated client")))
