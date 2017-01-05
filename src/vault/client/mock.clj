@@ -77,42 +77,42 @@
   (lookup-token
     [this]
     ; TODO: implement
-    ,,,)
+    (throw (UnsupportedOperationException. "NYI")))
 
   (lookup-token
     [this token]
     ; TODO: implement
-    ,,,)
+    (throw (UnsupportedOperationException. "NYI")))
 
   (renew-token
     [this]
     ; TODO: implement
-    ,,,)
+    (throw (UnsupportedOperationException. "NYI")))
 
   (renew-token
     [this token]
     ; TODO: implement
-    ,,,)
+    (throw (UnsupportedOperationException. "NYI")))
 
   (revoke-token!
     [this]
     ; TODO: implement
-    ,,,)
+    (throw (UnsupportedOperationException. "NYI")))
 
   (revoke-token!
     [this token]
     ; TODO: implement
-    ,,,)
+    (throw (UnsupportedOperationException. "NYI")))
 
   (lookup-accessor
     [this token-accessor]
     ; TODO: implement
-    ,,,)
+    (throw (UnsupportedOperationException. "NYI")))
 
   (revoke-accessor!
     [this token]
     ; TODO: implement
-    ,,,)
+    (throw (UnsupportedOperationException. "NYI")))
 
 
   vault/LeaseManager
@@ -123,7 +123,8 @@
 
   (renew-lease
     [this lease-id]
-    {,,,})
+    ; TODO: implement
+    (throw (UnsupportedOperationException. "NYI")))
 
   (revoke-lease!
     [this lease-id]
