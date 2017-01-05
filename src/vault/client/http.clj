@@ -239,9 +239,9 @@
       ; Already running
       this
       ; Start lease heartbeat thread.
-      (let [window (:lease-renewal-window this 1200)  ; 20 minutes
-            period (:lease-check-period   this  300)  ;  5 minutes
-            jitter (:lease-check-jitter   this   60)  ;  1 minute
+      (let [window (:lease-renewal-window this (* 20 60))
+            period (:lease-check-period   this (*  5 60))
+            jitter (:lease-check-jitter   this (*  1 60))
             thread (timer/start! "vault-lease-timer"
                                  #(maintain-leases! this window)
                                  period
