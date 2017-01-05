@@ -64,7 +64,7 @@
   "Performs a request against the API, following redirects at most twice. The
   `request-url` should be the full API endpoint."
   [method request-url req]
-  (let [redirects (::redirects (meta req) 0)]
+  (let [redirects (::redirects req 0)]
     (when (<= 2 redirects)
       (throw (ex-info (str "Aborting Vault API request after " redirects " redirects")
                       {:method method, :url request-url})))
@@ -72,9 +72,10 @@
                  (http/request (assoc req :method method :url request-url))
                  (catch Exception ex
                    (throw (api-error ex))))]
-      (if-let [location (and (#{303 307} (:status resp)) (get-in resp [:headers "Location"]))]
+      (if-let [location (and (#{303 307} (:status resp))
+                             (get-in resp [:headers "Location"]))]
         (do (log/debug "Retrying API request redirected to " location)
-            (recur method location (vary-meta req assoc ::redirects (inc redirects))))
+            (recur method location (assoc req ::redirects (inc redirects))))
         resp))))
 
 
