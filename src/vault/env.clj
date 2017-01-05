@@ -28,7 +28,7 @@
   "The secret half of an app-id credential for machine auth.")
 
 
-(defn init-app-client
+(defn ^:deprecated init-app-client
   "Initialize and auth a new HTTP Vault client. Returns nil if the `:vault-addr`
   is not configured. If it is, but the app-id or user-id are missing, throws an
   exception."

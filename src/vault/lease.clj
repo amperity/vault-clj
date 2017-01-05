@@ -6,44 +6,6 @@
   (:import
     java.time.Instant))
 
-; Generic secret backend responses look like:
-; {
-;   "lease_id": "",
-;   "renewable": false,
-;   "lease_duration": 2592000,
-;   "data": { ... },
-;   "wrap_info": null,
-;   "warnings": null,
-;   "auth": null
-; }
-
-; Dynamic secret backend responses look like:
-; {
-;   "request_id": "9b777b8c-20ab-49da-413a-cfc4aa8704c5",
-;   "lease_id": "vagrant/service-db/creds/tenant-service/3c21206e-ab6d-1911-c4d8-d6ad439dff03",
-;   "renewable": true,
-;   "lease_duration": 900,
-;   "data": { ... },
-;   "wrap_info": null,
-;   "warnings": null,
-;   "auth": null
-; }
-
-; Renewal responses look like:
-; {
-;   "request_id": "765eeb84-e9fb-31d6-72f3-0c1dc60f7389",
-;   "lease_id": "vagrant/service-db/creds/tenant-service/3c21206e-ab6d-1911-c4d8-d6ad439dff03",
-;   "renewable": true,
-;   "lease_duration": 900,
-;   "data": null,
-;   "wrap_info": null,
-;   "warnings": null,
-;   "auth": null
-; }
-
-
-
-;; ## Lease Management
 
 (defn- now
   "Helper method to get the current time in epoch milliseconds."
@@ -51,6 +13,9 @@
   []
   (Instant/now))
 
+
+
+;; ## Lease Construction
 
 (defn auth-lease
   "Adds extra fields and sanitizes an authentication lease."
@@ -79,6 +44,9 @@
     (some? (:rotate info))
       (assoc ::rotate (boolean (:rotate info)))))
 
+
+
+;; ## Lease Logic
 
 (defn expires-within?
   "Determines whether the lease expires within the given number of seconds."
