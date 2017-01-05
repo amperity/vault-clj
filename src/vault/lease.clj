@@ -104,15 +104,15 @@
 (defn update!
   "Updates secret lease information in the store."
   [store info]
-  (when-let [lease-id (:lease-id info)]
+  (when info
     (if-let [path (or (:path info)
                       (some->>
                         @store
-                        (filter (comp #{lease-id} :lease-id val))
+                        (filter #(= (:lease-id info) (:lease-id (val %))))
                         (first)
                         (key)))]
       (get (swap! store update path merge (secret-lease info)) path)
-      (log/error "Cannot update lease with no matching store entry:" lease-id))))
+      (log/error "Cannot update lease with no matching store entry:" (dissoc info :data)))))
 
 
 (defn remove-path!
