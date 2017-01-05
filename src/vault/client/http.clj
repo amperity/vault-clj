@@ -336,7 +336,7 @@
     (let [response (api-request this :post "auth/token/revoke"
                      {:form-params {:token token}
                       :content-type :json})]
-      (= (:status response) 204)))
+      (= 204 (:status response))))
 
   (lookup-accessor
     [this token-accessor]
@@ -351,7 +351,7 @@
     (let [response (api-request this :post "auth/token/revoke-accessor"
                      {:form-params {:accessor token-accessor}
                       :content-type :json})]
-      (= (:status response) 204)))
+      (= 204 (:status response))))
 
 
   vault/LeaseManager
@@ -383,7 +383,7 @@
     (log/debug "Revoking lease" lease-id)
     (let [response (api-request this :put (str "sys/revoke/" lease-id) {})]
       (lease/remove-lease! leases lease-id)
-      (= (:status response) 204)))
+      (= 204 (:status response))))
 
   (add-lease-watch
     [this watch-key path watch-fn]
@@ -434,14 +434,14 @@
                       :content-type :json})]
       (log/debug "Wrote secret" path)
       (lease/remove-path! leases path)
-      (= (:status response) 204)))
+      (= 204 (:status response))))
 
   (delete-secret!
     [this path]
     (let [response (api-request this :delete path {})]
       (log/debug "Deleted secret" path)
       (lease/remove-path! leases path)
-      (= (:status response) 204)))
+      (= 204 (:status response))))
 
 
   vault/WrappingClient
