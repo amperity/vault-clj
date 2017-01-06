@@ -6,7 +6,40 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 
 ## [Unreleased]
 
-...
+**THIS RELEASE CONTAINS BREAKING CHANGES!**
+
+Most of the code in the library has been refactored and rewritten with the goal
+of providing a more fully-featured client for the Vault API. The HTTP client is
+now a proper system component which manages a background thread to track, renew,
+and rotate leased secrets. This enables the usage of dynamic secret backends
+like AWS, PostgreSQL, and more!
+
+Additionally, the mock client implementation has been enhanced to implement most
+of the API methods and provides a URL-based constructor to load mock secret data
+in at runtime. This makes testing code without a Vault instance much simpler.
+
+### Added
+- Added `amperity/envoy` to define the environment variables used by the
+  environment-based client constructor.
+- The `HTTPClient` record implements the `Lifecycle` protocol from the
+  `component` library to manage an internal lease maintenance thread.
+- Added the `vault.core/new-client` multimethod which constructs a client based
+  on the given URI scheme. This makes environment-driven construction simpler.
+- Added the `vault.env/config-client` constructor which builds a client based on
+  the `VAULT_ADDR` config and authenticates it based on the available
+  credentials. Currently supports `VAULT_TOKEN` and
+  `VAULT_APP_ID`/`VAULT_USER_ID`.
+
+### Changed
+- `vault.cache` namespace renamed to `vault.lease`, significant functionality
+  added for dealing with lease information.
+- `vault.client` namespace renamed to `vault.core`, with the single `Client`
+  protocol split into a number of more focused protocols.
+- Client implementations moved into dedicated namespaces `vault.client.mock` and
+  `vault.client.http`.
+- Downgraded `clj-http` to the stable 2.3.0 version to simplify dependency
+  management.
+- Deprecated the `vault.env/init-app-client` constructor.
 
 ## [0.3.4] - 2016-11-16
 

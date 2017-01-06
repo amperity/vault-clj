@@ -7,25 +7,60 @@
   (:require
     [clojure.string :as str]
     [clojure.tools.logging :as log]
-    [vault.client :as vault]))
+    [envoy.core :refer [defenv]]
+    [vault.core :as vault]
+    ; For extensions to vault.core/new-client multimethod.
+    (vault.client mock http)))
 
 
 (def vault-prefix "vault:")
 
+(defenv :vault-addr
+  "URI specifying the location of the Vault server to use.")
 
-(defn init-app-client
+(defenv :vault-token
+  "A Vault authentication token which should be used directly by the client.")
+
+(defenv :vault-app-id
+  "The public half of an app-id credential for machine auth.")
+
+(defenv :vault-user-id
+  "The secret half of an app-id credential for machine auth.")
+
+
+(defn ^:deprecated init-app-client
   "Initialize and auth a new HTTP Vault client. Returns nil if the `:vault-addr`
   is not configured. If it is, but the app-id or user-id are missing, throws an
   exception."
   [env]
   (when-let [url (or (env :vault-addr) (env :vault-url))]
-    (let [client (vault/http-client url)
+    (let [client (vault/new-client url)
           app-id (env :vault-app-id)
           user-id (env :vault-user-id)]
       (when-not (and app-id user-id)
         (throw (ex-info "Missing Vault app-id or user-id in environment settings!"
                         {:app-id app-id})))
       (vault/authenticate! client :app-id {:app app-id, :user user-id})
+      client)))
+
+
+(defn config-client
+  "Configure a new Vault client from the given environment. Will attempt to
+  authenticate the client based on the available env variables."
+  [env]
+  (let [addr (or (env :vault-addr) (env :vault-url))]
+    (when-not addr
+      (throw (ex-info "Cannot configure Vault client without VAULT_ADDR set"
+                      {})))
+    (let [client (vault/new-client addr)]
+      (cond
+        (env :vault-token)
+          (vault/authenticate! client :token (env :vault-token))
+        (and (env :vault-app-id) (env :vault-user-id))
+          (vault/authenticate! client :app-id {:app (env :vault-app-id)
+                                               :user (env :vault-user-id)})
+        :else
+          (log/warn "No authentication information found in environment!"))
       client)))
 
 
@@ -71,7 +106,7 @@
   ([client env secrets]
    (if (seq secrets)
      ; Some secrets, resolve paths.
-     (let [client (or client (init-app-client env))]
+     (let [client (or client (config-client env))]
        (resolve-secrets client env secrets))
      ; No secrets, return env directly.
      env)))
