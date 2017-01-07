@@ -48,6 +48,18 @@
 
 ;; ## Lease Logic
 
+(defn leased?
+  "Determines whether the secret is leased."
+  [secret]
+  (not (str/blank? (:lease-id secret))))
+
+
+(defn renewable?
+  "Determines whether a leased lease is renewable."
+  [secret]
+  (and (leased? secret) (:renewable secret)))
+
+
 (defn expires-within?
   "Determines whether the lease expires within the given number of seconds."
   [lease duration]
@@ -62,12 +74,6 @@
   "Determines whether the lease has expired."
   [lease]
   (expires-within? lease 0))
-
-
-(defn renewable?
-  "Determines whether a leased lease is renewable."
-  [lease]
-  (and (:renewable lease) (not (str/blank? (:lease-id lease)))))
 
 
 
