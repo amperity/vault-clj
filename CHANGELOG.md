@@ -6,6 +6,10 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 
 ## [Unreleased]
 
+...
+
+## [0.4.0] - 2017-01-06
+
 **THIS RELEASE CONTAINS BREAKING CHANGES!**
 
 Most of the code in the library has been refactored and rewritten with the goal
@@ -103,7 +107,8 @@ With this version, the project has been forked to the Amperity organization.
 ### Added
 - Initial library implementation.
 
-[Unreleased]: https://github.com/amperity/vault-clj/compare/0.3.3...HEAD
+[Unreleased]: https://github.com/amperity/vault-clj/compare/0.4.0...HEAD
+[0.4.0]: https://github.com/amperity/vault-clj/compare/0.3.3...0.4.0
 [0.3.3]: https://github.com/amperity/vault-clj/compare/0.3.2...0.3.3
 [0.3.2]: https://github.com/amperity/vault-clj/compare/0.3.1...0.3.2
 [0.3.1]: https://github.com/amperity/vault-clj/compare/0.3.0...0.3.1
