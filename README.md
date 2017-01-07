@@ -2,10 +2,8 @@ vault-clj
 =========
 
 A Clojure library for interacting with the [Vault](https://vaultproject.io/)
-secret management system. So far, this focuses on the app-id authentication
-scheme use-case.
-
-This library very new, so expect API changes as it develops!
+secret management system. Most of the non-administrative API is implemented,
+including the token authentication backend.
 
 ## Installation
 
@@ -17,16 +15,24 @@ Leiningen, add the following dependency to your project definition:
 ## Usage
 
 ```clojure
-=> (require '[vault.client :as vault])
+=> (require '[vault.core :as vault])
 
-=> (def client (vault/http-client "https://vault.example.com"))
+=> (def client (vault/new-client "https://vault.example.com"))
 
 => client
-#vault.client.HTTPClient {:api-url "https://vault.example.com", :token #<Atom@5cca1513 nil>}
+#vault.client.http.HTTPClient
+{:api-url "https://vault.example.com",
+ :auth #<Atom@5cca1513 nil>
+ :lease-timer nil
+ :leases #<Atom@640b3e30 {}>}
 
 => (vault/authenticate! client :app-id {:app "my_app", :user "0000-userid-000"})
 ; INFO: Successfully authenticated to Vault app-id my_app for policies: my-policy
-#vault.client.HTTPClient {:api-url "https://vault.example.com", :token #<Atom@5cca1513 "8c807a17-7232-4c48-d7a6-c6a7f76bcccc">}
+#vault.client.HTTPClient
+{:api-url "https://vault.example.com",
+ :auth #<Atom@5cca1513 {:client-token "8c807a17-7232-4c48-d7a6-c6a7f76bcccc"}>
+ :lease-timer nil
+ :leases #<Atom@640b3e30 {}>}
 
 => (vault/read-secret client "secret/foo/bar")
 {:data "baz qux"}
