@@ -29,6 +29,7 @@ in at runtime. This makes testing code without a Vault instance much simpler.
   the `VAULT_ADDR` config and authenticates it based on the available
   credentials. Currently supports `VAULT_TOKEN` and
   `VAULT_APP_ID`/`VAULT_USER_ID`.
+- The vault client revokes outstanding leases when stopped.
 
 ### Changed
 - `vault.cache` namespace renamed to `vault.lease`, significant functionality

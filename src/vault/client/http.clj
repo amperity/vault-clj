@@ -251,10 +251,17 @@
   (stop
     [this]
     (if lease-timer
-      ; Stop lease timer thread.
       (do
+        ; Stop lease timer thread.
         (timer/stop! lease-timer)
-        ; TODO: revoke all outstanding leases
+        ; Revoke all outstanding leases.
+        (when-let [outstanding (seq (filter lease/leased? (vault/list-leases this)))]
+          (log/infof "Revoking %d outstanding secret leases" (count outstanding))
+          (doseq [secret outstanding]
+            (try
+              (vault/revoke-lease! this (:lease-id secret))
+              (catch Exception ex
+                (log/error ex "Failed to revoke lease" (:lease-id secret))))))
         (assoc this :lease-timer nil))
       ; Already stopped.
       this))
