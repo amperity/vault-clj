@@ -1,6 +1,8 @@
 vault-clj
 =========
 
+[![API documentation](https://img.shields.io/badge/doc-API-blue.svg)](https://amperity.github.io/vault-clj/api/)
+
 A Clojure library for interacting with the [Vault](https://vaultproject.io/)
 secret management system. Most of the non-administrative API is implemented,
 including the token authentication backend.
