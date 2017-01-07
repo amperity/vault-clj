@@ -5,6 +5,7 @@
             :url "http://www.apache.org/licenses/LICENSE-2.0"}
 
   :deploy-branches ["master"]
+  :pedantic? :abort
 
   :dependencies
   [[org.clojure/clojure "1.8.0"]
@@ -13,6 +14,11 @@
    [cheshire "5.6.3"]
    [clj-http "2.3.0"]
    [com.stuartsierra/component "0.3.1"]]
+
+  :codox
+  {:metadata {:doc/format :markdown}
+   :source-uri "https://github.com/amperity/vault-clj/blob/master/{filepath}#L{line}"
+   :output-path "target/doc/api"}
 
   :profiles
   {:dev
