@@ -1,4 +1,4 @@
-(ns vault.timer
+(ns ^:no-doc vault.timer
   "Utility code to manage periodic timer threads."
   (:require
     [clojure.tools.logging :as log]))
