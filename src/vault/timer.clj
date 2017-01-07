@@ -31,8 +31,8 @@
   "Constructs and starts a new timer thread to call the given handler function.
   The returned thread will be in daemon mode."
   [label handler period jitter]
-  (log/debugf "Starting timer thread %s with period of %d seconds (~%d jitter)"
-              label period jitter)
+  (log/infof "Starting timer thread %s with period of %d seconds (~%d jitter)"
+             label period jitter)
   (doto (Thread. (timer-loop handler period jitter) (str label))
     (.setDaemon true)
     (.start)))
@@ -41,6 +41,6 @@
 (defn stop!
   "Stops a running timer thread cleanly if possible."
   [^Thread thread]
-  (log/debug "Interrupting timer thread" (.getName thread))
+  (log/info "Interrupting timer thread" (.getName thread))
   (.interrupt thread)
   (.join thread 1000))

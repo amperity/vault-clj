@@ -186,7 +186,7 @@
 
 (defn- maintain-leases!
   [client window]
-  (log/debug "Checking for renewable leases...")
+  (log/trace "Checking for renewable leases...")
   ; Check auth token for renewal.
   (let [auth @(:auth client)]
     (when (and (:renewable auth)
