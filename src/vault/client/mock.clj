@@ -147,7 +147,7 @@
 
   (read-secret
     [this path]
-    (.read-secret this nil))
+    (.read-secret this path nil))
 
   (read-secret
     [this path opts]
