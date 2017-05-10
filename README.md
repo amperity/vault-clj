@@ -1,6 +1,8 @@
 vault-clj
 =========
 
+[![CircleCI](https://circleci.com/gh/amperity/vault-clj.svg?style=shield&circle-token=874076b19570f775bb30fbb0eaa1e605116facf5)](https://circleci.com/gh/amperity/vault-clj)
+[![codecov](https://codecov.io/gh/amperity/vault-clj/branch/develop/graph/badge.svg)](https://codecov.io/gh/amperity/vault-clj)
 [![API documentation](https://img.shields.io/badge/doc-API-blue.svg)](https://amperity.github.io/vault-clj/api/)
 
 A Clojure library for interacting with the [Vault](https://vaultproject.io/)
