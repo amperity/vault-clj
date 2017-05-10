@@ -6,7 +6,17 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 
 ## [Unreleased]
 
-...
+## [0.4.1] - 2017-05-10
+
+### Added
+- The HTTP Vault client component accepts a `:revoke-on-stop?` option to control
+  the outstanding lease revocation.
+
+### Changed
+- Outstanding leases are no longer revoked on client stop by default.
+- The default lease check period and renewal window changed to one and five
+  minutes, respectively. This allows for better lease utilization, as the
+  previous twenty minute window was too large for short-lived leases.
 
 ## [0.4.0] - 2017-01-06
 
@@ -107,7 +117,8 @@ With this version, the project has been forked to the Amperity organization.
 ### Added
 - Initial library implementation.
 
-[Unreleased]: https://github.com/amperity/vault-clj/compare/0.4.0...HEAD
+[Unreleased]: https://github.com/amperity/vault-clj/compare/0.4.1...HEAD
+[0.4.1]: https://github.com/amperity/vault-clj/compare/0.4.0...0.4.1
 [0.4.0]: https://github.com/amperity/vault-clj/compare/0.3.4...0.4.0
 [0.3.4]: https://github.com/amperity/vault-clj/compare/0.3.3...0.3.4
 [0.3.3]: https://github.com/amperity/vault-clj/compare/0.3.2...0.3.3

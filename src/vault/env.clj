@@ -19,13 +19,15 @@
   "URI specifying the location of the Vault server to use.")
 
 (defenv :vault-token
-  "A Vault authentication token which should be used directly by the client.")
+  "A Vault authentication token which should be used directly by the client."
+  :secret true)
 
 (defenv :vault-app-id
-  "The public half of an app-id credential for machine auth.")
+  "The public half of an app-id authentication credential.")
 
 (defenv :vault-user-id
-  "The secret half of an app-id credential for machine auth.")
+  "The secret half of an app-id authentication credential."
+  :secret true)
 
 
 (defn ^:deprecated init-app-client

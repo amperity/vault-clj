@@ -222,12 +222,6 @@
 ;;   Local in-memory storage of secret leases.
 ;; - `:lease-timer`
 ;;   Thread which periodically checks and renews leased secrets.
-;; - `:lease-renewal-window
-;;   Period in seconds to renew leases before they expire.
-;; - `:lease-check-period`
-;;   Period in seconds to check for leases to renew.
-;; - `:lease-check-jitter`
-;;   Maximum amount in seconds to jitter the check period by.
 (defrecord HTTPClient
   [api-url auth leases lease-timer]
 
@@ -239,9 +233,9 @@
       ; Already running
       this
       ; Start lease heartbeat thread.
-      (let [window (:lease-renewal-window this (* 20 60))
-            period (:lease-check-period   this (*  5 60))
-            jitter (:lease-check-jitter   this (*  1 60))
+      (let [window (:lease-renewal-window this 300)
+            period (:lease-check-period   this  60)
+            jitter (:lease-check-jitter   this  10)
             thread (timer/start! "vault-lease-timer"
                                  #(maintain-leases! this window)
                                  period
@@ -255,7 +249,8 @@
         ; Stop lease timer thread.
         (timer/stop! lease-timer)
         ; Revoke all outstanding leases.
-        (when-let [outstanding (seq (filter lease/leased? (vault/list-leases this)))]
+        (when-let [outstanding (and (:revoke-on-stop? this)
+                                    (seq (filter lease/leased? (vault/list-leases this))))]
           (log/infof "Revoking %d outstanding secret leases" (count outstanding))
           (doseq [secret outstanding]
             (try
@@ -482,7 +477,18 @@
 
 
 (defn http-client
-  "Constructs a new HTTP Vault client."
+  "Constructs a new HTTP Vault client.
+
+  Client behavior may be controlled with the options:
+
+  - `:lease-renewal-window`
+    Period in seconds to renew leases before they expire.
+  - `:lease-check-period`
+    Period in seconds to check for leases to renew.
+  - `:lease-check-jitter`
+    Maximum amount in seconds to jitter the check period by.
+  - `:revoke-on-stop?`
+    Whether to revoke all outstanding leases when the client stops."
   [api-url & {:as opts}]
   (when-not (and (string? api-url) (str/starts-with? api-url "http"))
     (throw (IllegalArgumentException.
