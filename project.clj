@@ -33,4 +33,5 @@
                "-Dorg.apache.commons.logging.simplelog.log.vault=debug"]}
 
    :test
-   {:jvm-opts ["-Dorg.apache.commons.logging.Log=org.apache.commons.logging.impl.NoOpLog"]}})
+   {:plugins [[lein-cloverage "1.0.9"]]
+    :jvm-opts ["-Dorg.apache.commons.logging.Log=org.apache.commons.logging.impl.NoOpLog"]}})
