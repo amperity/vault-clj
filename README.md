@@ -32,7 +32,7 @@ Leiningen, add the following dependency to your project definition:
 
 => (vault/authenticate! client :app-id {:app "my_app", :user "0000-userid-000"})
 ; INFO: Successfully authenticated to Vault app-id my_app for policies: my-policy
-#vault.client.HTTPClient
+#vault.client.http.HTTPClient
 {:api-url "https://vault.example.com",
  :auth #<Atom@5cca1513 {:client-token "8c807a17-7232-4c48-d7a6-c6a7f76bcccc"}>
  :lease-timer nil
@@ -40,6 +40,46 @@ Leiningen, add the following dependency to your project definition:
 
 => (vault/read-secret client "secret/foo/bar")
 {:data "baz qux"}
+```
+
+In addition to the standard HTTP client, there is a mock client available for
+local testing. This can be constructed directly or using `mock` as the URL
+scheme passed to the client constructor. The remainder of the URI should either
+be `-` for an empty client, or may be a path to an EDN file containing the
+secret fixture data.
+
+```clojure
+=> (read-string (slurp "dev/secrets.edn"))
+{"secret/service/foo/login" {:user "foo", :pass "abc123"}}
+
+=> (def mock-client (vault/new-client "mock:dev/secrets.edn"))
+
+=> (vault/read-secret mock-client "secret/service/foo/login")
+{:user "foo", :pass "abc123"}
+```
+
+## Environment Resolution
+
+In order to abstract away the source of sensitive configuration variables
+provided to code, the `vault.env` namespace can be used to bootstrap a Vault
+client and resolve a map of config variables to their secret values.
+
+```clojure
+=> (require '[vault.env :as venv])
+
+; Construct and authenticate a client from the environment. Looks for
+; :vault-addr, :vault-token, :vault-app-id, etc.
+=> (def client (venv/config-client {:vault-addr "mock:dev/secrets.edn"}))
+
+=> (venv/load!
+     client
+     {:foo-user "vault:secret/service/foo/login#user"
+      :foo-pass "vault:secret/service/foo/login#pass"
+      :bar "direct-value"}
+     [:foo-user :foo-pass :bar])
+{:foo-user "foo"
+ :foo-pass "abc123"
+ :bar "direct-value}
 ```
 
 ## License

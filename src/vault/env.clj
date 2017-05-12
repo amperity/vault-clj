@@ -85,7 +85,7 @@
 
 (defn resolve-secrets
   "Looks up the given collection of environment variables in Vault if the
-  values are prefixed with `vault:` and the `:vault-url` variable has a value."
+  values are prefixed with `vault:`."
   [client env secrets]
   (reduce
     (fn resolve-var
