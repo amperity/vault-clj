@@ -50,6 +50,8 @@ be `-` for an empty client, or may be a path to an EDN file containing the
 secret fixture data.
 
 ```clojure
+=> (require 'vault.client.mock)
+
 => (read-string (slurp "dev/secrets.edn"))
 {"secret/service/foo/login" {:user "foo", :pass "abc123"}}
 
