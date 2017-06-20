@@ -19,7 +19,8 @@ Leiningen, add the following dependency to your project definition:
 ## Usage
 
 ```clojure
-=> (require '[vault.core :as vault])
+; Pull in the main namespace and the HTTP client implementation:
+=> (require '[vault.core :as vault] 'vault.client.http)
 
 => (def client (vault/new-client "https://vault.example.com"))
 
