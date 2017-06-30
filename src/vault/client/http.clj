@@ -274,9 +274,9 @@
   (authenticate!
     [this auth-type credentials]
     (case auth-type
-      :token (authenticate-token! auth credentials)
-      :app-id (authenticate-app! auth api-url credentials)
-      :userpass (authenticate-userpass! auth api-url credentials)
+      :token (authenticate-token! this credentials)
+      :app-id (authenticate-app! this credentials)
+      :userpass (authenticate-userpass! this credentials)
       ; Unknown type
       (throw (ex-info (str "Unsupported auth-type " (pr-str auth-type))
                       {:auth-type auth-type})))
