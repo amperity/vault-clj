@@ -6,6 +6,21 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 
 ## [Unreleased]
 
+...
+
+## [0.5.0] - 2017-07-07
+
+### Added
+- API errors thrown by the HTTP client have `:type :vault.client.http/api-error`
+  in their `ex-data`.
+- The HTTP client supports an additional `:http-opts` property which will be
+  merged into the `clj-http` requests to the Vault server. This provides a way
+  to set custom timeouts, TLS settings, and more.
+  [#10](https://github.com/amperity/vault-clj/issues/10)
+- The `read-secret` method supports a `:not-found` option which will be returned
+  if set and a secret path is not present. Otherwise, clients consistently throw
+  exceptions. [#7](https://github.com/amperity/vault-clj/issues/7)
+
 ## [0.4.1] - 2017-05-10
 
 ### Added
@@ -117,7 +132,8 @@ With this version, the project has been forked to the Amperity organization.
 ### Added
 - Initial library implementation.
 
-[Unreleased]: https://github.com/amperity/vault-clj/compare/0.4.1...HEAD
+[Unreleased]: https://github.com/amperity/vault-clj/compare/0.5.0...HEAD
+[0.5.0]: https://github.com/amperity/vault-clj/compare/0.4.1...0.5.0
 [0.4.1]: https://github.com/amperity/vault-clj/compare/0.4.0...0.4.1
 [0.4.0]: https://github.com/amperity/vault-clj/compare/0.3.4...0.4.0
 [0.3.4]: https://github.com/amperity/vault-clj/compare/0.3.3...0.3.4
