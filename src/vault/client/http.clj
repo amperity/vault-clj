@@ -54,9 +54,10 @@
                      (str/join ", " (:errors body))
                      (pr-str body))]
         (ex-info (str "Vault API errors: " errors)
-                 {:status status
-                  :errors (:errors body)
-                  :cause ex}))
+                 {:type ::api-error
+                  :status status
+                  :errors (:errors body)}
+                 ex))
       ex)))
 
 
@@ -423,20 +424,25 @@
 
   (read-secret
     [this path opts]
-    (let [info (or (when-let [lease (lease/lookup leases path)]
-                     (when-not (lease/expired? lease)
-                       lease))
-                   (let [response (api-request this :get path {})
-                         info (assoc (clean-body response)
-                                     :path path
-                                     :renew (:renew opts)
-                                     :rotate (:rotate opts))]
-                     (log/debugf "Read %s (valid for %d seconds)"
-                                 path (:lease-duration info))
-                     (lease/update! leases info)))]
-      (when-not info
-        (log/warn "No value found for secret" path))
-      (:data info)))
+    (or (when-let [lease (lease/lookup leases path)]
+          (when-not (lease/expired? lease)
+            (:data lease)))
+        (try
+          (let [response (api-request this :get path {})
+                info (assoc (clean-body response)
+                            :path path
+                            :renew (:renew opts)
+                            :rotate (:rotate opts))]
+            (log/debugf "Read %s (valid for %d seconds)"
+                        path (:lease-duration info))
+            (lease/update! leases info)
+            (:data info))
+          (catch clojure.lang.ExceptionInfo ex
+            (if (and (contains? opts :not-found)
+                     (= ::api-error (:type (ex-data ex)))
+                     (= 404 (:status (ex-data ex))))
+              (:not-found opts)
+              (throw ex))))))
 
   (write-secret!
     [this path data]
