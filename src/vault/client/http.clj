@@ -54,9 +54,10 @@
                      (str/join ", " (:errors body))
                      (pr-str body))]
         (ex-info (str "Vault API errors: " errors)
-                 {:status status
-                  :errors (:errors body)
-                  :cause ex}))
+                 {:type ::api-error
+                  :status status
+                  :errors (:errors body)}
+                 ex))
       ex)))
 
 
@@ -98,6 +99,7 @@
     method
     (str (:api-url client) "/v1/" path)
     (merge
+      (:http-opts client)
       {:accept :json
        :as :json}
       req
@@ -122,40 +124,44 @@
 
 (defn- authenticate-token!
   "Updates the token ref by storing the given auth token."
-  [auth-ref token]
+  [client token]
   (when-not (string? token)
     (throw (IllegalArgumentException. "Token credential must be a string")))
-  (reset! auth-ref {:client-token (str/trim token)}))
+  (reset! (:auth client) {:client-token (str/trim token)}))
 
 
 (defn- authenticate-userpass!
   "Updates the token ref by making a request to authenticate with a username
   and password."
-  [auth-ref api-url credentials]
+  [client credentials]
   (let [{:keys [username password]} credentials]
     (api-auth!
       (str "user " username)
-      auth-ref
-      (do-api-request :post (str api-url "/v1/auth/userpass/login/" username)
-        {:form-params {:password password}
-         :content-type :json
-         :accept :json
-         :as :json}))))
+      (:auth client)
+      (do-api-request :post (str (:api-url client) "/v1/auth/userpass/login/" username)
+        (merge
+          (:http-opts client)
+          {:form-params {:password password}
+           :content-type :json
+           :accept :json
+           :as :json})))))
 
 
 (defn- authenticate-app!
   "Updates the token ref by making a request to authenticate with an app-id and
   secret user-id."
-  [auth-ref api-url credentials]
+  [client credentials]
   (let [{:keys [app user]} credentials]
     (api-auth!
       (str "app-id " app)
-      auth-ref
-      (do-api-request :post (str api-url "/v1/auth/app-id/login")
-        {:form-params {:app_id app, :user_id user}
-         :content-type :json
-         :accept :json
-         :as :json}))))
+      (:auth client)
+      (do-api-request :post (str (:api-url client) "/v1/auth/app-id/login")
+        (merge
+          (:http-opts client)
+          {:form-params {:app_id app, :user_id user}
+           :content-type :json
+           :accept :json
+           :as :json})))))
 
 
 
@@ -213,17 +219,19 @@
 
 ;; ## HTTP Client Type
 
-;; - `:api-url`
+;; - `api-url`
 ;;   The base URL for the Vault API endpoint.
-;; - `:auth`
+;; - `http-opts`
+;;   Extra options to pass to `clj-http` requests.
+;; - `auth`
 ;;   An atom containing the authentication lease information, including the
 ;;   client token.
-;; - `:leases`
+;; - `leases`
 ;;   Local in-memory storage of secret leases.
-;; - `:lease-timer`
+;; - `lease-timer`
 ;;   Thread which periodically checks and renews leased secrets.
 (defrecord HTTPClient
-  [api-url auth leases lease-timer]
+  [api-url http-opts auth leases lease-timer]
 
   component/Lifecycle
 
@@ -267,9 +275,9 @@
   (authenticate!
     [this auth-type credentials]
     (case auth-type
-      :token (authenticate-token! auth credentials)
-      :app-id (authenticate-app! auth api-url credentials)
-      :userpass (authenticate-userpass! auth api-url credentials)
+      :token (authenticate-token! this credentials)
+      :app-id (authenticate-app! this credentials)
+      :userpass (authenticate-userpass! this credentials)
       ; Unknown type
       (throw (ex-info (str "Unsupported auth-type " (pr-str auth-type))
                       {:auth-type auth-type})))
@@ -278,8 +286,9 @@
   (status
     [this]
     (-> (do-api-request :get (str api-url "/v1/sys/health")
-          {:accept :json
-           :as :json})
+          (assoc http-opts
+                 :accept :json
+                 :as :json))
         (clean-body)))
 
 
@@ -415,20 +424,25 @@
 
   (read-secret
     [this path opts]
-    (let [info (or (when-let [lease (lease/lookup leases path)]
-                     (when-not (lease/expired? lease)
-                       lease))
-                   (let [response (api-request this :get path {})
-                         info (assoc (clean-body response)
-                                     :path path
-                                     :renew (:renew opts)
-                                     :rotate (:rotate opts))]
-                     (log/debugf "Read %s (valid for %d seconds)"
-                                 path (:lease-duration info))
-                     (lease/update! leases info)))]
-      (when-not info
-        (log/warn "No value found for secret" path))
-      (:data info)))
+    (or (when-let [lease (lease/lookup leases path)]
+          (when-not (lease/expired? lease)
+            (:data lease)))
+        (try
+          (let [response (api-request this :get path {})
+                info (assoc (clean-body response)
+                            :path path
+                            :renew (:renew opts)
+                            :rotate (:rotate opts))]
+            (log/debugf "Read %s (valid for %d seconds)"
+                        path (:lease-duration info))
+            (lease/update! leases info)
+            (:data info))
+          (catch clojure.lang.ExceptionInfo ex
+            (if (and (contains? opts :not-found)
+                     (= ::api-error (:type (ex-data ex)))
+                     (= 404 (:status (ex-data ex))))
+              (:not-found opts)
+              (throw ex))))))
 
   (write-secret!
     [this path data]
@@ -481,6 +495,8 @@
 
   Client behavior may be controlled with the options:
 
+  - `:http-opts`
+    Additional options to pass to `clj-http` requests.
   - `:lease-renewal-window`
     Period in seconds to renew leases before they expire.
   - `:lease-check-period`
