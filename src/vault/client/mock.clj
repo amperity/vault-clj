@@ -152,7 +152,10 @@
   (read-secret
     [this path opts]
     (or (get @memory path)
-        (throw (ex-info (str "No such secret: " path) {:secret path}))))
+        (if (contains? opts :not-found)
+          (:not-found opts)
+          (throw (ex-info (str "No such secret: " path)
+                          {:secret path})))))
 
   (write-secret!
     [this path data]
