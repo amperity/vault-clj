@@ -133,13 +133,19 @@
   (read-secret
     [client path]
     [client path opts]
-    "Reads a secret from a path. Returns the full map of stored secret data.
+    "Reads a secret from a path. Returns the full map of stored secret data if
+    the secret exists, or throws an exception if not.
+
     Additional options may include:
 
-    - `:renew` whether or not to renew this secret when the lease is near
-      expiry.
-    - `:rotate` whether or not to rotate this secret when the lease is near
-      expiry and cannot be renewed.")
+    - `:not-found`
+      If the requested path is not found, return this value instead of throwing
+      an exception.
+    - `:renew`
+      Whether or not to renew this secret when the lease is near expiry.
+    - `:rotate`
+      Whether or not to rotate this secret when the lease is near expiry and
+      cannot be renewed.")
 
   (write-secret!
     [client path data]
