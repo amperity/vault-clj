@@ -16,6 +16,7 @@
 
     - `:token \"...\"`
     - `:userpass {:username \"user\", :password \"hunter2\"}`
+    - `:ldap {:username \"user\", :password \"hunter2\"}`
     - `:app-id {:app \"foo-service-dev\", :user \"...\"}`")
 
   (status
