@@ -164,6 +164,22 @@
            :as :json})))))
 
 
+(defn- authenticate-ldap!
+  "Updates the token ref by making a request to authenticate with a username
+  and password, to be authenticated against an LDAP backend."
+  [client credentials]
+  (let [{:keys [username password]} credentials]
+    (api-auth!
+      (str "user " username)
+      (:auth client)
+      (do-api-request :post (str (:api-url client) "/v1/auth/ldap/login/" username)
+        (merge
+          (:http-opts client)
+          {:form-params {:password password}
+           :content-type :json
+           :accept :json
+           :as :json})))))
+
 
 ;; ## Timer Logic
 
@@ -278,6 +294,7 @@
       :token (authenticate-token! this credentials)
       :app-id (authenticate-app! this credentials)
       :userpass (authenticate-userpass! this credentials)
+      :ldap (authenticate-ldap! this credentials)
       ; Unknown type
       (throw (ex-info (str "Unsupported auth-type " (pr-str auth-type))
                       {:auth-type auth-type})))
