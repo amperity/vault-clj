@@ -170,7 +170,7 @@
   [client credentials]
   (let [{:keys [username password]} credentials]
     (api-auth!
-      (str "user " username)
+      (str "LDAP user " username)
       (:auth client)
       (do-api-request :post (str (:api-url client) "/v1/auth/ldap/login/" username)
         (merge
