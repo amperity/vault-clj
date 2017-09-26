@@ -8,6 +8,13 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 
 ...
 
+## [0.5.1] - 2017-09-26
+
+### Added
+- HTTP client supports LDAP authentication using the `:ldap` type.
+  [#14](https://github.com/amperity/vault-clj/issues/14)
+  [#16](https://github.com/amperity/vault-clj/pull/16)
+
 ## [0.5.0] - 2017-07-07
 
 ### Added
@@ -132,7 +139,8 @@ With this version, the project has been forked to the Amperity organization.
 ### Added
 - Initial library implementation.
 
-[Unreleased]: https://github.com/amperity/vault-clj/compare/0.5.0...HEAD
+[Unreleased]: https://github.com/amperity/vault-clj/compare/0.5.1...HEAD
+[0.5.1]: https://github.com/amperity/vault-clj/compare/0.5.0...0.5.1
 [0.5.0]: https://github.com/amperity/vault-clj/compare/0.4.1...0.5.0
 [0.4.1]: https://github.com/amperity/vault-clj/compare/0.4.0...0.4.1
 [0.4.0]: https://github.com/amperity/vault-clj/compare/0.3.4...0.4.0
