@@ -163,6 +163,22 @@
            :accept :json
            :as :json})))))
 
+(defn- authenticate-app-role!
+  "Updates the token ref by making a request to authenticate with an role-id and
+  secret-id."
+  [client credentials]
+  (let [{:keys [role-id secret-id]} credentials]
+    (api-auth!
+      (str "role-id " role-id)
+      (:auth client)
+      (do-api-request :post (str (:api-url client) "/v1/auth/approle/login")
+        (merge
+          (:http-opts client)
+          {:form-params {:role_id role-id, :secret_id secret-id}
+           :content-type :json
+           :accept :json
+           :as :json})))))
+
 
 (defn- authenticate-ldap!
   "Updates the token ref by making a request to authenticate with a username
@@ -293,6 +309,7 @@
     (case auth-type
       :token (authenticate-token! this credentials)
       :app-id (authenticate-app! this credentials)
+      :app-role (authenticate-app-role! this credentials)
       :userpass (authenticate-userpass! this credentials)
       :ldap (authenticate-ldap! this credentials)
       ; Unknown type
