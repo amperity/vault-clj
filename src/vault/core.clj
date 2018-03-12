@@ -17,7 +17,8 @@
     - `:token \"...\"`
     - `:userpass {:username \"user\", :password \"hunter2\"}`
     - `:ldap {:username \"LDAP username\", :password \"hunter2\"}`
-    - `:app-id {:app \"foo-service-dev\", :user \"...\"}`")
+    - `:app-id {:app \"foo-service-dev\", :user \"...\"}`
+    - `:app-role {:role-id \"...\", :secret-id \"...\"}")
 
   (status
     [client]
