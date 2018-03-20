@@ -148,8 +148,8 @@
     - `:rotate`
       Whether or not to rotate this secret when the lease is near expiry and
       cannot be renewed.
-    - `:force-renew`
-      Whether or not to force renew this secret regardless of lease expiry.")
+    - `:force-read`
+      Force the secret to be read from the server even if there is a valid lease cached.")
 
   (write-secret!
     [client path data]

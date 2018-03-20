@@ -458,7 +458,7 @@
 
   (read-secret
     [this path opts]
-    (or (when-let [lease (and (not (:force-renew opts))
+    (or (when-let [lease (and (not (:force-read opts))
                               (lease/lookup leases path))]
           (when-not (lease/expired? lease)
             (:data lease)))
