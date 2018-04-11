@@ -17,6 +17,7 @@
     - `:token \"...\"`
     - `:userpass {:username \"user\", :password \"hunter2\"}`
     - `:ldap {:username \"LDAP username\", :password \"hunter2\"}`
+    - `:k8s {:jwt \"...\", :role \"...\"}`
     - `:app-id {:app \"foo-service-dev\", :user \"...\"}`
     - `:app-role {:role-id \"...\", :secret-id \"...\"}")
 
