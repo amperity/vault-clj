@@ -1,0 +1,61 @@
+version: 2.0
+
+references:
+  default-container: &default-container
+    docker:
+      - image: clojure:lein-2.8.1
+    working_directory: /root/vault-clj
+  restore-m2-cache: &restore-m2-cache
+    restore_cache:
+      keys:
+        - v1-jars-{{ checksum "project.clj" }}
+  save-m2-cache: &save-m2-cache
+    save_cache:
+      key: v1-jars-{{ checksum "project.clj" }}
+      paths:
+        - /root/.m2
+
+workflows:
+  version: 2
+  build:
+    jobs:
+      - update-m2-cache
+      - check:
+          requires:
+            - update-m2-cache
+      - test:
+          requires:
+            - update-m2-cache
+      - coverage:
+          requires:
+            - update-m2-cache
+
+jobs:
+  update-m2-cache:
+    <<: *default-container
+    steps:
+      - checkout
+      - *restore-m2-cache
+      - run: lein deps
+      - *save-m2-cache
+  check:
+    <<: *default-container
+    steps:
+      - checkout
+      - *restore-m2-cache
+      - run: lein check
+  test:
+    <<: *default-container
+    steps:
+      - checkout
+      - *restore-m2-cache
+      - run: lein test
+  coverage:
+    <<: *default-container
+    steps:
+      - checkout
+      - *restore-m2-cache
+      - run: lein with-profile +test cloverage --codecov
+      - run: bash <(curl -s https://codecov.io/bash) -f target/coverage/codecov.json
+      - store_artifacts:
+          path: /root/target/coverage
