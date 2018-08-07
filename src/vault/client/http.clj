@@ -126,10 +126,11 @@
 
 (defn- authenticate-token!
   "Updates the token ref by storing the given auth token."
-  [client token]
-  (when-not (string? token)
-    (throw (IllegalArgumentException. "Token credential must be a string")))
-  (reset! (:auth client) {:client-token (str/trim token)}))
+  [client token-map]
+  (let [token (:client-token token-map)]
+    (when-not (string? token)
+      (throw (IllegalArgumentException. "Token credential must be a string")))
+    (reset! (:auth client) {:client-token (str/trim token)})))
 
 
 (defn- authenticate-userpass!
@@ -250,6 +251,15 @@
   (lease/sweep! (:leases client)))
 
 
+(defn- unwrap*
+  [this wrap-token]
+  (let [response (api-request this :post "sys/wrapping/unwrap"
+                              {:headers {"X-Vault-Token" wrap-token}})]
+    (or (-> response :body :auth kebabify-keys)
+        (-> response :body :data)
+        (throw (ex-info "No auth info or data in response body"
+                        {:body (:body response)})))))
+
 
 ;; ## HTTP Client Type
 
@@ -309,7 +319,8 @@
   (authenticate!
     [this auth-type credentials]
     (case auth-type
-      :token (authenticate-token! this credentials)
+      :token (authenticate-token! this {:client-token credentials})
+      :wrap-token (authenticate-token! this (unwrap* this credentials))
       :app-id (authenticate-app! this credentials)
       :app-role (authenticate-app-role! this credentials)
       :userpass (authenticate-userpass! this credentials)
@@ -515,12 +526,7 @@
 
   (unwrap!
     [this wrap-token]
-    (let [response (api-request this :post "sys/wrapping/unwrap"
-                     {:headers {"X-Vault-Token" wrap-token}})]
-      (or (-> response :body :auth kebabify-keys)
-          (-> response :body :data)
-          (throw (ex-info "No auth info or data in response body"
-                          {:body (:body response)}))))))
+    (unwrap* this wrap-token)))
 
 
 
