@@ -33,6 +33,13 @@
   "The secret half of an app-id authentication credential."
   :secret true)
 
+(defenv :vault-role-id
+  "The semi-private role-id half of an app-role authentication credential.")
+
+(defenv :vault-secret-id
+  "The secret half of an app-role authentication credential."
+  :secret true)
+
 
 (defn ^:deprecated init-app-client
   "Initialize and auth a new HTTP Vault client. Returns nil if the `:vault-addr`
@@ -67,6 +74,9 @@
         (and (env :vault-app-id) (env :vault-user-id))
           (vault/authenticate! client :app-id {:app (env :vault-app-id)
                                                :user (env :vault-user-id)})
+        (and (env :vault-role-id) (env :vault-secret-id))
+          (vault/authenticate! client :app-role {:role-id (env :vault-role-id)
+                                                 :secret-id (env :vault-secret-id)})
         :else
           (log/warn "No authentication information found in environment!"))
       client)))
