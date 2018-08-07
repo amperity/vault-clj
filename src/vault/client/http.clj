@@ -91,7 +91,9 @@
              (str "API path must be a non-empty string, got: "
                   (pr-str path)))))
   ; Check client authentication.
-  (when-not (some-> client :auth deref :client-token)
+  (when-not (or
+              (some-> req :headers keys set (contains? "X-Vault-Token"))
+              (some-> client :auth deref :client-token))
     (throw (IllegalStateException.
              "Cannot call API path with unauthenticated client.")))
   ; Call API with standard arguments.
@@ -102,7 +104,7 @@
       (:http-opts client)
       {:accept :json
        :as :json}
-      req
+      (dissoc req :headers)
       {:headers (merge {"X-Vault-Token" (:client-token @(:auth client))}
                        (:headers req))})))
 
