@@ -9,7 +9,10 @@
     (vault
       [core :as vault]
       [lease :as lease]
-      [timer :as timer])))
+      [timer :as timer]))
+  (:import
+    (org.apache.commons.codec.digest
+      DigestUtils)))
 
 
 ;; ## API Utilities
@@ -187,7 +190,7 @@
   [client credentials]
   (let [{:keys [role-id secret-id]} credentials]
     (api-auth!
-      (str "role-id " role-id)
+      (str "role-id sha256:" (DigestUtils/sha256Hex role-id))
       (:auth client)
       (do-api-request :post (str (:api-url client) "/v1/auth/approle/login")
         (merge
