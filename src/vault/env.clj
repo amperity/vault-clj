@@ -22,7 +22,7 @@
   "A Vault authentication token which should be used directly by the client."
   :secret true)
 
-(defenv :wrap-vault-token
+(defenv :vault-wrap-token
   "A token used to lookup a wrapped token creation response containing authentication `:token`."
   :secret true)
 
@@ -69,8 +69,8 @@
       (cond
         (env :vault-token)
           (vault/authenticate! client :token (env :vault-token))
-        (env :wrap-vault-token)
-          (vault/authenticate! client :wrap-token (env :wrap-vault-token))
+        (env :vault-wrap-token)
+          (vault/authenticate! client :wrap-token (env :vault-wrap-token))
         (and (env :vault-app-id) (env :vault-user-id))
           (vault/authenticate! client :app-id {:app (env :vault-app-id)
                                                :user (env :vault-user-id)})
