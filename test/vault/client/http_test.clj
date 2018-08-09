@@ -44,3 +44,59 @@
 
       (is (= @connection-attempt api-endpoint)
           (str "should attempt to auth with: " api-endpoint)))))
+
+(deftest authenticate-via-k8s
+  (testing "When a token file is available"
+    (let [client (http-client example-url)
+          api-requests (atom [])
+          api-auths (atom [])]
+      (with-redefs [h/do-api-request (fn [& args]
+                                       (swap! api-requests conj args)
+                                       :do-api-request-response)
+                    h/api-auth! (fn [& args]
+                                  (swap! api-auths conj args)
+                                  :api-auth!-response)]
+        (vault/authenticate! client
+                             :k8s
+                             {:jwt "fake-jwt-goes-here" :role "my-role"})
+        (is (= [[:post
+                 (str example-url "/v1/auth/kubernetes/login")
+                 {:form-params {:jwt "fake-jwt-goes-here" :role "my-role"}
+                  :content-type :json
+                  :accept :json
+                  :as :json}]]
+               @api-requests))
+        (is (= [[(str "Kubernetes auth role=my-role")
+                 (:auth client)
+                 :do-api-request-response]]
+               @api-auths)))))
+  (testing "When no jwt is specified"
+    (let [client (http-client example-url)
+          api-requests (atom [])
+          api-auths (atom [])]
+      (with-redefs [h/do-api-request (fn [& args]
+                                       (swap! api-requests conj args))
+                    h/api-auth! (fn [& args]
+                                  (swap! api-auths conj args))]
+        (is (thrown?
+             IllegalArgumentException
+             (vault/authenticate! client
+                                  :k8s
+                                  {:role "my-role"})))
+        (is (empty? @api-requests))
+        (is (empty? @api-auths)))))
+  (testing "When no role is specified"
+    (let [client (http-client example-url)
+          api-requests (atom [])
+          api-auths (atom [])]
+      (with-redefs [h/do-api-request (fn [& args]
+                                       (swap! api-requests conj args))
+                    h/api-auth! (fn [& args]
+                                  (swap! api-auths conj args))]
+        (is (thrown?
+             IllegalArgumentException
+             (vault/authenticate! client
+                                  :k8s
+                                  {:jwt "fake-jwt-goes-here"})))
+        (is (empty? @api-requests))
+        (is (empty? @api-auths))))))

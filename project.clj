@@ -1,4 +1,4 @@
-(defproject amperity/vault-clj "0.5.2-SNAPSHOT"
+(defproject amperity/vault-clj "0.6.1-SNAPSHOT"
   :description "Clojure client for the Vault secret management system."
   :url "https://github.com/amperity/vault-clj"
   :license {:name "Apache License"
@@ -8,10 +8,10 @@
   :pedantic? :abort
 
   :dependencies
-  [[org.clojure/clojure "1.8.0"]
+  [[org.clojure/clojure "1.9.0"]
    [org.clojure/tools.logging "0.4.0"]
    [amperity/envoy "0.3.1"]
-   [cheshire "5.7.1"]
+   [cheshire "5.8.0"]
    [clj-http "2.3.0"]
    [com.stuartsierra/component "0.3.2"]]
 

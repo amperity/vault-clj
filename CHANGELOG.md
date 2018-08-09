@@ -8,6 +8,25 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 
 ...
 
+## [0.6.0] - 2018-04-23
+
+### Added
+- Support AppRole authentication method.
+  [#21](https://github.com/amperity/vault-clj/pull/21)
+- Support Kubernetes JWT authentication method.
+  [#24](https://github.com/amperity/vault-clj/pull/24)
+- The `read-secret` method supports a `:force-read` flag which will ignore valid
+  leases and always re-read the path.
+  [#22](https://github.com/amperity/vault-clj/pull/22)
+
+### Changed
+- Upgrade to CircleCI 2.0.
+  [#23](https://github.com/amperity/vault-clj/pull/24)
+- The `read-secret` method now returns the response body on `200` status codes
+  to plumb through important information. `204` writes still return `true`.
+  [#17](https://github.com/amperity/vault-clj/issues/17)
+  [#18](https://github.com/amperity/vault-clj/pull/18)
+
 ## [0.5.1] - 2017-09-26
 
 ### Added
@@ -139,7 +158,8 @@ With this version, the project has been forked to the Amperity organization.
 ### Added
 - Initial library implementation.
 
-[Unreleased]: https://github.com/amperity/vault-clj/compare/0.5.1...HEAD
+[Unreleased]: https://github.com/amperity/vault-clj/compare/0.6.0...HEAD
+[0.6.0]: https://github.com/amperity/vault-clj/compare/0.5.1...0.6.0
 [0.5.1]: https://github.com/amperity/vault-clj/compare/0.5.0...0.5.1
 [0.5.0]: https://github.com/amperity/vault-clj/compare/0.4.1...0.5.0
 [0.4.1]: https://github.com/amperity/vault-clj/compare/0.4.0...0.4.1

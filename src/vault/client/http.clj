@@ -220,6 +220,28 @@
            :as :json})))))
 
 
+(defn- authenticate-k8s!
+  "Updates the token ref by authenticating via the kubernetes authentication
+  backend using a JWT."
+  [client credentials]
+  (let [{:keys [api-path jwt role]} credentials
+        api-path (or api-path "/v1/auth/kubernetes/login")]
+    (when-not jwt
+      (throw (IllegalArgumentException. "Kubernetes auth credentials must include :jwt")))
+    (when-not role
+      (throw (IllegalArgumentException. "Kubernetes auth credentials must include :role")))
+    (api-auth!
+      (str "Kubernetes auth role=" role)
+      (:auth client)
+      (do-api-request :post (str (:api-url client) api-path)
+        (merge
+          (:http-opts client)
+          {:form-params {:jwt jwt :role role}
+           :content-type :json
+           :accept :json
+           :as :json})))))
+
+
 ;; ## Timer Logic
 
 (defn- try-renew-lease!
@@ -336,6 +358,7 @@
       :app-role (authenticate-app-role! this credentials)
       :userpass (authenticate-userpass! this credentials)
       :ldap (authenticate-ldap! this credentials)
+      :k8s (authenticate-k8s! this credentials)
       ; Unknown type
       (throw (ex-info (str "Unsupported auth-type " (pr-str auth-type))
                       {:auth-type auth-type})))
