@@ -94,9 +94,7 @@
              (str "API path must be a non-empty string, got: "
                   (pr-str path)))))
   ; Check client authentication.
-  (when-not (or
-              (contains? (keys (:headers req)) "X-Vault-Token")
-              (some-> client :auth deref :client-token))
+  (when-not (some-> client :auth deref :client-token)
     (throw (IllegalStateException.
              "Cannot call API path with unauthenticated client.")))
   ; Call API with standard arguments.
@@ -107,7 +105,7 @@
       (:http-opts client)
       {:accept :json
        :as :json}
-      (dissoc req :headers)
+      req
       {:headers (merge {"X-Vault-Token" (:client-token @(:auth client))}
                        (:headers req))})))
 
@@ -138,17 +136,16 @@
 (defn- authenticate-wrap-token!
   "Updates the token ref by making an unwrap request that returns the auth token."
   [client credentials]
-  (let [{:keys [username password]} credentials]
-    (api-auth!
-      (str "wrapped token " credentials)
-      (:auth client)
-      (do-api-request :post (str (:api-url client) "/v1/sys/wrapping/unwrap")
-                      (merge
-                        (:http-opts client)
-                        {:headers {"X-Vault-Token" credentials}
-                         :content-type :json
-                         :accept :json
-                         :as :json})))))
+  (api-auth!
+    "wrapped token"
+    (:auth client)
+    (do-api-request :post (str (:api-url client) "/v1/sys/wrapping/unwrap")
+                    (merge
+                      (:http-opts client)
+                      {:headers {"X-Vault-Token" credentials}
+                       :content-type :json
+                       :accept :json
+                       :as :json}))))
 
 
 (defn- authenticate-userpass!
@@ -535,8 +532,12 @@
 
   (unwrap!
     [this wrap-token]
-    (let [response (api-request this :post "sys/wrapping/unwrap"
-                     {:headers {"X-Vault-Token" wrap-token}})]
+    (let [response (do-api-request :post (str (:api-url this) "/v1/sys/wrapping/unwrap")
+                                   (merge
+                                     (:http-opts this)
+                                     {:headers {"X-Vault-Token" wrap-token}
+                                      :accept :json
+                                      :as :json}))]
       (or (-> response :body :auth kebabify-keys)
           (-> response :body :data)
           (throw (ex-info "No auth info or data in response body"
