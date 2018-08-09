@@ -22,11 +22,22 @@
   "A Vault authentication token which should be used directly by the client."
   :secret true)
 
+(defenv :vault-wrap-token
+  "A token used to lookup a wrapped token creation response containing authentication `:token`."
+  :secret true)
+
 (defenv :vault-app-id
   "The public half of an app-id authentication credential.")
 
 (defenv :vault-user-id
   "The secret half of an app-id authentication credential."
+  :secret true)
+
+(defenv :vault-role-id
+  "The semi-private role-id half of an app-role authentication credential.")
+
+(defenv :vault-secret-id
+  "The secret half of an app-role authentication credential."
   :secret true)
 
 
@@ -58,9 +69,14 @@
       (cond
         (env :vault-token)
           (vault/authenticate! client :token (env :vault-token))
+        (env :vault-wrap-token)
+          (vault/authenticate! client :wrap-token (env :vault-wrap-token))
         (and (env :vault-app-id) (env :vault-user-id))
           (vault/authenticate! client :app-id {:app (env :vault-app-id)
                                                :user (env :vault-user-id)})
+        (and (env :vault-role-id) (env :vault-secret-id))
+          (vault/authenticate! client :app-role {:role-id (env :vault-role-id)
+                                                 :secret-id (env :vault-secret-id)})
         :else
           (log/warn "No authentication information found in environment!"))
       client)))
