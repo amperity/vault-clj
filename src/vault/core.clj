@@ -15,6 +15,7 @@
     credentials. Possible arguments:
 
     - `:token \"...\"`
+    - `:wrap-token \"...\"`
     - `:userpass {:username \"user\", :password \"hunter2\"}`
     - `:ldap {:username \"LDAP username\", :password \"hunter2\"}`
     - `:k8s {:jwt \"...\", :role \"...\"}`

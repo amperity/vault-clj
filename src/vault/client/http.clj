@@ -9,7 +9,10 @@
     (vault
       [core :as vault]
       [lease :as lease]
-      [timer :as timer])))
+      [timer :as timer]))
+  (:import
+    (org.apache.commons.codec.digest
+      DigestUtils)))
 
 
 ;; ## API Utilities
@@ -106,6 +109,17 @@
       {:headers (merge {"X-Vault-Token" (:client-token @(:auth client))}
                        (:headers req))})))
 
+(defn- unwrap-secret
+  "Common function to call the token unwrap endpoint."
+  [client wrap-token]
+  (do-api-request :post (str (:api-url client) "/v1/sys/wrapping/unwrap")
+                  (merge
+                    (:http-opts client)
+                    {:headers {"X-Vault-Token" wrap-token}
+                     :content-type :json
+                     :accept :json
+                     :as :json})))
+
 
 
 ;; ## Authentication Methods
@@ -128,6 +142,15 @@
   (when-not (string? token)
     (throw (IllegalArgumentException. "Token credential must be a string")))
   (reset! (:auth client) {:client-token (str/trim token)}))
+
+
+(defn- authenticate-wrap-token!
+  "Updates the token ref by making an unwrap request that returns the auth token."
+  [client credentials]
+  (api-auth!
+    "wrapped token"
+    (:auth client)
+    (unwrap-secret client credentials)))
 
 
 (defn- authenticate-userpass!
@@ -169,7 +192,7 @@
   [client credentials]
   (let [{:keys [role-id secret-id]} credentials]
     (api-auth!
-      (str "role-id " role-id)
+      (str "role-id sha256:" (DigestUtils/sha256Hex role-id))
       (:auth client)
       (do-api-request :post (str (:api-url client) "/v1/auth/approle/login")
         (merge
@@ -330,6 +353,7 @@
     [this auth-type credentials]
     (case auth-type
       :token (authenticate-token! this credentials)
+      :wrap-token (authenticate-wrap-token! this credentials)
       :app-id (authenticate-app! this credentials)
       :app-role (authenticate-app-role! this credentials)
       :userpass (authenticate-userpass! this credentials)
@@ -513,7 +537,7 @@
         204 true
         200 (:body response)
         false)))
-  
+
 
   (delete-secret!
     [this path]
@@ -536,8 +560,7 @@
 
   (unwrap!
     [this wrap-token]
-    (let [response (api-request this :post "sys/wrapping/unwrap"
-                     {:headers {"X-Vault-Token" wrap-token}})]
+    (let [response (unwrap-secret this wrap-token)]
       (or (-> response :body :auth kebabify-keys)
           (-> response :body :data)
           (throw (ex-info "No auth info or data in response body"
