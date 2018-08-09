@@ -109,6 +109,17 @@
       {:headers (merge {"X-Vault-Token" (:client-token @(:auth client))}
                        (:headers req))})))
 
+(defn- unwrap-secret
+  "Common function to call the token unwrap endpoint."
+  [client wrap-token]
+  (do-api-request :post (str (:api-url client) "/v1/sys/wrapping/unwrap")
+                  (merge
+                    (:http-opts client)
+                    {:headers {"X-Vault-Token" wrap-token}
+                     :content-type :json
+                     :accept :json
+                     :as :json})))
+
 
 
 ;; ## Authentication Methods
@@ -139,13 +150,7 @@
   (api-auth!
     "wrapped token"
     (:auth client)
-    (do-api-request :post (str (:api-url client) "/v1/sys/wrapping/unwrap")
-                    (merge
-                      (:http-opts client)
-                      {:headers {"X-Vault-Token" credentials}
-                       :content-type :json
-                       :accept :json
-                       :as :json}))))
+    (unwrap-secret client credentials)))
 
 
 (defn- authenticate-userpass!
@@ -532,12 +537,7 @@
 
   (unwrap!
     [this wrap-token]
-    (let [response (do-api-request :post (str (:api-url this) "/v1/sys/wrapping/unwrap")
-                                   (merge
-                                     (:http-opts this)
-                                     {:headers {"X-Vault-Token" wrap-token}
-                                      :accept :json
-                                      :as :json}))]
+    (let [response (unwrap-secret this wrap-token)]
       (or (-> response :body :auth kebabify-keys)
           (-> response :body :data)
           (throw (ex-info "No auth info or data in response body"
