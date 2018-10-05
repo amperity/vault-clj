@@ -8,6 +8,17 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 
 ...
 
+## [0.6.2] - 2018-08-09
+
+### Added
+- Wrap-token authentication mechanism.
+- Environment configuration for wrapped tokens via `VAULT_WRAP_TOKEN`.
+- AppRole client configuration via `VAULT_ROLE_ID` and `VAULT_SECRET_ID`.
+
+### Changed
+- Upgrade Clojure to 1.9
+- Hash role-id when logging app-role authentication status.
+
 ## [0.6.0] - 2018-04-23
 
 ### Added
@@ -158,7 +169,8 @@ With this version, the project has been forked to the Amperity organization.
 ### Added
 - Initial library implementation.
 
-[Unreleased]: https://github.com/amperity/vault-clj/compare/0.6.0...HEAD
+[Unreleased]: https://github.com/amperity/vault-clj/compare/0.6.2...HEAD
+[0.6.2]: https://github.com/amperity/vault-clj/compare/0.6.0...0.6.2
 [0.6.0]: https://github.com/amperity/vault-clj/compare/0.5.1...0.6.0
 [0.5.1]: https://github.com/amperity/vault-clj/compare/0.5.0...0.5.1
 [0.5.0]: https://github.com/amperity/vault-clj/compare/0.4.1...0.5.0
