@@ -2,15 +2,14 @@
   (:require
     [cheshire.core :as json]
     [clj-http.client :as http]
-    [digest :as digest]
     [clojure.string :as str]
     [clojure.tools.logging :as log]
     [clojure.walk :as walk]
     [com.stuartsierra.component :as component]
-    (vault
-      [core :as vault]
-      [lease :as lease]
-      [timer :as timer])))
+    [digest :as digest]
+    [vault.core :as vault]
+    [vault.lease :as lease]
+    [vault.timer :as timer]))
 
 
 ;; ## API Utilities
@@ -21,7 +20,8 @@
   (let [kebab-kw #(-> % name (str/replace "_" "-") keyword)
         xf-entry (juxt (comp kebab-kw key) val)]
     (walk/postwalk
-      (fn xf-maps [x]
+      (fn xf-maps
+        [x]
         (if (map? x)
           (into {} (map xf-entry) x)
           x))
@@ -107,16 +107,18 @@
       {:headers (merge {"X-Vault-Token" (:client-token @(:auth client))}
                        (:headers req))})))
 
+
 (defn- unwrap-secret
   "Common function to call the token unwrap endpoint."
   [client wrap-token]
-  (do-api-request :post (str (:api-url client) "/v1/sys/wrapping/unwrap")
-                  (merge
-                    (:http-opts client)
-                    {:headers {"X-Vault-Token" wrap-token}
-                     :content-type :json
-                     :accept :json
-                     :as :json})))
+  (do-api-request
+    :post (str (:api-url client) "/v1/sys/wrapping/unwrap")
+    (merge
+      (:http-opts client)
+      {:headers {"X-Vault-Token" wrap-token}
+       :content-type :json
+       :accept :json
+       :as :json})))
 
 
 
@@ -159,7 +161,8 @@
     (api-auth!
       (str "user " username)
       (:auth client)
-      (do-api-request :post (str (:api-url client) "/v1/auth/userpass/login/" username)
+      (do-api-request
+        :post (str (:api-url client) "/v1/auth/userpass/login/" username)
         (merge
           (:http-opts client)
           {:form-params {:password password}
@@ -176,13 +179,15 @@
     (api-auth!
       (str "app-id " app)
       (:auth client)
-      (do-api-request :post (str (:api-url client) "/v1/auth/app-id/login")
+      (do-api-request
+        :post (str (:api-url client) "/v1/auth/app-id/login")
         (merge
           (:http-opts client)
           {:form-params {:app_id app, :user_id user}
            :content-type :json
            :accept :json
            :as :json})))))
+
 
 (defn- authenticate-app-role!
   "Updates the token ref by making a request to authenticate with an role-id and
@@ -192,7 +197,8 @@
     (api-auth!
       (str "role-id sha256:" (digest/sha-256 role-id))
       (:auth client)
-      (do-api-request :post (str (:api-url client) "/v1/auth/approle/login")
+      (do-api-request
+        :post (str (:api-url client) "/v1/auth/approle/login")
         (merge
           (:http-opts client)
           {:form-params {:role_id role-id, :secret_id secret-id}
@@ -209,7 +215,8 @@
     (api-auth!
       (str "LDAP user " username)
       (:auth client)
-      (do-api-request :post (str (:api-url client) "/v1/auth/ldap/login/" username)
+      (do-api-request
+        :post (str (:api-url client) "/v1/auth/ldap/login/" username)
         (merge
           (:http-opts client)
           {:form-params {:password password}
@@ -231,7 +238,8 @@
     (api-auth!
       (str "Kubernetes auth role=" role)
       (:auth client)
-      (do-api-request :post (str (:api-url client) api-path)
+      (do-api-request
+        :post (str (:api-url client) api-path)
         (merge
           (:http-opts client)
           {:form-params {:jwt jwt :role role}
@@ -325,6 +333,7 @@
                                  jitter)]
         (assoc this :lease-timer thread))))
 
+
   (stop
     [this]
     (if lease-timer
@@ -362,9 +371,11 @@
                       {:auth-type auth-type})))
     this)
 
+
   (status
     [this]
-    (-> (do-api-request :get (str api-url "/v1/sys/health")
+    (-> (do-api-request
+          :get (str api-url "/v1/sys/health")
           (assoc http-opts
                  :accept :json
                  :as :json))
@@ -378,7 +389,8 @@
     (let [params (->> (dissoc opts :wrap-ttl)
                       (map (fn [[k v]] [(str/replace (name k) "-" "_") v]))
                       (into {}))
-          response (api-request this :post "auth/token/create"
+          response (api-request
+                     this :post "auth/token/create"
                      {:headers (when-let [ttl (:wrap-ttl opts)]
                                  {"X-Vault-Wrap-TTL" ttl})
                       :form-params params
@@ -389,19 +401,23 @@
           (throw (ex-info "No auth or wrap-info in response body"
                           {:body (:body response)})))))
 
+
   (lookup-token
     [this]
     (-> (api-request this :get "auth/token/lookup-self" {})
         (get-in [:body :data])
         (kebabify-keys)))
 
+
   (lookup-token
     [this token]
-    (-> (api-request this :post "auth/token/lookup"
+    (-> (api-request
+          this :post "auth/token/lookup"
           {:form-params {:token token}
            :content-type :json})
         (get-in [:body :data])
         (kebabify-keys)))
+
 
   (renew-token
     [this]
@@ -409,37 +425,46 @@
         (clean-body)
         (:auth)))
 
+
   (renew-token
     [this token]
-    (-> (api-request this :post "auth/token/renew"
+    (-> (api-request
+          this :post "auth/token/renew"
           {:form-params {:token token}
            :content-type :json})
         (clean-body)
         (:auth)))
+
 
   (revoke-token!
     [this]
     (when-let [token (:client-token @auth)]
       (.revoke-token! this token)))
 
+
   (revoke-token!
     [this token]
-    (let [response (api-request this :post "auth/token/revoke"
+    (let [response (api-request
+                     this :post "auth/token/revoke"
                      {:form-params {:token token}
                       :content-type :json})]
       (= 204 (:status response))))
 
+
   (lookup-accessor
     [this token-accessor]
-    (-> (api-request this :post "auth/token/lookup-accessor"
+    (-> (api-request
+          this :post "auth/token/lookup-accessor"
           {:form-params {:accessor token-accessor}
            :content-type :json})
         (get-in [:body :data])
         (kebabify-keys)))
 
+
   (revoke-accessor!
     [this token-accessor]
-    (let [response (api-request this :post "auth/token/revoke-accessor"
+    (let [response (api-request
+                     this :post "auth/token/revoke-accessor"
                      {:form-params {:accessor token-accessor}
                       :content-type :json})]
       (= 204 (:status response))))
@@ -451,23 +476,27 @@
     [this]
     (lease/list-leases leases))
 
+
   (renew-lease
     [this lease-id]
     (log/debug "Renewing lease" lease-id)
     (let [current (lease/lookup leases lease-id)
-          response (api-request this :put "sys/renew"
+          response (api-request
+                     this :put "sys/renew"
                      {:form-params {:lease_id lease-id}
-                      :content-type :json})]
-      (as-> (clean-body response) info
-        ; If the lease looks renewable but the lease-duration is shorter than the
-        ; existing lease, we're up against the max-ttl and the lease should not
-        ; be considered renewable.
+                      :content-type :json})
+          info (clean-body response)]
+      ; If the lease looks renewable but the lease-duration is shorter than the
+      ; existing lease, we're up against the max-ttl and the lease should not
+      ; be considered renewable.
+      (lease/update!
+        leases
         (if (and (lease/renewable? info)
                  (< (:lease-duration info)
                     (:lease-duration current)))
           (assoc info :renewable false)
-          info)
-        (lease/update! leases info))))
+          info))))
+
 
   (revoke-lease!
     [this lease-id]
@@ -476,10 +505,12 @@
       (lease/remove-lease! leases lease-id)
       (= 204 (:status response))))
 
+
   (add-lease-watch
     [this watch-key path watch-fn]
     (add-watch leases watch-key (lease/lease-watcher path watch-fn))
     this)
+
 
   (remove-lease-watch
     [this watch-key]
@@ -491,15 +522,18 @@
 
   (list-secrets
     [this path]
-    (let [response (api-request this :get path
+    (let [response (api-request
+                     this :get path
                      {:query-params {:list true}})
           data (get-in response [:body :data :keys])]
       (log/debugf "List %s (%d results)" path (count data))
       data))
 
+
   (read-secret
     [this path]
     (.read-secret this path nil))
+
 
   (read-secret
     [this path opts]
@@ -524,9 +558,11 @@
               (:not-found opts)
               (throw ex))))))
 
+
   (write-secret!
     [this path data]
-    (let [response (api-request this :post path
+    (let [response (api-request
+                     this :post path
                      {:form-params data
                       :content-type :json})]
       (log/debug "Wrote secret" path)
@@ -549,12 +585,14 @@
 
   (wrap!
     [this data ttl]
-    (-> (api-request this :post "sys/wrapping/wrap"
+    (-> (api-request
+          this :post "sys/wrapping/wrap"
           {:headers {"X-Vault-Wrap-TTL" ttl}
            :form-params data
            :content-type :json})
         (get-in [:body :wrap_info])
         (kebabify-keys)))
+
 
   (unwrap!
     [this wrap-token]

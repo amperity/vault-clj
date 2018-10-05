@@ -21,6 +21,10 @@
    :source-uri "https://github.com/amperity/vault-clj/blob/master/{filepath}#L{line}"
    :output-path "target/doc/api"}
 
+  :cljfmt
+  {:padding-lines 2
+   :max-consecutive-blank-lines 3}
+
   :profiles
   {:dev
    {:dependencies [[commons-logging "1.2"]]}

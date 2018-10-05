@@ -6,8 +6,8 @@
     [clojure.tools.logging :as log]
     [vault.core :as vault])
   (:import
-    java.text.SimpleDateFormat
     java.net.URI
+    java.text.SimpleDateFormat
     (java.util
       Date
       UUID)))
@@ -46,6 +46,7 @@
     [this auth-type credentials]
     this)
 
+
   (status
     [this]
     {:initialized true
@@ -74,40 +75,48 @@
      :warnings nil
      :auth (when-not (:wrap-ttl opts) (mock-token-auth))})
 
+
   (lookup-token
     [this]
     ; TODO: implement
     (throw (UnsupportedOperationException. "NYI")))
 
+
   (lookup-token
     [this token]
     ; TODO: implement
     (throw (UnsupportedOperationException. "NYI")))
+
 
   (renew-token
     [this]
     ; TODO: implement
     (throw (UnsupportedOperationException. "NYI")))
 
+
   (renew-token
     [this token]
     ; TODO: implement
     (throw (UnsupportedOperationException. "NYI")))
+
 
   (revoke-token!
     [this]
     ; TODO: implement
     (throw (UnsupportedOperationException. "NYI")))
 
+
   (revoke-token!
     [this token]
     ; TODO: implement
     (throw (UnsupportedOperationException. "NYI")))
+
 
   (lookup-accessor
     [this token-accessor]
     ; TODO: implement
     (throw (UnsupportedOperationException. "NYI")))
+
 
   (revoke-accessor!
     [this token]
@@ -121,18 +130,22 @@
     [this]
     [])
 
+
   (renew-lease
     [this lease-id]
     ; TODO: implement
     (throw (UnsupportedOperationException. "NYI")))
 
+
   (revoke-lease!
     [this lease-id]
     true)
 
+
   (add-lease-watch
     [this watch-key path watch-fn]
     this)
+
 
   (remove-lease-watch
     [this watch-key]
@@ -145,9 +158,11 @@
     [this path]
     (filter #(str/starts-with? % (str path)) (keys @memory)))
 
+
   (read-secret
     [this path]
     (.read-secret this path nil))
+
 
   (read-secret
     [this path opts]
@@ -157,10 +172,12 @@
           (throw (ex-info (str "No such secret: " path)
                           {:secret path})))))
 
+
   (write-secret!
     [this path data]
     (swap! memory assoc path data)
     true)
+
 
   (delete-secret!
     [this path]
@@ -177,6 +194,7 @@
       {:token wrap-token
        :ttl 3600  ; ideally, set this from `ttl`
        :creation-time (gen-date)}))
+
 
   (unwrap!
     [this wrap-token]

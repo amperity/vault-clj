@@ -28,21 +28,15 @@
 (defn secret-lease
   "Adds extra fields and cleans up the secret lease info."
   [info]
-  (cond->
-    {:lease-id (when-not (str/blank? (:lease-id info))
-                 (:lease-id info))
-     :lease-duration (:lease-duration info)
-     :renewable (boolean (:renewable info))
-     ::expiry (.plusSeconds (now) (:lease-duration info 60))}
-    (:path info)
-      (assoc :path (:path info))
-    (:data info)
-      (assoc :data (:data info)
-             ::issued (now))
-    (some? (:renew info))
-      (assoc ::renew (boolean (:renew info)))
-    (some? (:rotate info))
-      (assoc ::rotate (boolean (:rotate info)))))
+  (cond-> {:lease-id (when-not (str/blank? (:lease-id info))
+                       (:lease-id info))
+           :lease-duration (:lease-duration info)
+           :renewable (boolean (:renewable info))
+           ::expiry (.plusSeconds (now) (:lease-duration info 60))}
+    (:path info)           (assoc :path (:path info))
+    (:data info)           (assoc :data (:data info) ::issued (now))
+    (some? (:renew info))  (assoc ::renew (boolean (:renew info)))
+    (some? (:rotate info)) (assoc ::rotate (boolean (:rotate info)))))
 
 
 

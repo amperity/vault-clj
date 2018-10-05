@@ -1,8 +1,8 @@
 (ns vault.env-test
   (:require
     [clojure.test :refer :all]
-    [vault.core :as vault]
     [vault.client.mock :refer [mock-client]]
+    [vault.core :as vault]
     [vault.env :as venv]))
 
 
