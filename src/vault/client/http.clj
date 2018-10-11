@@ -421,9 +421,14 @@
 
   (renew-token
     [this]
-    (-> (api-request this :post "auth/token/renew-self" {})
-        (clean-body)
-        (:auth)))
+    (let [response (api-request this :post "auth/token/renew-self" {})
+          auth-info (:auth (clean-body response))]
+      (when-not (:client-token auth-info)
+        (throw (ex-info (str "No client token returned from token renewal response: "
+                             (:status response) " " (:reason-phrase response))
+                        {:body (:body response)})))
+      (reset! auth auth-info)
+      auth-info))
 
 
   (renew-token

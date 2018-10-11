@@ -71,9 +71,13 @@
   (renew-token
     [client]
     [client token]
-    "Renews a lease associated with a token. This is used to prevent the
-    expiration of a token, and the automatic revocation of it. Token renewal is
-    possible only if there is a lease associated with it.")
+    "Renews a lease associated with a token. Returns the renewed auth
+    information. If `token` is not provided, this renews the client's own auth
+    token and updates the internal client authentication state.
+
+    This is used to prevent the expiration of a token, and the automatic
+    revocation of it. Token renewal is possible only if there is a lease
+    associated with it.")
 
   (revoke-token!
     [client]
