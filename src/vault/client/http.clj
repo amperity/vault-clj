@@ -2,6 +2,7 @@
   (:require
     [cheshire.core :as json]
     [clj-http.client :as http]
+    [digest :as digest]
     [clojure.string :as str]
     [clojure.tools.logging :as log]
     [clojure.walk :as walk]
@@ -9,10 +10,7 @@
     (vault
       [core :as vault]
       [lease :as lease]
-      [timer :as timer]))
-  (:import
-    (org.apache.commons.codec.digest
-      DigestUtils)))
+      [timer :as timer])))
 
 
 ;; ## API Utilities
@@ -192,7 +190,7 @@
   [client credentials]
   (let [{:keys [role-id secret-id]} credentials]
     (api-auth!
-      (str "role-id sha256:" (DigestUtils/sha256Hex role-id))
+      (str "role-id sha256:" (digest/sha-256 role-id))
       (:auth client)
       (do-api-request :post (str (:api-url client) "/v1/auth/approle/login")
         (merge

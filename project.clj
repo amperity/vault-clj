@@ -1,4 +1,4 @@
-(defproject amperity/vault-clj "0.6.2"
+(defproject amperity/vault-clj "0.6.3"
   :description "Clojure client for the Vault secret management system."
   :url "https://github.com/amperity/vault-clj"
   :license {:name "Apache License"
@@ -13,6 +13,7 @@
    [amperity/envoy "0.3.1"]
    [cheshire "5.8.0"]
    [clj-http "2.3.0"]
+   [digest "1.4.8"]
    [com.stuartsierra/component "0.3.2"]]
 
   :codox
