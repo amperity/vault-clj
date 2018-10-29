@@ -279,8 +279,7 @@
   ; Check auth token for renewal.
   (let [auth @(:auth client)]
     (when (and (:renewable auth)
-               (lease/expires-within? auth window)
-               (some :lease-id (lease/list-leases (:leases client))))
+               (lease/expires-within? auth window))
       (try
         (log/info "Renewing Vault client token")
         (vault/renew-token client)
