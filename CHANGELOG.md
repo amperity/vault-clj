@@ -8,6 +8,18 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 
 ...
 
+## [0.6.3] - 2018-10-16
+
+### Added
+- Support Wrap Token authentication.
+  [#25](https://github.com/amperity/vault-clj/pull/25)
+
+### Changed
+- Fix client token renewal code path to update internal state.
+  [#26](https://github.com/amperity/vault-clj/pull/26)
+- Use `digest` instead of transitive apache lib for hashing.
+  [362f1ab](https://github.com/amperity/vault-clj/commit/362f1ab233045cb8468987686353d5146224fa24)
+
 ## [0.6.2] - 2018-08-09
 
 ### Added
