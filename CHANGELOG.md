@@ -8,6 +8,11 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 
 ...
 
+## [0.6.5] - 2018-11-5
+### Changed
+- Fix client token lease renewal
+  [a034b3](https://github.com/amperity/vault-clj/commit/a034b34d47781877578db77c8947f47266df6ae9)
+
 ## [0.6.4] - 2018-10-29
 
 ### Changed
@@ -188,7 +193,8 @@ With this version, the project has been forked to the Amperity organization.
 ### Added
 - Initial library implementation.
 
-[Unreleased]: https://github.com/amperity/vault-clj/compare/0.6.4...HEAD
+[Unreleased]: https://github.com/amperity/vault-clj/compare/0.6.5...HEAD
+[0.6.5]: https://github.com/amperity/vault-clj/compare/0.6.5...0.6.4
 [0.6.4]: https://github.com/amperity/vault-clj/compare/0.6.3...0.6.4
 [0.6.3]: https://github.com/amperity/vault-clj/compare/0.6.2...0.6.3
 [0.6.2]: https://github.com/amperity/vault-clj/compare/0.6.1...0.6.2
