@@ -62,7 +62,7 @@
       ex)))
 
 
-(defn- do-api-request
+(defn ^:no-doc do-api-request
   "Performs a request against the API, following redirects at most twice. The
   `request-url` should be the full API endpoint."
   [method request-url req]
@@ -124,7 +124,9 @@
 
 ;; ## Authentication Methods
 
-(defn- api-auth!
+(defn ^:no-doc api-auth!
+  "Validate the response from a vault auth call, update auth-ref with additional
+  tracking state like lease metadata."
   [claim auth-ref response]
   (let [auth-info (lease/auth-lease (:auth (clean-body response)))]
     (when-not (:client-token auth-info)
@@ -136,27 +138,34 @@
     (reset! auth-ref auth-info)))
 
 
-(defn- authenticate-token!
-  "Updates the token ref by storing the given auth token."
-  [client token]
+(defmulti authenticate*
+  "Authenticate the client with vault using the given auth-type and credentials."
+  (fn [client auth-type credentials] auth-type))
+
+
+(defmethod authenticate* :default
+  [client auth-type _]
+  (throw (ex-info (str "Unsupported auth-type " (pr-str auth-type))
+                      {:auth-type auth-type})))
+
+
+(defmethod authenticate* :token
+  [client _ token]
   (when-not (string? token)
     (throw (IllegalArgumentException. "Token credential must be a string")))
   (reset! (:auth client) {:client-token (str/trim token)}))
 
 
-(defn- authenticate-wrap-token!
-  "Updates the token ref by making an unwrap request that returns the auth token."
-  [client credentials]
+(defmethod authenticate* :wrap-token
+  [client _ credentials]
   (api-auth!
     "wrapped token"
     (:auth client)
     (unwrap-secret client credentials)))
 
 
-(defn- authenticate-userpass!
-  "Updates the token ref by making a request to authenticate with a username
-  and password."
-  [client credentials]
+(defmethod authenticate* :userpass
+  [client _ credentials]
   (let [{:keys [username password]} credentials]
     (api-auth!
       (str "user " username)
@@ -171,10 +180,8 @@
            :as :json})))))
 
 
-(defn- authenticate-app!
-  "Updates the token ref by making a request to authenticate with an app-id and
-  secret user-id."
-  [client credentials]
+(defmethod authenticate* :app-id
+  [client _ credentials]
   (let [{:keys [app user]} credentials]
     (api-auth!
       (str "app-id " app)
@@ -189,10 +196,8 @@
            :as :json})))))
 
 
-(defn- authenticate-app-role!
-  "Updates the token ref by making a request to authenticate with an role-id and
-  secret-id."
-  [client credentials]
+(defmethod authenticate* :app-role
+  [client _ credentials]
   (let [{:keys [role-id secret-id]} credentials]
     (api-auth!
       (str "role-id sha256:" (digest/sha-256 role-id))
@@ -207,10 +212,8 @@
            :as :json})))))
 
 
-(defn- authenticate-ldap!
-  "Updates the token ref by making a request to authenticate with a username
-  and password, to be authenticated against an LDAP backend."
-  [client credentials]
+(defmethod authenticate* :ldap
+  [client _ credentials]
   (let [{:keys [username password]} credentials]
     (api-auth!
       (str "LDAP user " username)
@@ -225,10 +228,8 @@
            :as :json})))))
 
 
-(defn- authenticate-k8s!
-  "Updates the token ref by authenticating via the kubernetes authentication
-  backend using a JWT."
-  [client credentials]
+(defmethod authenticate* :k8s
+  [client _ credentials]
   (let [{:keys [api-path jwt role]} credentials
         api-path (or api-path "/v1/auth/kubernetes/login")]
     (when-not jwt
@@ -298,7 +299,6 @@
   (lease/sweep! (:leases client)))
 
 
-
 ;; ## HTTP Client Type
 
 ;; - `api-url`
@@ -357,17 +357,7 @@
 
   (authenticate!
     [this auth-type credentials]
-    (case auth-type
-      :token (authenticate-token! this credentials)
-      :wrap-token (authenticate-wrap-token! this credentials)
-      :app-id (authenticate-app! this credentials)
-      :app-role (authenticate-app-role! this credentials)
-      :userpass (authenticate-userpass! this credentials)
-      :ldap (authenticate-ldap! this credentials)
-      :k8s (authenticate-k8s! this credentials)
-      ; Unknown type
-      (throw (ex-info (str "Unsupported auth-type " (pr-str auth-type))
-                      {:auth-type auth-type})))
+    (authenticate* this auth-type credentials)
     this)
 
 
