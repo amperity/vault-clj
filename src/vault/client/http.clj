@@ -62,7 +62,7 @@
       ex)))
 
 
-(defn- do-api-request
+(defn do-api-request
   "Performs a request against the API, following redirects at most twice. The
   `request-url` should be the full API endpoint."
   [method request-url req]
@@ -124,7 +124,7 @@
 
 ;; ## Authentication Methods
 
-(defn- api-auth!
+(defn api-auth!
   [claim auth-ref response]
   (let [auth-info (lease/auth-lease (:auth (clean-body response)))]
     (when-not (:client-token auth-info)
