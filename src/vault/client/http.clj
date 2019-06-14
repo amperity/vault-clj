@@ -62,7 +62,7 @@
       ex)))
 
 
-(defn do-api-request
+(defn ^:no-doc do-api-request
   "Performs a request against the API, following redirects at most twice. The
   `request-url` should be the full API endpoint."
   [method request-url req]
@@ -124,7 +124,9 @@
 
 ;; ## Authentication Methods
 
-(defn api-auth!
+(defn ^:no-doc api-auth!
+  "Validate the response from a vault auth call, update auth-ref with additional
+  tracking state like lease metadata."
   [claim auth-ref response]
   (let [auth-info (lease/auth-lease (:auth (clean-body response)))]
     (when-not (:client-token auth-info)
@@ -136,25 +138,25 @@
     (reset! auth-ref auth-info)))
 
 
-(defmulti authenticate-type!
+(defmulti authenticate*
   "Authenticate the client with vault using the given auth-type and credentials."
   (fn [client auth-type credentials] auth-type))
 
 
-(defmethod authenticate-type! :default
+(defmethod authenticate* :default
   [client auth-type _]
   (throw (ex-info (str "Unsupported auth-type " (pr-str auth-type))
                       {:auth-type auth-type})))
 
 
-(defmethod authenticate-type! :token
+(defmethod authenticate* :token
   [client _ token]
   (when-not (string? token)
     (throw (IllegalArgumentException. "Token credential must be a string")))
   (reset! (:auth client) {:client-token (str/trim token)}))
 
 
-(defmethod authenticate-type! :wrap-token
+(defmethod authenticate* :wrap-token
   [client _ credentials]
   (api-auth!
     "wrapped token"
@@ -162,7 +164,7 @@
     (unwrap-secret client credentials)))
 
 
-(defmethod authenticate-type! :userpass
+(defmethod authenticate* :userpass
   [client _ credentials]
   (let [{:keys [username password]} credentials]
     (api-auth!
@@ -178,7 +180,7 @@
            :as :json})))))
 
 
-(defmethod authenticate-type! :app-id
+(defmethod authenticate* :app-id
   [client _ credentials]
   (let [{:keys [app user]} credentials]
     (api-auth!
@@ -194,7 +196,7 @@
            :as :json})))))
 
 
-(defmethod authenticate-type! :app-role
+(defmethod authenticate* :app-role
   [client _ credentials]
   (let [{:keys [role-id secret-id]} credentials]
     (api-auth!
@@ -210,7 +212,7 @@
            :as :json})))))
 
 
-(defmethod authenticate-type! :ldap
+(defmethod authenticate* :ldap
   [client _ credentials]
   (let [{:keys [username password]} credentials]
     (api-auth!
@@ -226,7 +228,7 @@
            :as :json})))))
 
 
-(defmethod authenticate-type! :k8s
+(defmethod authenticate* :k8s
   [client _ credentials]
   (let [{:keys [api-path jwt role]} credentials
         api-path (or api-path "/v1/auth/kubernetes/login")]
@@ -355,7 +357,7 @@
 
   (authenticate!
     [this auth-type credentials]
-    (authenticate-type! this auth-type credentials)
+    (authenticate* this auth-type credentials)
     this)
 
 
