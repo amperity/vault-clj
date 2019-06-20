@@ -6,6 +6,14 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 
 ## [Unreleased]
 
+### Changed
+- Upgrade Clojure to 1.10.0.
+- Upgrade `clj-http` to 3.7.0.
+- Drop dependency on `digest` library.
+- Other minor dependency updates.
+
+## [0.6.6] - ???
+
 ...
 
 ## [0.6.5] - 2018-11-5
