@@ -6,10 +6,12 @@
     [clojure.tools.logging :as log]
     [clojure.walk :as walk]
     [com.stuartsierra.component :as component]
-    [digest :as digest]
     [vault.core :as vault]
     [vault.lease :as lease]
-    [vault.timer :as timer]))
+    [vault.timer :as timer])
+  (:import
+    java.security.MessageDigest
+    org.apache.commons.codec.binary.Hex))
 
 
 ;; ## API Utilities
@@ -26,6 +28,15 @@
           (into {} (map xf-entry) x)
           x))
       value)))
+
+
+(defn- sha-256
+  "Geerate a SHA-2 256 bit digest from a string."
+  [s]
+  (let [hasher (MessageDigest/getInstance "SHA-256")
+        str-bytes (.getBytes (str s) "UTF-8")]
+    (.update hasher str-bytes)
+    (Hex/encodeHexString (.digest hasher))))
 
 
 (defn- clean-body
@@ -200,7 +211,7 @@
   [client _ credentials]
   (let [{:keys [role-id secret-id]} credentials]
     (api-auth!
-      (str "role-id sha256:" (digest/sha-256 role-id))
+      (str "role-id sha256:" (sha-256 role-id))
       (:auth client)
       (do-api-request
         :post (str (:api-url client) "/v1/auth/approle/login")
@@ -561,7 +572,7 @@
                       :content-type :json})]
       (log/debug "Wrote secret" path)
       (lease/remove-path! leases path)
-      (case  (:status response)
+      (case (int (:status response -1))
         204 true
         200 (:body response)
         false)))
