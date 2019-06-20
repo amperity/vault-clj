@@ -8,7 +8,7 @@
   :pedantic? :abort
 
   :dependencies
-  [[org.clojure/clojure "1.9.0"]
+  [[org.clojure/clojure "1.10.0"]
    [org.clojure/tools.logging "0.4.0"]
    [amperity/envoy "0.3.1"]
    [cheshire "5.8.0"]
