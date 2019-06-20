@@ -561,7 +561,7 @@
                       :content-type :json})]
       (log/debug "Wrote secret" path)
       (lease/remove-path! leases path)
-      (case  (:status response)
+      (case (int (:status response -1))
         204 true
         200 (:body response)
         false)))
