@@ -13,7 +13,6 @@
    [amperity/envoy "0.3.1"]
    [cheshire "5.8.0"]
    [clj-http "2.3.0"]
-   [digest "1.4.8"]
    [com.stuartsierra/component "0.3.2"]]
 
   :codox
