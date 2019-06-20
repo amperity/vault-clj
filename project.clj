@@ -12,7 +12,7 @@
    [org.clojure/tools.logging "0.4.0"]
    [amperity/envoy "0.3.1"]
    [cheshire "5.8.0"]
-   [clj-http "2.3.0"]
+   [clj-http "3.7.0"]
    [com.stuartsierra/component "0.3.2"]]
 
   :codox
