@@ -12,9 +12,10 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 - Drop dependency on `digest` library.
 - Other minor dependency updates.
 
-## [0.6.6] - ???
-
-...
+## [0.6.6] - 2019-06-14
+### Changed
+- Open authentication (type) dispatch to multimethod
+  [#28](https://github.com/amperity/vault-clj/pull/28)
 
 ## [0.6.5] - 2018-11-5
 ### Changed
@@ -201,8 +202,9 @@ With this version, the project has been forked to the Amperity organization.
 ### Added
 - Initial library implementation.
 
-[Unreleased]: https://github.com/amperity/vault-clj/compare/0.6.5...HEAD
-[0.6.5]: https://github.com/amperity/vault-clj/compare/0.6.5...0.6.4
+[Unreleased]: https://github.com/amperity/vault-clj/compare/0.6.6...HEAD
+[0.6.6]: https://github.com/amperity/vault-clj/compare/0.6.5...0.6.6
+[0.6.5]: https://github.com/amperity/vault-clj/compare/0.6.4...0.6.5
 [0.6.4]: https://github.com/amperity/vault-clj/compare/0.6.3...0.6.4
 [0.6.3]: https://github.com/amperity/vault-clj/compare/0.6.2...0.6.3
 [0.6.2]: https://github.com/amperity/vault-clj/compare/0.6.1...0.6.2
