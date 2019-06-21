@@ -1,4 +1,4 @@
-(defproject amperity/vault-clj "0.6.6"
+(defproject amperity/vault-clj "0.7.0"
   :description "Clojure client for the Vault secret management system."
   :url "https://github.com/amperity/vault-clj"
   :license {:name "Apache License"
@@ -8,13 +8,12 @@
   :pedantic? :abort
 
   :dependencies
-  [[org.clojure/clojure "1.9.0"]
+  [[org.clojure/clojure "1.10.0"]
    [org.clojure/tools.logging "0.4.0"]
-   [amperity/envoy "0.3.1"]
-   [cheshire "5.8.0"]
-   [clj-http "2.3.0"]
-   [digest "1.4.8"]
-   [com.stuartsierra/component "0.3.2"]]
+   [amperity/envoy "0.3.3"]
+   [cheshire "5.8.1"]
+   [clj-http "3.7.0"]
+   [com.stuartsierra/component "0.4.0"]]
 
   :codox
   {:metadata {:doc/format :markdown}
@@ -31,7 +30,7 @@
 
    :repl
    {:source-paths ["dev"]
-    :dependencies [[org.clojure/tools.namespace "0.2.11"]]
+    :dependencies [[org.clojure/tools.namespace "0.3.0"]]
     :jvm-opts ["-Dorg.apache.commons.logging.Log=org.apache.commons.logging.impl.SimpleLog"
                "-Dorg.apache.commons.logging.simplelog.showdatetime=true"
                "-Dorg.apache.commons.logging.simplelog.defaultlog=info"
