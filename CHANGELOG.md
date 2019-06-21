@@ -6,21 +6,31 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 
 ## [Unreleased]
 
+...
+
+
+## [0.7.0] - 2019-06-20
+
 ### Changed
 - Upgrade Clojure to 1.10.0.
 - Upgrade `clj-http` to 3.7.0.
 - Drop dependency on `digest` library.
 - Other minor dependency updates.
 
+
 ## [0.6.6] - 2019-06-14
+
 ### Changed
 - Open authentication (type) dispatch to multimethod
   [#28](https://github.com/amperity/vault-clj/pull/28)
 
+
 ## [0.6.5] - 2018-11-5
+
 ### Changed
 - Fix client token lease renewal
   [a034b3](https://github.com/amperity/vault-clj/commit/a034b34d47781877578db77c8947f47266df6ae9)
+
 
 ## [0.6.4] - 2018-10-29
 
@@ -41,6 +51,7 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 - Use `digest` instead of transitive apache lib for hashing.
   [362f1ab](https://github.com/amperity/vault-clj/commit/362f1ab233045cb8468987686353d5146224fa24)
 
+
 ## [0.6.2] - 2018-08-09
 
 ### Added
@@ -51,6 +62,7 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 ### Changed
 - Upgrade Clojure to 1.9
 - Hash role-id when logging app-role authentication status.
+
 
 ## [0.6.0] - 2018-04-23
 
@@ -71,12 +83,14 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
   [#17](https://github.com/amperity/vault-clj/issues/17)
   [#18](https://github.com/amperity/vault-clj/pull/18)
 
+
 ## [0.5.1] - 2017-09-26
 
 ### Added
 - HTTP client supports LDAP authentication using the `:ldap` type.
   [#14](https://github.com/amperity/vault-clj/issues/14)
   [#16](https://github.com/amperity/vault-clj/pull/16)
+
 
 ## [0.5.0] - 2017-07-07
 
@@ -91,6 +105,7 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
   if set and a secret path is not present. Otherwise, clients consistently throw
   exceptions. [#7](https://github.com/amperity/vault-clj/issues/7)
 
+
 ## [0.4.1] - 2017-05-10
 
 ### Added
@@ -102,6 +117,7 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 - The default lease check period and renewal window changed to one and five
   minutes, respectively. This allows for better lease utilization, as the
   previous twenty minute window was too large for short-lived leases.
+
 
 ## [0.4.0] - 2017-01-06
 
@@ -141,12 +157,14 @@ in at runtime. This makes testing code without a Vault instance much simpler.
   management.
 - Deprecated the `vault.env/init-app-client` constructor.
 
+
 ## [0.3.4] - 2016-11-16
 
 ### Added
 - Add `create-token!` API support in the Client protocol. Tokens can be returned
   as [wrapped responses](https://www.vaultproject.io/docs/concepts/response-wrapping.html).
 - Add `unwrap!` API support in the Client protocol.
+
 
 ## [0.3.3] - 2016-11-04
 
@@ -158,12 +176,14 @@ in at runtime. This makes testing code without a Vault instance much simpler.
 - HTTP `307` redirects from clustered Vault instances will be followed up to two
   times in order to connect to the correct master node.
 
+
 ## [0.3.2] - 2016-10-26
 
 ### Added
 - Add `delete-secret!` API support in the Client protocol.
 - `memory-client` returns a mock in-memory client implementation for testing.
 - Numerous unit tests to cover environment and caching logic.
+
 
 ## [0.3.1] - 2016-10-25
 
@@ -174,6 +194,7 @@ in at runtime. This makes testing code without a Vault instance much simpler.
 ### Fixed
 - Tokens used for direct authentication are trimmed as a precation to prevent
   odd header-based HTTP errors.
+
 
 ## [0.3.0] - 2016-10-18
 
@@ -187,6 +208,7 @@ With this version, the project has been forked to the Amperity organization.
   takes a map of env vars with some potential secret values as Vault paths.
   Listed variables of the form `vault:<path>` are resolved as secret values.
 
+
 ## [0.2.0] - 2016-03-25
 
 ### Changed
@@ -198,11 +220,14 @@ With this version, the project has been forked to the Amperity organization.
   token string.
 - Added support for listing secrets with the client protocol.
 
+
 ## [0.1.0] - 2015-10-27
+
 ### Added
 - Initial library implementation.
 
-[Unreleased]: https://github.com/amperity/vault-clj/compare/0.6.6...HEAD
+[Unreleased]: https://github.com/amperity/vault-clj/compare/0.7.0...HEAD
+[0.7.0]: https://github.com/amperity/vault-clj/compare/0.6.6...0.7.0
 [0.6.6]: https://github.com/amperity/vault-clj/compare/0.6.5...0.6.6
 [0.6.5]: https://github.com/amperity/vault-clj/compare/0.6.4...0.6.5
 [0.6.4]: https://github.com/amperity/vault-clj/compare/0.6.3...0.6.4
