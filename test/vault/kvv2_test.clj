@@ -17,11 +17,11 @@
     (testing "Config can be updated with valid call"
       (with-redefs
         [clj-http.client/post
-         (fn [url opts]
+         (fn [url req]
            (is (= (str vault-url "/v1/" mount "/config") url))
-           (is (= token-passed-in (get (:headers opts) "X-Vault-Token")))
-           (is (= new-config (:data opts))))]
-        (vault-kv/write-config client mount new-config)))))
+           (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
+           (is (= new-config (:data req))))]
+        (is (true? (vault-kv/write-config client mount new-config)))))))
 
 
 (deftest read-config-test
@@ -72,3 +72,39 @@
           (is false)
           (catch ExceptionInfo e
             (is (= {:status 404} (ex-data e)))))))))
+
+
+(deftest write-test
+  (let [create-success {:data {:created_time  "2018-03-22T02:24:06.945319214Z"
+                               :deletion_time ""
+                               :destroyed     false
+                               :version       1}}
+        write-data {:foo "bar"
+                    :zip "zap"}
+        options {:cas 0}
+        path-passed-in "path/passed/in"
+        token-passed-in "fake-token"
+        vault-url "https://vault.example.amperity.com"
+        client (vault.core/new-client vault-url)]
+    (testing "Write writes and returns true upon success"
+      (with-redefs
+        [clj-http.client/post
+         (fn [url req]
+           (is (= (str vault-url "/v1/data/" path-passed-in) url))
+           (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
+           (is (= {:data write-data
+                   :options options}
+                  (:data req)))
+           create-success)]
+        (is (true? (vault-kv/write client vault-url write-data options)))))
+    (testing "Write returns false upon failure"
+      (with-redefs
+        [clj-http.client/post
+         (fn [url req]
+           (is (= (str vault-url "/v1/data/" path-passed-in) url))
+           (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
+           (is (= {:data write-data
+                   :options options}
+                  (:data req)))
+           {:errors []})]
+        (is (false? (vault-kv/write client vault-url write-data options)))))))
