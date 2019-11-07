@@ -21,6 +21,7 @@
       (with-redefs
         [clj-http.client/request
          (fn [req]
+           (is (= :get (:method req)))
            (is (= (str vault-url "/v1/" path) (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
            (is (true? (-> req :query-params :list)))
@@ -46,6 +47,7 @@
       (with-redefs
         [clj-http.client/request
          (fn [req]
+           (is (= :get (:method req)))
            (is (= (str vault-url "/v1/" path-passed-in) (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
            {:body lookup-response-valid-path})]
@@ -82,6 +84,7 @@
       (with-redefs
         [clj-http.client/request
          (fn [req]
+           (is (= :post (:method req)))
            (is (= (str vault-url "/v1/" path-passed-in) (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
            (is (= write-data (:form-params req)))
@@ -92,6 +95,7 @@
       (with-redefs
         [clj-http.client/request
          (fn [req]
+           (is (= :post (:method req)))
            (is (= (str vault-url "/v1/" path-passed-in) (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
            (is (= write-data
