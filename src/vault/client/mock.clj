@@ -4,7 +4,8 @@
     [clojure.java.io :as io]
     [clojure.string :as str]
     [clojure.tools.logging :as log]
-    [vault.core :as vault])
+    [vault.core :as vault]
+    [vault.secrets.logical :as vault-logical])
   (:import
     java.net.URI
     java.text.SimpleDateFormat
@@ -152,7 +153,7 @@
     this)
 
 
-  vault/SecretClient
+  vault-logical/LogicalSecretClient
 
   (list-secrets
     [this path]

@@ -1,7 +1,6 @@
 (ns vault.logical-test
   (:require [clojure.test :refer [is testing deftest]]
-            [vault.core :as vault-logical]
-            ;; TODO: Move vault-logical to its own ns
+            [vault.secrets.logical :as vault-logical]
             [vault.client.http])
   (:import (clojure.lang ExceptionInfo)))
 

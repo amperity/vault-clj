@@ -8,6 +8,7 @@
     [com.stuartsierra.component :as component]
     [vault.core :as vault]
     [vault.lease :as lease]
+    [vault.secrets.logical :as vault-logical]
     [vault.timer :as timer])
   (:import
     java.security.MessageDigest
@@ -523,7 +524,7 @@
     this)
 
 
-  vault/SecretClient
+  vault-logical/LogicalSecretClient
 
   (list-secrets
     [this path]
