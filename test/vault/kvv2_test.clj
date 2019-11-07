@@ -1,6 +1,7 @@
 (ns vault.kvv2-test
   (:require
-    [clojure.test :refer [testing deftest is]])
+    [clojure.test :refer [testing deftest is]]
+    [vault.client.http])
   (:import
     (clojure.lang
       ExceptionInfo)))
@@ -17,11 +18,13 @@
     (vault.core/authenticate! client :token {:client-token token-passed-in})
     (testing "Config can be updated with valid call"
       (with-redefs
-        [clj-http.client/post
+        [clj-http.client/request
          (fn [req]
+           (is (= :post (:method req)))
            (is (= (str vault-url "/v1/" mount "/config") (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
-           (is (= new-config (:data req))))]
+           (is (= new-config (:data req)))
+           {:status 200})]
         (is (true? (vault-kv/write-config! client mount new-config)))))))
 
 
@@ -36,11 +39,12 @@
     (vault.core/authenticate! client :token token-passed-in)
     (testing "Config can be read with valid call"
       (with-redefs
-        [clj-http.client/get
-         (fn [url opts]
-           (is (= (str vault-url "/v1/" mount "/config") url))
-           (is (= token-passed-in (get (:headers opts) "X-Vault-Token")))
-           {:data config})]
+        [clj-http.client/request
+         (fn [req]
+           (is (= :get (:method req)))
+           (is (= (str vault-url "/v1/" mount "/config") (:url req)))
+           (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
+           {:body {:data config}})]
         (is (= config (vault-kv/read-config client mount)))))))
 
 
@@ -57,18 +61,20 @@
     (vault.core/authenticate! client :token token-passed-in)
     (testing "Read responds correctly if secret is successfully located"
       (with-redefs
-        [clj-http.client/get
-         (fn [url opts]
-           (is (= (str vault-url "/v1/data/" path-passed-in) url))
-           (is (= token-passed-in (get (:headers opts) "X-Vault-Token")))
-           lookup-response-valid-path)]
+        [clj-http.client/request
+         (fn [req]
+           (is (= :get (:method req)))
+           (is (= (str vault-url "/v1/data/" path-passed-in) (:url req)))
+           (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
+           {:body lookup-response-valid-path})]
         (is (= {:foo "bar"} (vault-kv/read client vault-url)))))
     (testing "Read responds correctly if no secret is found"
       (with-redefs
-        [clj-http.client/get
-         (fn [url opts]
-           (is (= (str vault-url "/v1/data/" path-passed-in) url))
-           (is (= token-passed-in (get (:headers opts) "X-Vault-Token")))
+        [clj-http.client/request
+         (fn [req]
+           (is (= :get (:method req)))
+           (is (= (str vault-url "/v1/data/" path-passed-in) (:url req)))
+           (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
            {:errors []})]
         (try
           (vault-kv/read client vault-url)
@@ -92,20 +98,23 @@
     (vault.core/authenticate! client :token token-passed-in)
     (testing "Write writes and returns true upon success"
       (with-redefs
-        [clj-http.client/post
-         (fn [url req]
-           (is (= (str vault-url "/v1/data/" path-passed-in) url))
+        [clj-http.client/request
+         (fn [req]
+           (is (= :post (:method req)))
+           (is (= (str vault-url "/v1/data/" path-passed-in) (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
            (is (= {:data write-data
                    :options options}
                   (:data req)))
-           create-success)]
+           {:body create-success
+            :status 200})]
         (is (true? (vault-kv/write! client vault-url write-data options)))))
     (testing "Write returns false upon failure"
       (with-redefs
-        [clj-http.client/post
-         (fn [url req]
-           (is (= (str vault-url "/v1/data/" path-passed-in) url))
+        [clj-http.client/request
+         (fn [req]
+           (is (= :post (:method req)))
+           (is (= (str vault-url "/v1/data/" path-passed-in) (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
            (is (= {:data write-data
                    :options options}
