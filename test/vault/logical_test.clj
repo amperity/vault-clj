@@ -1,8 +1,11 @@
 (ns vault.logical-test
-  (:require [clojure.test :refer [is testing deftest]]
-            [vault.secrets.logical :as vault-logical]
-            [vault.client.http])
-  (:import (clojure.lang ExceptionInfo)))
+  (:require
+    [clojure.test :refer [is testing deftest]]
+    [vault.client.http]
+    [vault.secrets.logical :as vault-logical])
+  (:import
+    (clojure.lang
+      ExceptionInfo)))
 
 
 (deftest list-secrets-test
