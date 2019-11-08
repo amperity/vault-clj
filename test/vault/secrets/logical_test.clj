@@ -1,4 +1,4 @@
-(ns vault.logical-test
+(ns vault.secrets.logical-test
   (:require
     [clojure.test :refer [is testing deftest]]
     [vault.client.http]
