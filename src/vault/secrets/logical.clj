@@ -1,37 +1,88 @@
-(ns vault.secrets.logical)
+(ns vault.secrets.logical
+  (:require
+    [clojure.tools.logging :as log]
+    [vault.client.http :as http-client]
+    [vault.lease :as lease]
+    [vault.secret-engines :as engine]
+    [vault.secrets.dispatch :refer [list-secrets* read-secret* write-secret!* delete-secret!*]])
+  (:import
+    (clojure.lang
+      ExceptionInfo)))
 
-(defprotocol LogicalSecretClient
-  "Basic API for listing, reading, and writing secrets."
 
-  (list-secrets
-    [client path]
-    "List the secrets located under a path.")
+(defn list-secrets
+  [client path]
+  (engine/list-secrets client path :logical))
 
-  (read-secret
-    [client path]
-    [client path opts]
-    "Reads a secret from a path. Returns the full map of stored secret data if
-    the secret exists, or throws an exception if not.
 
-    Additional options may include:
+(defmethod list-secrets* :logical
+  [client path _]
+  (let [response (http-client/api-request
+                   client :get path
+                   {:query-params {:list true}})
+        data (get-in response [:body :data :keys])]
+    (log/debugf "List %s (%d results)" path (count data))
+    data))
 
-    - `:not-found`
-      If the requested path is not found, return this value instead of throwing
-      an exception.
-    - `:renew`
-      Whether or not to renew this secret when the lease is near expiry.
-    - `:rotate`
-      Whether or not to rotate this secret when the lease is near expiry and
-      cannot be renewed.
-    - `:force-read`
-      Force the secret to be read from the server even if there is a valid lease cached.")
 
-  (write-secret!
-    [client path data]
-    "Writes secret data to a path. `data` should be a map. Returns a
-    boolean indicating whether the write was successful.")
+(defn read-secret
+  ([client path opts]
+   (engine/read-secret client path opts :logical))
+  ([client path]
+   (read-secret client path nil)))
 
-  (delete-secret!
-    [client path]
-    "Removes secret data from a path. Returns a boolean indicating whether the
-    deletion was successful."))
+
+(defmethod read-secret* :logical
+  [client path opts _]
+  (or (when-let [lease (and (not (:force-read opts))
+                            (lease/lookup (:leases client) path))]
+        (when-not (lease/expired? lease)
+          (:data lease)))
+      (try
+        (let [response (http-client/api-request client :get path {})
+              info (assoc (http-client/clean-body response)
+                          :path path
+                          :renew (:renew opts)
+                          :rotate (:rotate opts))]
+          (log/debugf "Read %s (valid for %d seconds)"
+                      path (:lease-duration info))
+          (lease/update! (:leases client) info)
+          (:data info))
+        (catch ExceptionInfo ex
+          (if (and (contains? opts :not-found)
+                   (= ::api-error (:type (ex-data ex)))
+                   (= 404 (:status (ex-data ex))))
+            (:not-found opts)
+            (throw ex))))))
+
+
+(defn write-secret!
+  [client path data]
+  (engine/write-secret! client path data :logical))
+
+
+(defmethod write-secret!* :logical
+  [client path data _]
+  (let [response (http-client/api-request
+                   client :post path
+                   {:form-params data
+                    :content-type :json})]
+    (log/debug "Wrote secret" path)
+    (lease/remove-path! (:leases client) path)
+    (case (int (:status response -1))
+      204 true
+      200 (:body response)
+      false)))
+
+
+(defn delete-secret!
+  [client path]
+  (engine/delete-secret! client path :logical))
+
+
+(defmethod delete-secret!* :logical
+  [client path _]
+  (let [response (http-client/api-request client :delete path {})]
+    (log/debug "Deleted secret" path)
+    (lease/remove-path! (:leases client) path)
+    (= 204 (:status response))))

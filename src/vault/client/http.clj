@@ -8,11 +8,13 @@
     [com.stuartsierra.component :as component]
     [vault.core :as vault]
     [vault.lease :as lease]
-    [vault.secrets.logical :as vault-logical]
+    [vault.secret-engines :as engines]
+    [vault.secrets.dispatch :as engine-dispatch]
     [vault.timer :as timer])
   (:import
     java.security.MessageDigest
-    org.apache.commons.codec.binary.Hex))
+    (org.apache.commons.codec.binary
+      Hex)))
 
 
 ;; ## API Utilities
@@ -40,7 +42,7 @@
     (Hex/encodeHexString (.digest hasher))))
 
 
-(defn- clean-body
+(defn clean-body
   "Cleans up a response from the Vault API by rewriting some keywords and
   dropping extraneous information. Note that this changes the `:data` in the
   response to the original result to preserve accuracy."
@@ -93,7 +95,7 @@
         resp))))
 
 
-(defn- api-request
+(defn api-request
   "Helper method to perform an API request with common headers and values.
   Currently always uses API version `v1`. The `path` should be relative to the
   version root."
@@ -133,7 +135,6 @@
        :as :json})))
 
 
-
 ;; ## Authentication Methods
 
 (defn ^:no-doc api-auth!
@@ -158,7 +159,7 @@
 (defmethod authenticate* :default
   [client auth-type _]
   (throw (ex-info (str "Unsupported auth-type " (pr-str auth-type))
-                      {:auth-type auth-type})))
+                  {:auth-type auth-type})))
 
 
 (defmethod authenticate* :token
@@ -524,68 +525,23 @@
     this)
 
 
-  vault-logical/LogicalSecretClient
+  engines/SecretEngine
 
   (list-secrets
-    [this path]
-    (let [response (api-request
-                     this :get path
-                     {:query-params {:list true}})
-          data (get-in response [:body :data :keys])]
-      (log/debugf "List %s (%d results)" path (count data))
-      data))
-
+    [this path eng]
+    (engine-dispatch/list-secrets* this path eng))
 
   (read-secret
-    [this path]
-    (.read-secret this path nil))
-
-
-  (read-secret
-    [this path opts]
-    (or (when-let [lease (and (not (:force-read opts))
-                              (lease/lookup leases path))]
-          (when-not (lease/expired? lease)
-            (:data lease)))
-        (try
-          (let [response (api-request this :get path {})
-                info (assoc (clean-body response)
-                            :path path
-                            :renew (:renew opts)
-                            :rotate (:rotate opts))]
-            (log/debugf "Read %s (valid for %d seconds)"
-                        path (:lease-duration info))
-            (lease/update! leases info)
-            (:data info))
-          (catch clojure.lang.ExceptionInfo ex
-            (if (and (contains? opts :not-found)
-                     (= ::api-error (:type (ex-data ex)))
-                     (= 404 (:status (ex-data ex))))
-              (:not-found opts)
-              (throw ex))))))
-
+    [this path opts eng]
+    (engine-dispatch/read-secret* this path opts eng))
 
   (write-secret!
-    [this path data]
-    (let [response (api-request
-                     this :post path
-                     {:form-params data
-                      :content-type :json})]
-      (log/debug "Wrote secret" path)
-      (lease/remove-path! leases path)
-      (case (int (:status response -1))
-        204 true
-        200 (:body response)
-        false)))
-
+    [this path data eng]
+    (engine-dispatch/write-secret!* this path data eng))
 
   (delete-secret!
-    [this path]
-    (let [response (api-request this :delete path {})]
-      (log/debug "Deleted secret" path)
-      (lease/remove-path! leases path)
-      (= 204 (:status response))))
-
+    [this path eng]
+    (engine-dispatch/delete-secret!* this path eng))
 
   vault/WrappingClient
 
@@ -607,7 +563,6 @@
           (-> response :body :data)
           (throw (ex-info "No auth info or data in response body"
                           {:body (:body response)}))))))
-
 
 
 ;; ## Constructors

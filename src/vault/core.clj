@@ -131,7 +131,6 @@
     "Removes the watch function registered with the given key, if any."))
 
 
-
 (defprotocol WrappingClient
   "Secret wrapping API for exchanging limited-use tokens for wrapped data."
 
@@ -143,7 +142,6 @@
   (unwrap!
     [client wrap-token]
     "Returns the original response wrapped by the given token."))
-
 
 
 ;; ## Client Construction

@@ -14,7 +14,6 @@
   (Instant/now))
 
 
-
 ;; ## Lease Construction
 
 (defn auth-lease
@@ -37,7 +36,6 @@
     (:data info)           (assoc :data (:data info) ::issued (now))
     (some? (:renew info))  (assoc ::renew (boolean (:renew info)))
     (some? (:rotate info)) (assoc ::rotate (boolean (:rotate info)))))
-
 
 
 ;; ## Lease Logic
@@ -68,7 +66,6 @@
   "Determines whether the lease has expired."
   [lease]
   (expires-within? lease 0))
-
 
 
 ;; ## Secret Storage

@@ -5,7 +5,7 @@
     [clojure.string :as str]
     [clojure.tools.logging :as log]
     [vault.core :as vault]
-    [vault.secrets.logical :as vault-logical])
+    [vault.secret-engines :as engines])
   (:import
     java.net.URI
     java.text.SimpleDateFormat
@@ -153,20 +153,15 @@
     this)
 
 
-  vault-logical/LogicalSecretClient
+  engines/SecretEngine
 
   (list-secrets
-    [this path]
+    [this path eng]
     (filter #(str/starts-with? % (str path)) (keys @memory)))
 
 
   (read-secret
-    [this path]
-    (.read-secret this path nil))
-
-
-  (read-secret
-    [this path opts]
+    [this path opts eng]
     (or (get @memory path)
         (if (contains? opts :not-found)
           (:not-found opts)
@@ -175,13 +170,13 @@
 
 
   (write-secret!
-    [this path data]
+    [this path data eng]
     (swap! memory assoc path data)
     true)
 
 
   (delete-secret!
-    [this path]
+    [this path eng]
     (swap! memory dissoc path)
     true)
 
@@ -203,7 +198,6 @@
       (do (swap! cubbies dissoc wrap-token)
           data)
       (throw (ex-info "Unknown wrap-token used" {})))))
-
 
 
 ;; ## Constructors
