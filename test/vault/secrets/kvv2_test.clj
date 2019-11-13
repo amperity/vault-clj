@@ -118,7 +118,7 @@
                   (:form-params req)))
            {:body create-success
             :status 200})]
-        (is (= (:data create-success) (vault-kv/write-secret! client mount path-passed-in write-data)) )))
+        (is (= (:data create-success) (vault-kv/write-secret! client mount path-passed-in write-data)))))
     (testing "Write returns false upon failure"
       (with-redefs
         [clj-http.client/request

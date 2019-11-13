@@ -1,10 +1,13 @@
 (ns vault.secrets.kvv2
-  (:require [vault.secret-engines :as engine]
-            [vault.client.http :as http-client]
-            [clojure.tools.logging :as log]
-            [vault.secrets.dispatch :refer [read-secret* write-secret!* write-config!* read-config*]]
-            [vault.secrets.logical :as vault-logical])
-  (:import (clojure.lang ExceptionInfo)))
+  (:require
+    [clojure.tools.logging :as log]
+    [vault.client.http :as http-client]
+    [vault.secret-engines :as engine]
+    [vault.secrets.dispatch :refer [read-secret* write-secret!* write-config!* read-config*]]
+    [vault.secrets.logical :as vault-logical])
+  (:import
+    (clojure.lang
+      ExceptionInfo)))
 
 
 (defn read-secret

@@ -51,7 +51,7 @@
     - `delete_versions_after` - String that pecifies the length of time before a version is deleted.
     Accepts Go duration format string.")
 
-(read-config
-  [client path eng]
-  "Reads configurations at the given path"))
+  (read-config
+    [client path eng]
+    "Reads configurations at the given path"))
 
