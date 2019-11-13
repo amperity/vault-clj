@@ -45,7 +45,7 @@
     (log/debug "Wrote config" path)
     (case (int (:status response -1))
       204 true
-      200 (:body response)
+      200 (or (:body response) true)
       false)))
 
 (defn read-config
