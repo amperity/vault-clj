@@ -21,9 +21,9 @@
 
     (catch ExceptionInfo ex
       (if (and (contains? opts :not-found)
-               (= ::api-error (:type (ex-data ex)))
+               (= ::http-client/api-error (:type (ex-data ex)))
                (= 404 (:status (ex-data ex))))
-        ;(:not-found opts)
+        (:not-found opts)
         (throw ex)))))
 
 (defn write-secret!
