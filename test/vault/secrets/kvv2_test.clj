@@ -101,7 +101,6 @@
                                :version       1}}
         write-data {:foo "bar"
                     :zip "zap"}
-        options {:cas 0}
         mount "mount"
         path-passed-in "path/passed/in"
         token-passed-in "fake-token"
@@ -116,20 +115,19 @@
            (is (= (str vault-url "/v1/" mount "/data/" path-passed-in) (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
            (is (= {:data write-data}
-                  (:data req)))
+                  (:form-params req)))
            {:body create-success
             :status 200})]
-        (is (true? (vault-kv/write-secret! client mount path-passed-in write-data)))))
+        (is (= (:data create-success) (vault-kv/write-secret! client mount path-passed-in write-data)) )))
     (testing "Write returns false upon failure"
       (with-redefs
         [clj-http.client/request
          (fn [req]
            (is (= :post (:method req)))
-           (is (= (str vault-url "/v1/" mount "/data/" path-passed-in) (:url req)))
+           (is (= (str vault-url "/v1/" mount "/data/other-path") (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
-           (is (= {:data write-data
-                   :options options}
-                  (:data req)))
+           (is (= {:data write-data}
+                  (:form-params req)))
            {:errors []
             :status 404})]
-        (is (false? (vault-kv/write-secret! client mount path-passed-in write-data)))))))
+        (is (false? (vault-kv/write-secret! client mount "other-path" write-data)))))))
