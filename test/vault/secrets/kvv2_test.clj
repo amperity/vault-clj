@@ -1,7 +1,8 @@
-(ns vault.kvv2-test
+(ns vault.secrets.kvv2-test
   (:require
     [clojure.test :refer [testing deftest is]]
-    [vault.client.http])
+    [vault.client.http]
+    [vault.secrets.kvv2 :as vault-kv])
   (:import
     (clojure.lang
       ExceptionInfo)))
@@ -14,8 +15,8 @@
         client (vault.core/new-client vault-url)
         new-config {:max_versions 5
                     :cas_require false
-                    :delete_version_after}]
-    (vault.core/authenticate! client :token {:client-token token-passed-in})
+                    :delete_version_after "3h25m19s"}]
+    (vault.core/authenticate! client :token token-passed-in)
     (testing "Config can be updated with valid call"
       (with-redefs
         [clj-http.client/request
@@ -31,7 +32,7 @@
 (deftest read-config-test
   (let [config {:max_versions 5
                 :cas_require false
-                :delete_version_after}
+                :delete_version_after "3h25m19s"}
         mount "mount"
         token-passed-in "fake-token"
         vault-url "https://vault.example.amperity.com"
@@ -54,6 +55,7 @@
                                                       :deletion_time ""
                                                       :destroyed     false
                                                       :version       1}}}
+        mount "mount"
         path-passed-in "path/passed/in"
         token-passed-in "fake-token"
         vault-url "https://vault.example.amperity.com"
@@ -64,20 +66,26 @@
         [clj-http.client/request
          (fn [req]
            (is (= :get (:method req)))
-           (is (= (str vault-url "/v1/data/" path-passed-in) (:url req)))
+           (is (= (str vault-url "/v1/" mount "/data/" path-passed-in) (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
            {:body lookup-response-valid-path})]
-        (is (= {:foo "bar"} (vault-kv/read client vault-url)))))
+        (is (= {:foo "bar"} (vault-kv/read-secret client mount path-passed-in)))))
     (testing "Read responds correctly if no secret is found"
       (with-redefs
         [clj-http.client/request
          (fn [req]
            (is (= :get (:method req)))
-           (is (= (str vault-url "/v1/data/" path-passed-in) (:url req)))
+           (is (= (str vault-url "/v1/" mount "/data/different/path") (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
-           {:errors []})]
+           (ex-info "not found" {:errors [] :status 404 :type ::api-error}))]
         (try
-          (vault-kv/read client vault-url)
+          (is (= {:default-val :is-here}
+                 (vault-kv/read-secret
+                   client
+                   mount
+                   "different/path"
+                   {:not-found {:default-val :is-here}})))
+          (vault-kv/read-secret client mount "different/path")
           (is false)
           (catch ExceptionInfo e
             (is (= {:status 404} (ex-data e)))))))))
@@ -91,6 +99,7 @@
         write-data {:foo "bar"
                     :zip "zap"}
         options {:cas 0}
+        mount "mount"
         path-passed-in "path/passed/in"
         token-passed-in "fake-token"
         vault-url "https://vault.example.amperity.com"
@@ -101,24 +110,23 @@
         [clj-http.client/request
          (fn [req]
            (is (= :post (:method req)))
-           (is (= (str vault-url "/v1/data/" path-passed-in) (:url req)))
+           (is (= (str vault-url "/v1/" mount "/data/" path-passed-in) (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
-           (is (= {:data write-data
-                   :options options}
+           (is (= {:data write-data}
                   (:data req)))
            {:body create-success
             :status 200})]
-        (is (true? (vault-kv/write! client vault-url write-data options)))))
+        (is (true? (vault-kv/write-secret! client mount path-passed-in write-data)))))
     (testing "Write returns false upon failure"
       (with-redefs
         [clj-http.client/request
          (fn [req]
            (is (= :post (:method req)))
-           (is (= (str vault-url "/v1/data/" path-passed-in) (:url req)))
+           (is (= (str vault-url "/v1/" mount "/data/" path-passed-in) (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
            (is (= {:data write-data
                    :options options}
                   (:data req)))
            {:errors []
             :status 404})]
-        (is (false? (vault-kv/write! client vault-url write-data options)))))))
+        (is (false? (vault-kv/write-secret! client mount path-passed-in write-data)))))))

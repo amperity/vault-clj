@@ -36,4 +36,22 @@
   (delete-secret!
     [client path eng]
     "Removes secret data from a path. Returns a boolean indicating whether the
-    deletion was successful."))
+    deletion was successful.")
+
+  (write-config!
+    [client path data eng]
+    "Writes configurations at the given path
+
+    Data is the body of a request specifying:
+    - `max_versions` – The number (as an int) of versions to keep per key.
+    This value applies to all keys, but a key's metadata setting can overwrite this value.
+    Once a key has more than the configured allowed versions the oldest version will
+    be permanently deleted. Defaults to 10.
+    - `can-required` - If true all keys will require the cas parameter to be set on all write requests.
+    - `delete_versions_after` - String that pecifies the length of time before a version is deleted.
+    Accepts Go duration format string.")
+
+(read-config
+  [client path eng]
+  "Reads configurations at the given path"))
+

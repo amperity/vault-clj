@@ -526,6 +526,7 @@
 
 
   engines/SecretEngine
+  ;; This dispatch allows mocking because all requests go through the client
 
   (list-secrets
     [this path eng]
@@ -542,6 +543,14 @@
   (delete-secret!
     [this path eng]
     (engine-dispatch/delete-secret!* this path eng))
+
+  (write-config!
+    [this path data eng]
+    (engine-dispatch/write-config!* this path data eng))
+
+  (read-config
+    [this path eng]
+    (engine-dispatch/read-config* this path eng))
 
   vault/WrappingClient
 
