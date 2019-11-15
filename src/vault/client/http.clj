@@ -8,10 +8,10 @@
     [com.stuartsierra.component :as component]
     [vault.core :as vault]
     [vault.lease :as lease]
-    [vault.secret-engines :as engines]
-    [vault.secrets.dispatch :as engine-dispatch]
     [vault.timer :as timer])
   (:import
+    (clojure.lang
+      ExceptionInfo)
     java.security.MessageDigest
     (org.apache.commons.codec.binary
       Hex)))
@@ -525,32 +525,64 @@
     this)
 
 
-  engines/SecretEngine
-  ;; This dispatch allows mocking because all requests go through the client
+  vault/SecretEngine
+
 
   (list-secrets
-    [this path eng]
-    (engine-dispatch/list-secrets* this path eng))
+    [this path]
+    (let [response (api-request this :get path {:query-params {:list true}})
+          data (get-in response [:body :data :keys])]
+      (log/debugf "List %s (%d results)" path (count data))
+      data))
+
 
   (read-secret
-    [this path opts eng]
-    (engine-dispatch/read-secret* this path opts eng))
+    [this path opts]
+    (or (when-let [lease (and (not (:force-read opts))
+                              (lease/lookup leases path))]
+          (when-not (lease/expired? lease)
+            (:data lease)))
+        (try
+          (let [response (api-request this :get path {})
+                info (assoc (clean-body response)
+                            :path path
+                            :renew (:renew opts)
+                            :rotate (:rotate opts))]
+
+            (log/debugf "Read %s (valid for %d seconds)"
+                        path (:lease-duration info))
+            (lease/update! leases info)
+
+            (:data info))
+          (catch ExceptionInfo ex
+            (if (and (contains? opts :not-found)
+                     (= ::api-error (:type (ex-data ex)))
+                     (= 404 (:status (ex-data ex))))
+              (:not-found opts)
+              (throw ex))))))
+
 
   (write-secret!
-    [this path data eng]
-    (engine-dispatch/write-secret!* this path data eng))
+    [this path data]
+    (let [response (api-request
+                     this :post path
+                     {:form-params data
+                      :content-type :json})]
+      (log/debug "Vault client wrote to" path)
+      (lease/remove-path! leases path)
+      (case (int (:status response -1))
+        204 true
+        200 (:body response)
+        false)))
+
 
   (delete-secret!
-    [this path eng]
-    (engine-dispatch/delete-secret!* this path eng))
+    [this path]
+    (let [response (api-request this :delete path {})]
+      (log/debug "Vault client deleted resources at" path)
+      (lease/remove-path! leases path)
+      (= 204 (:status response))))
 
-  (write-config!
-    [this path data eng]
-    (engine-dispatch/write-config!* this path data eng))
-
-  (read-config
-    [this path eng]
-    (engine-dispatch/read-config* this path eng))
 
   vault/WrappingClient
 

@@ -3,12 +3,9 @@
     [clojure.edn :as edn]
     [clojure.java.io :as io]
     [clojure.string :as str]
-    [clojure.tools.logging :as log]
-    [vault.core :as vault]
-    [vault.secret-engines :as engines])
+    [vault.core :as vault])
   (:import
     java.net.URI
-    java.text.SimpleDateFormat
     (java.util
       Date
       UUID)))
@@ -153,15 +150,15 @@
     this)
 
 
-  engines/SecretEngine
+  vault/SecretEngine
 
   (list-secrets
-    [this path eng]
+    [this path]
     (filter #(str/starts-with? % (str path)) (keys @memory)))
 
 
   (read-secret
-    [this path opts eng]
+    [this path opts]
     (or (get @memory path)
         (if (contains? opts :not-found)
           (:not-found opts)
@@ -170,13 +167,13 @@
 
 
   (write-secret!
-    [this path data eng]
+    [this path data]
     (swap! memory assoc path data)
     true)
 
 
   (delete-secret!
-    [this path eng]
+    [this path]
     (swap! memory dissoc path)
     true)
 

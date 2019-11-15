@@ -25,7 +25,7 @@
            (is (= (str vault-url "/v1/" mount "/config") (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
            (is (= new-config (:form-params req)))
-           {:status 200})]
+           {:status 204})]
         (is (true? (vault-kv/write-config! client mount new-config)))))))
 
 
