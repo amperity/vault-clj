@@ -2,6 +2,7 @@
   (:require
     [clojure.test :refer [testing deftest is]]
     [vault.client.http :as http-client]
+    [vault.core :as vault]
     [vault.secrets.kvv2 :as vault-kv])
   (:import
     (clojure.lang
@@ -12,11 +13,11 @@
   (let [mount "mount"
         token-passed-in "fake-token"
         vault-url "https://vault.example.amperity.com"
-        client (vault.core/new-client vault-url)
+        client (http-client/http-client vault-url)
         new-config {:max_versions 5
                     :cas_require false
                     :delete_version_after "3h25m19s"}]
-    (vault.core/authenticate! client :token token-passed-in)
+    (vault/authenticate! client :token token-passed-in)
     (testing "Config can be updated with valid call"
       (with-redefs
         [clj-http.client/request
@@ -36,8 +37,8 @@
         mount "mount"
         token-passed-in "fake-token"
         vault-url "https://vault.example.amperity.com"
-        client (vault.core/new-client vault-url)]
-    (vault.core/authenticate! client :token token-passed-in)
+        client (http-client/http-client vault-url)]
+    (vault/authenticate! client :token token-passed-in)
     (testing "Config can be read with valid call"
       (with-redefs
         [clj-http.client/request
@@ -59,8 +60,8 @@
         path-passed-in "path/passed/in"
         token-passed-in "fake-token"
         vault-url "https://vault.example.amperity.com"
-        client (vault.core/new-client vault-url)]
-    (vault.core/authenticate! client :token token-passed-in)
+        client (http-client/http-client vault-url)]
+    (vault/authenticate! client :token token-passed-in)
     (testing "Read responds correctly if secret is successfully located"
       (with-redefs
         [clj-http.client/request
@@ -105,8 +106,8 @@
         path-passed-in "path/passed/in"
         token-passed-in "fake-token"
         vault-url "https://vault.example.amperity.com"
-        client (vault.core/new-client vault-url)]
-    (vault.core/authenticate! client :token token-passed-in)
+        client (http-client/http-client vault-url)]
+    (vault/authenticate! client :token token-passed-in)
     (testing "Write writes and returns true upon success"
       (with-redefs
         [clj-http.client/request

@@ -2,6 +2,8 @@
   (:require
     [clojure.test :refer [is testing deftest]]
     [vault.client.http]
+    [vault.client.http :as http-client]
+    [vault.core :as vault]
     [vault.secrets.logical :as vault-logical])
   (:import
     (clojure.lang
@@ -12,13 +14,13 @@
   (let [path "path/passed/in"
         token-passed-in "fake-token"
         vault-url "https://vault.example.amperity.com"
-        client (vault.core/new-client vault-url)
+        client (http-client/http-client vault-url)
         response {:auth nil
                   :data {:keys ["foo" "foo/"]}
                   :lease_duration 2764800
                   :lease-id ""
                   :renewable false}]
-    (vault.core/authenticate! client :token token-passed-in)
+    (vault/authenticate! client :token token-passed-in)
     (testing "List secrets works with valid call"
       (with-redefs
         [clj-http.client/request
@@ -43,8 +45,8 @@
         path-passed-in2 "path/passed/in2"
         token-passed-in "fake-token"
         vault-url "https://vault.example.amperity.com"
-        client (vault.core/new-client vault-url)]
-    (vault.core/authenticate! client :token token-passed-in)
+        client (http-client/http-client vault-url)]
+    (vault/authenticate! client :token token-passed-in)
     (testing "Read responds correctly if secret is successfully located"
       (with-redefs
         [clj-http.client/request
@@ -80,8 +82,8 @@
         path-passed-in "path/passed/in"
         token-passed-in "fake-token"
         vault-url "https://vault.example.amperity.com"
-        client (vault.core/new-client vault-url)]
-    (vault.core/authenticate! client :token token-passed-in)
+        client (http-client/http-client vault-url)]
+    (vault/authenticate! client :token token-passed-in)
     (testing "Write writes and returns true upon success"
       (with-redefs
         [clj-http.client/request
