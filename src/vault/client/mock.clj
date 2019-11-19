@@ -59,21 +59,41 @@
 
   (create-token!
     [this opts]
-    {:request-id ""
-     :lease-id ""
-     :renewable false
-     :lease-duration 0
-     :data nil
-     :wrap-info
-     (when (:wrap-ttl opts)
-       (let [wrap-token (gen-uuid)]
-         (swap! cubbies assoc wrap-token (mock-token-auth))
-         {:token wrap-token
-          :ttl (:wrap-ttl opts)
-          :creation-time (gen-date)
-          :wrapped-accessor (gen-uuid)}))
-     :warnings nil
-     :auth (when-not (:wrap-ttl opts) (mock-token-auth))})
+    (let [dates {\s 1 \m 60 \h 3600 \d 86400}]
+      (if (:wrap-ttl opts)
+        (let [wrap-token (gen-uuid)]
+          (swap! cubbies assoc wrap-token (mock-token-auth))
+          {:token            wrap-token
+           :ttl              (* (read-string (subs (:wrap-ttl opts) 0 (dec (count (:wrap-ttl opts)))))
+                                (get dates (last (:wrap-ttl opts))))
+           :creation-time    (gen-date)
+           :wrapped-accessor (gen-uuid)
+           :accessor         (gen-uuid)
+           :creation-path    "auth/token/create"})
+
+        ;; unwrapped
+        (let [policies (cond
+                         (and (:policies opts) (:no-default-policy opts))
+                         (or (:policies opts) ["root"])
+
+                         (contains? opts :policies)
+                         (into ["default"] (:policies opts))
+
+                         :else
+                         ["root"])]
+          {:policies       policies
+           :renewable      (or (:renewable opts) false)
+           :entity-id      ""
+           :token-policies policies
+           :accessor       (gen-uuid)
+           :lease-duration (if (:ttl opts)
+                             (* (read-string (subs (:ttl opts) 0 (dec (count (:ttl opts)))))
+                                (get dates (last (:ttl opts))))
+                             0)
+           :token-type     "service"
+           :orphan         (or (:no-parent opts) false)
+           :client-token   (gen-uuid)
+           :metadata       nil}))))
 
 
   (lookup-token
