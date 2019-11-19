@@ -4,7 +4,7 @@
     [vault.client.http]
     [vault.client.http :as http-client]
     [vault.core :as vault]
-    [vault.secrets.logical :as vault-logical])
+    [vault.secrets.kvv1 :as vault-kvv1])
   (:import
     (clojure.lang
       ExceptionInfo)))
@@ -31,7 +31,7 @@
            (is (true? (-> req :query-params :list)))
            {:body response})]
         (is (= ["foo" "foo/"]
-               (vault-logical/list-secrets client path)))))))
+               (vault-kvv1/list-secrets client path)))))))
 
 
 (deftest read-secret-test
@@ -55,7 +55,7 @@
            (is (= (str vault-url "/v1/" path-passed-in) (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
            {:body lookup-response-valid-path})]
-        (is (= {:foo "bar" :ttl "1h"} (vault-logical/read-secret client path-passed-in)))))
+        (is (= {:foo "bar" :ttl "1h"} (vault-kvv1/read-secret client path-passed-in)))))
     (testing "Read responds correctly if no secret is found"
       (with-redefs
         [clj-http.client/request
@@ -64,7 +64,7 @@
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
            (throw (ex-info "not found" {:error [] :status 404})))]
         (try
-          (vault-logical/read-secret client path-passed-in2)
+          (vault-kvv1/read-secret client path-passed-in2)
           (catch ExceptionInfo e
             (is (= {:errors nil
                     :status 404
@@ -94,7 +94,7 @@
            (is (= write-data (:form-params req)))
            {:body create-success
             :status 204})]
-        (is (true? (vault-logical/write-secret! client path-passed-in write-data)))))
+        (is (true? (vault-kvv1/write-secret! client path-passed-in write-data)))))
     (testing "Write returns false upon failure"
       (with-redefs
         [clj-http.client/request
@@ -106,5 +106,5 @@
                   (:form-params req)))
            {:errors []
             :status 400})]
-        (is (false? (vault-logical/write-secret! client path-passed-in write-data)))))))
+        (is (false? (vault-kvv1/write-secret! client path-passed-in write-data)))))))
 

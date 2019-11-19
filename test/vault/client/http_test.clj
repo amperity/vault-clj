@@ -3,7 +3,7 @@
     [clojure.test :refer :all]
     [vault.client.http :refer [http-client] :as h]
     [vault.core :as vault]
-    [vault.secrets.logical :as vault-logical]))
+    [vault.secrets.kvv1 :as vault-kvv1]))
 
 
 (def example-url "https://vault.example.com")
@@ -20,10 +20,10 @@
 (deftest http-read-checks
   (let [client (http-client example-url)]
     (is (thrown? IllegalArgumentException
-          (vault-logical/read-secret client nil))
+                 (vault-kvv1/read-secret client nil))
         "should throw an exception on non-string path")
     (is (thrown? IllegalStateException
-          (vault-logical/read-secret client "secret/foo/bar"))
+                 (vault-kvv1/read-secret client "secret/foo/bar"))
         "should throw an exception on unauthenticated client")))
 
 

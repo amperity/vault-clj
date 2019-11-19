@@ -12,7 +12,7 @@
     [vault.client.http]
     [vault.client.mock]
     [vault.core :as vault]
-    [vault.secrets.logical :as vault-logical]))
+    [vault.secrets.kvv1 :as vault-kvv1]))
 
 
 (def vault-prefix "vault:")
@@ -99,7 +99,7 @@
     (throw (ex-info "Cannot resolve secret without initialized client"
                     {:uri vault-uri})))
   (let [[path attr] (str/split (subs vault-uri (count vault-prefix)) #"#")
-        secret (vault-logical/read-secret client path)
+        secret (vault-kvv1/read-secret client path)
         attr (or (keyword attr) :data)
         value (get secret attr)]
     (when (nil? value)

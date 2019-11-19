@@ -1,4 +1,4 @@
-(ns vault.secrets.logical
+(ns vault.secrets.kvv1
   (:require
     [vault.core :as vault]))
 
