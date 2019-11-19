@@ -1,4 +1,4 @@
-(ns vault.secrets.logical-test
+(ns vault.secrets.kvv1-test
   (:require
     [clojure.test :refer [is testing deftest]]
     [vault.client.http]
@@ -21,7 +21,7 @@
                   :lease-id ""
                   :renewable false}]
     (vault/authenticate! client :token token-passed-in)
-    (testing "List secrets works with valid call"
+    (testing "List secrets has correct response and sends correct request"
       (with-redefs
         [clj-http.client/request
          (fn [req]
