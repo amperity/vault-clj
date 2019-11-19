@@ -47,7 +47,7 @@
         vault-url "https://vault.example.amperity.com"
         client (http-client/http-client vault-url)]
     (vault/authenticate! client :token token-passed-in)
-    (testing "Read responds correctly if secret is successfully located"
+    (testing "Read secrets sends correct request and responds correctly if secret is successfully located"
       (with-redefs
         [clj-http.client/request
          (fn [req]
@@ -56,7 +56,7 @@
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
            {:body lookup-response-valid-path})]
         (is (= {:foo "bar" :ttl "1h"} (vault-kvv1/read-secret client path-passed-in)))))
-    (testing "Read responds correctly if no secret is found"
+    (testing "Read secrets sends correct request and responds correctly if no secret is found"
       (with-redefs
         [clj-http.client/request
          (fn [req]
@@ -84,7 +84,7 @@
         vault-url "https://vault.example.amperity.com"
         client (http-client/http-client vault-url)]
     (vault/authenticate! client :token token-passed-in)
-    (testing "Write writes and returns true upon success"
+    (testing "Write secrets sends correct request and returns true upon success"
       (with-redefs
         [clj-http.client/request
          (fn [req]
@@ -95,7 +95,7 @@
            {:body create-success
             :status 204})]
         (is (true? (vault-kvv1/write-secret! client path-passed-in write-data)))))
-    (testing "Write returns false upon failure"
+    (testing "Write secrets sends correct request and returns false upon failure"
       (with-redefs
         [clj-http.client/request
          (fn [req]

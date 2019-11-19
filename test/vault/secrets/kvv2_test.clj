@@ -18,7 +18,7 @@
                     :cas_require false
                     :delete_version_after "3h25m19s"}]
     (vault/authenticate! client :token token-passed-in)
-    (testing "Config can be updated with valid call"
+    (testing "Write config sends correct request and returns true on valid call"
       (with-redefs
         [clj-http.client/request
          (fn [req]
@@ -39,7 +39,7 @@
         vault-url "https://vault.example.amperity.com"
         client (http-client/http-client vault-url)]
     (vault/authenticate! client :token token-passed-in)
-    (testing "Config can be read with valid call"
+    (testing "Read config sends correct request and returns the config with valid call"
       (with-redefs
         [clj-http.client/request
          (fn [req]
@@ -62,7 +62,7 @@
         vault-url "https://vault.example.amperity.com"
         client (http-client/http-client vault-url)]
     (vault/authenticate! client :token token-passed-in)
-    (testing "Read responds correctly if secret is successfully located"
+    (testing "Read secrets sends correct request and responds correctly if secret is successfully located"
       (with-redefs
         [clj-http.client/request
          (fn [req]
@@ -71,7 +71,7 @@
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
            {:body lookup-response-valid-path})]
         (is (= {:foo "bar"} (vault-kv/read-secret client mount path-passed-in)))))
-    (testing "Read responds correctly if no secret is found"
+    (testing "Read secrets sends correct request and responds correctly if no secret is found"
       (with-redefs
         [clj-http.client/request
          (fn [req]
@@ -108,7 +108,7 @@
         vault-url "https://vault.example.amperity.com"
         client (http-client/http-client vault-url)]
     (vault/authenticate! client :token token-passed-in)
-    (testing "Write writes and returns true upon success"
+    (testing "Write secrets sends correct request and returns true upon success"
       (with-redefs
         [clj-http.client/request
          (fn [req]
@@ -120,7 +120,7 @@
            {:body create-success
             :status 200})]
         (is (= (:data create-success) (vault-kv/write-secret! client mount path-passed-in write-data)))))
-    (testing "Write returns false upon failure"
+    (testing "Write secrets sends correct request and returns false upon failure"
       (with-redefs
         [clj-http.client/request
          (fn [req]
