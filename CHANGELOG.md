@@ -233,7 +233,8 @@ With this version, the project has been forked to the Amperity organization.
 ### Added
 - Initial library implementation.
 
-[Unreleased]: https://github.com/amperity/vault-clj/compare/0.7.0...HEAD
+[Unreleased]: https://github.com/amperity/vault-clj/compare/0.7.1...HEAD
+[0.7.1]: https://github.com/amperity/vault-clj/compare/0.7.0...0.7.1
 [0.7.0]: https://github.com/amperity/vault-clj/compare/0.6.6...0.7.0
 [0.6.6]: https://github.com/amperity/vault-clj/compare/0.6.5...0.6.6
 [0.6.5]: https://github.com/amperity/vault-clj/compare/0.6.4...0.6.5
