@@ -58,21 +58,46 @@
 
   (create-token!
     [this opts]
-    {:request-id ""
-     :lease-id ""
-     :renewable false
-     :lease-duration 0
-     :data nil
-     :wrap-info
-     (when (:wrap-ttl opts)
-       (let [wrap-token (gen-uuid)]
-         (swap! cubbies assoc wrap-token (mock-token-auth))
-         {:token wrap-token
-          :ttl (:wrap-ttl opts)
-          :creation-time (gen-date)
-          :wrapped-accessor (gen-uuid)}))
-     :warnings nil
-     :auth (when-not (:wrap-ttl opts) (mock-token-auth))})
+    (let [dates {\s 1 \m 60 \h 3600 \d 86400}
+
+          ttl-string->seconds-int
+          (fn [ttl]
+            (* (read-string (subs ttl 0 (dec (count ttl))))
+               (or (get dates (last ttl))
+                   (throw (ex-info (str "Mock Client doesn't recognize format of ttl: " ttl)
+                                   {:opts opts :client this})))))]
+      (if (:wrap-ttl opts)
+        (let [wrap-token (gen-uuid)]
+          (swap! cubbies assoc wrap-token (mock-token-auth))
+          {:token            wrap-token
+           :ttl              (ttl-string->seconds-int (:wrap-ttl opts))
+           :creation-time    (gen-date)
+           :wrapped-accessor (gen-uuid)
+           :accessor         (gen-uuid)
+           :creation-path    "auth/token/create"})
+
+        ;; unwrapped
+        (let [policies (cond
+                         (and (:policies opts) (:no-default-policy opts))
+                         (get opts :policies ["root"])
+
+                         (contains? opts :policies)
+                         (into ["default"] (:policies opts))
+
+                         :else
+                         ["root"])]
+          {:policies       policies
+           :renewable      (get opts :renewable false)
+           :entity-id      ""
+           :token-policies policies
+           :accessor       (gen-uuid)
+           :lease-duration (if (:ttl opts)
+                             (ttl-string->seconds-int (:ttl opts))
+                             0)
+           :token-type     "service"
+           :orphan         (get opts :no-parent false)
+           :client-token   (gen-uuid)
+           :metadata       nil}))))
 
 
   (lookup-token
