@@ -96,7 +96,7 @@
                              (ttl-string->seconds-int (:ttl opts))
                              0)
            :token-type     "service"
-           :orphan         (or (:no-parent opts) false)
+           :orphan         (get opts :no-parent false)
            :client-token   (gen-uuid)
            :metadata       nil}))))
 
