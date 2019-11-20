@@ -85,6 +85,20 @@ client and resolve a map of config variables to their secret values.
  :bar "direct-value}
 ```
 
+## Mount Points
+
+The auth mount point configuration can be used to address any of the
+ auth methods under a custom mount point. 
+
+```clojure
+=> (def client (vault-client (assoc (vault/new-client vault-addr)
+                                    :auth-mount-point "auth/mountpath/"
+                                    :lease-renewal-window 00
+                                    :lease-check-period   00
+                                    :lease-check-jitter   00))
+```
+ 
+
 ## License
 
 Copyright © 2016 Amperity, Inc
