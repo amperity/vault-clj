@@ -6,6 +6,7 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 
 ## [Unreleased]
 
+- Bugfix in mock client so that it acts more similarly to http client when creating tokens (create-token!)
 ...
 
 
