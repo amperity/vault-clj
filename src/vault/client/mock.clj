@@ -59,13 +59,19 @@
 
   (create-token!
     [this opts]
-    (let [dates {\s 1 \m 60 \h 3600 \d 86400}]
+    (let [dates {\s 1 \m 60 \h 3600 \d 86400}
+
+          ttl-string->seconds-int
+          (fn [ttl]
+            (* (read-string (subs ttl 0 (dec (count ttl))))
+               (or (get dates (last ttl))
+                   (throw (ex-info (str "Mock Client doesn't recognize format of ttl: " ttl)
+                                   {:opts opts :client this})))))]
       (if (:wrap-ttl opts)
         (let [wrap-token (gen-uuid)]
           (swap! cubbies assoc wrap-token (mock-token-auth))
           {:token            wrap-token
-           :ttl              (* (read-string (subs (:wrap-ttl opts) 0 (dec (count (:wrap-ttl opts)))))
-                                (get dates (last (:wrap-ttl opts))))
+           :ttl              (ttl-string->seconds-int (:wrap-ttl opts))
            :creation-time    (gen-date)
            :wrapped-accessor (gen-uuid)
            :accessor         (gen-uuid)
@@ -74,7 +80,7 @@
         ;; unwrapped
         (let [policies (cond
                          (and (:policies opts) (:no-default-policy opts))
-                         (or (:policies opts) ["root"])
+                         (get opts :policies ["root"])
 
                          (contains? opts :policies)
                          (into ["default"] (:policies opts))
@@ -82,13 +88,12 @@
                          :else
                          ["root"])]
           {:policies       policies
-           :renewable      (or (:renewable opts) false)
+           :renewable      (get opts :renewable false)
            :entity-id      ""
            :token-policies policies
            :accessor       (gen-uuid)
            :lease-duration (if (:ttl opts)
-                             (* (read-string (subs (:ttl opts) 0 (dec (count (:ttl opts)))))
-                                (get dates (last (:ttl opts))))
+                             (ttl-string->seconds-int (:ttl opts))
                              0)
            :token-type     "service"
            :orphan         (or (:no-parent opts) false)
@@ -222,7 +227,6 @@
       (do (swap! cubbies dissoc wrap-token)
           data)
       (throw (ex-info "Unknown wrap-token used" {})))))
-
 
 
 ;; ## Constructors

@@ -1,7 +1,10 @@
 (ns vault.client.mock-test
   (:require
     [clojure.test :refer :all]
-    [vault.core :as vault]))
+    [vault.core :as vault])
+  (:import
+    (clojure.lang
+      ExceptionInfo)))
 
 
 (defn mock-client-authenticated
@@ -38,6 +41,10 @@
       (is (= false (:orphan result)))
       (is (and (string? (:client-token result)) (not (empty? (:client-token result)))))
       (is (contains? result :metadata))))
+  (testing "The client throws a helpful error for debugging if ttl is incorrectly formatted"
+    (is (thrown-with-msg? ExceptionInfo
+                          #"Mock Client doesn't recognize format of ttl"
+          (vault/create-token! (mock-client-authenticated) {:ttl "BLT"}))))
   (testing "The return value of create-token is correct when not wrapped and some less common options are specified"
     (let [result (vault/create-token! (mock-client-authenticated) {:policies ["hello" "goodbye"]
                                                                    :ttl "10s"
