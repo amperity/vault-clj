@@ -6,8 +6,14 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 
 ## [Unreleased]
 
-- Bugfix in mock client so that it acts more similarly to http client when creating tokens (create-token!)
 ...
+
+## [0.7.1] - 2019-11-20
+
+- Bugfix in mock client so that it acts more similarly to http client when creating tokens (create-token!)
+  [#36](https://github.com/amperity/vault-clj/issues/36)
+- Added support for auth mount points to support authentication methods under a custom mount point
+  [#27](https://github.com/amperity/vault-clj/issues/27)
 
 
 ## [0.7.0] - 2019-06-20
@@ -227,7 +233,8 @@ With this version, the project has been forked to the Amperity organization.
 ### Added
 - Initial library implementation.
 
-[Unreleased]: https://github.com/amperity/vault-clj/compare/0.7.0...HEAD
+[Unreleased]: https://github.com/amperity/vault-clj/compare/0.7.1...HEAD
+[0.7.1]: https://github.com/amperity/vault-clj/compare/0.7.0...0.7.1
 [0.7.0]: https://github.com/amperity/vault-clj/compare/0.6.6...0.7.0
 [0.6.6]: https://github.com/amperity/vault-clj/compare/0.6.5...0.6.6
 [0.6.5]: https://github.com/amperity/vault-clj/compare/0.6.4...0.6.5

@@ -54,7 +54,7 @@
       (str "user " username)
       (:auth client)
       (api-util/do-api-request
-        :post (str (:api-url client) "/v1/auth/userpass/login/" username)
+        :post (str (:api-url client) "/v1/auth/userpass/" (:auth-mount-point client) "login/" username)
         (merge
           (:http-opts client)
           {:form-params {:password password}
@@ -70,7 +70,7 @@
       (str "app-id " app)
       (:auth client)
       (api-util/do-api-request
-        :post (str (:api-url client) "/v1/auth/app-id/login")
+        :post (str (:api-url client) "/v1/auth/app-id/" (:auth-mount-point client) "login")
         (merge
           (:http-opts client)
           {:form-params {:app_id app, :user_id user}
@@ -86,7 +86,7 @@
       (str "role-id sha256:" (api-util/sha-256 role-id))
       (:auth client)
       (api-util/do-api-request
-        :post (str (:api-url client) "/v1/auth/approle/login")
+        :post (str (:api-url client) "/v1/auth/approle/" (:auth-mount-point client) "login")
         (merge
           (:http-opts client)
           {:form-params {:role_id role-id, :secret_id secret-id}
@@ -102,7 +102,7 @@
       (str "LDAP user " username)
       (:auth client)
       (api-util/do-api-request
-        :post (str (:api-url client) "/v1/auth/ldap/login/" username)
+        :post (str (:api-url client) "/v1/auth/ldap/" (:auth-mount-point client) "login/" username)
         (merge
           (:http-opts client)
           {:form-params {:password password}
@@ -114,7 +114,7 @@
 (defmethod authenticate* :k8s
   [client _ credentials]
   (let [{:keys [api-path jwt role]} credentials
-        api-path (or api-path "/v1/auth/kubernetes/login")]
+        api-path (or api-path (str "/v1/auth/kubernetes/" (:auth-mount-point client) "login"))]
     (when-not jwt
       (throw (IllegalArgumentException. "Kubernetes auth credentials must include :jwt")))
     (when-not role
