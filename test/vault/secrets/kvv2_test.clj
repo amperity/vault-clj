@@ -1,6 +1,7 @@
 (ns vault.secrets.kvv2-test
   (:require
     [clojure.test :refer [testing deftest is]]
+    [vault.api-util :as api-util]
     [vault.client.http :as http-client]
     [vault.core :as vault]
     [vault.secrets.kvv2 :as vault-kv])
@@ -78,7 +79,7 @@
            (is (= :get (:method req)))
            (is (= (str vault-url "/v1/" mount "/data/different/path") (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
-           (throw (ex-info "not found" {:errors [] :status 404 :type ::api-error})))]
+           (throw (ex-info "not found" {:errors [] :status 404 :type :vault.api-util/api-error})))]
         (try
           (is (= {:default-val :is-here}
                  (vault-kv/read-secret
@@ -86,12 +87,13 @@
                    mount
                    "different/path"
                    {:not-found {:default-val :is-here}})))
+
           (vault-kv/read-secret client mount "different/path")
           (is false)
           (catch ExceptionInfo e
             (is (= {:errors nil
                     :status 404
-                    :type   ::http-client/api-error}
+                    :type   ::api-util/api-error}
                    (ex-data e)))))))))
 
 

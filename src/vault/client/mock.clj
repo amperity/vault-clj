@@ -1,4 +1,5 @@
 (ns vault.client.mock
+  "Defines the mock Vault client"
   (:require
     [clojure.edn :as edn]
     [clojure.java.io :as io]

@@ -68,7 +68,7 @@
           (catch ExceptionInfo e
             (is (= {:errors nil
                     :status 404
-                    :type   :vault.client.http/api-error}
+                    :type   :vault.api-util/api-error}
                    (ex-data e)))))))))
 
 

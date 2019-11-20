@@ -1,6 +1,6 @@
 (ns vault.secrets.kvv2
   (:require
-    [vault.client.http :as http-client]
+    [vault.api-util :as api-util]
     [vault.core :as vault])
   (:import
     (clojure.lang
@@ -14,7 +14,7 @@
 
      (catch ExceptionInfo ex
        (if (and (contains? opts :not-found)
-                (= ::http-client/api-error (:type (ex-data ex)))
+                (= ::api-util/api-error (:type (ex-data ex)))
                 (= 404 (:status (ex-data ex))))
          (:not-found opts)
          (throw ex)))))
