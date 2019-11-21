@@ -122,13 +122,13 @@
            (vault-kvv1/read-secret (mock-test/mock-client-authenticated) "identities"))))
   (testing "Mock client correctly responds with a 404 to non-existent paths"
     (is (thrown-with-msg? ExceptionInfo #"No such secret: hello"
-           (vault-kvv1/read-secret (mock-test/mock-client-authenticated) "hello")))
+          (vault-kvv1/read-secret (mock-test/mock-client-authenticated) "hello")))
     (is (thrown-with-msg? ExceptionInfo #"No such secret: identities"
-                          (vault-kvv1/read-secret (vault/new-client "mock:-") "identities"))))
+          (vault-kvv1/read-secret (vault/new-client "mock:-") "identities"))))
   (testing "Mock client can write/update and read data"
     (let [client (mock-test/mock-client-authenticated)]
       (is (thrown-with-msg? ExceptionInfo #"No such secret: hello"
-                            (vault-kvv1/read-secret client "hello")))
+            (vault-kvv1/read-secret client "hello")))
       (is (true? (vault-kvv1/write-secret! client "hello" {:and-i-say "goodbye"})))
       (is (true? (vault-kvv1/write-secret! client "identities" {:intersect "Chuck"})))
       (is (= {:and-i-say "goodbye"}
