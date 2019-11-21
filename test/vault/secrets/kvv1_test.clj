@@ -1,14 +1,16 @@
 (ns vault.secrets.kvv1-test
   (:require
     [clojure.test :refer [is testing deftest]]
-    [vault.client.http]
     [vault.client.http :as http-client]
+    [vault.client.mock-test :as mock-test]
     [vault.core :as vault]
     [vault.secrets.kvv1 :as vault-kvv1])
   (:import
     (clojure.lang
       ExceptionInfo)))
 
+
+;; -------- HTTP Client -------------------------------------------------------
 
 (deftest list-secrets-test
   (let [path "path/passed/in"
@@ -107,4 +109,37 @@
            {:errors []
             :status 400})]
         (is (false? (vault-kvv1/write-secret! client path-passed-in write-data)))))))
+
+
+;; TODO: TEST DELETE in mock and HTTP
+
+;; -------- Mock Client -------------------------------------------------------
+
+(deftest mock-client-test
+  (testing "Mock client can correctly read values it was initialized with"
+    (is (= {:batman         "Bruce Wayne"
+            :captain-marvel "Carol Danvers"}
+           (vault-kvv1/read-secret (mock-test/mock-client-authenticated) "identities"))))
+  (testing "Mock client correctly responds with a 404 to non-existent paths"
+    (is (thrown-with-msg? ExceptionInfo #"No such secret: hello"
+           (vault-kvv1/read-secret (mock-test/mock-client-authenticated) "hello")))
+    (is (thrown-with-msg? ExceptionInfo #"No such secret: identities"
+                          (vault-kvv1/read-secret (vault/new-client "mock:-") "identities"))))
+  (testing "Mock client can write/update and read data"
+    (let [client (mock-test/mock-client-authenticated)]
+      (is (thrown-with-msg? ExceptionInfo #"No such secret: hello"
+                            (vault-kvv1/read-secret client "hello")))
+      (is (true? (vault-kvv1/write-secret! client "hello" {:and-i-say "goodbye"})))
+      (is (true? (vault-kvv1/write-secret! client "identities" {:intersect "Chuck"})))
+      (is (= {:and-i-say "goodbye"}
+             (vault-kvv1/read-secret client "hello")))
+      (is (= {:intersect       "Chuck"}
+             (vault-kvv1/read-secret client "identities")))))
+  (testing "Mock client can list secrets"
+    (let [client (mock-test/mock-client-authenticated)]
+      (is (empty? (vault-kvv1/list-secrets client "hello")))
+      (is (true? (vault-kvv1/write-secret! client "hello" {:and-i-say "goodbye"})))
+      (is (true? (vault-kvv1/write-secret! client "identities" {:intersect "Chuck"})))
+      (is (= ["identities" "hello"] (into [] (vault/list-secrets client ""))))
+      (is (= ["identities"] (into [] (vault/list-secrets client "identities")))))))
 
