@@ -17,7 +17,7 @@
         vault-url "https://vault.example.amperity.com"
         client (http-client/http-client vault-url)
         new-config {:max_versions 5
-                    :cas_require false
+                    :cas_required false
                     :delete_version_after "3h25m19s"}]
     (vault/authenticate! client :token token-passed-in)
     (testing "Write config sends correct request and returns true on valid call"
@@ -34,7 +34,7 @@
 
 (deftest read-config-test
   (let [config {:max_versions 5
-                :cas_require false
+                :cas_required false
                 :delete_version_after "3h25m19s"}
         mount "mount"
         token-passed-in "fake-token"
@@ -164,4 +164,13 @@
       (is (= {:and-i-say "goodbye"}
              (vault-kvv2/read-secret client "mount" "hello")))
       (is (= {:intersect       "Chuck"}
-             (vault-kvv2/read-secret client "mount" "identities"))))))
+             (vault-kvv2/read-secret client "mount" "identities")))))
+  (testing "Mock client can write and read config"
+    (let [client (mock-client-kvv2)
+          config {:max-versions 5
+                  :cas_required false
+                  :delete_version_after "3h23m19s"}]
+      (is (thrown? ExceptionInfo
+            (vault-kvv2/read-config client "mount")))
+      (is (true? (vault-kvv2/write-config! client "mount" config)))
+      (is (= config (vault-kvv2/read-config client "mount"))))))
