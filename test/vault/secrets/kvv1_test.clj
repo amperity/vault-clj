@@ -164,8 +164,8 @@
       (is (empty? (vault-kvv1/list-secrets client "hello")))
       (is (true? (vault-kvv1/write-secret! client "hello" {:and-i-say "goodbye"})))
       (is (true? (vault-kvv1/write-secret! client "identities" {:intersect "Chuck"})))
-      (is (= ["identities" "hello"] (into [] (vault/list-secrets client ""))))
-      (is (= ["identities"] (into [] (vault/list-secrets client "identities"))))))
+      (is (= ["identities" "hello"] (into [] (vault-kvv1/list-secrets client ""))))
+      (is (= ["identities"] (into [] (vault-kvv1/list-secrets client "identities"))))))
   (testing "Mock client can delete secrets"
     (let [client (mock-test/mock-client-authenticated)]
       (is (true? (vault-kvv1/write-secret! client "hello" {:and-i-say "goodbye"})))

@@ -3,8 +3,9 @@
     [clojure.test :refer [testing deftest is]]
     [vault.api-util :as api-util]
     [vault.client.http :as http-client]
+    [vault.client.mock-test :as mock-test]
     [vault.core :as vault]
-    [vault.secrets.kvv2 :as vault-kv])
+    [vault.secrets.kvv2 :as vault-kvv2])
   (:import
     (clojure.lang
       ExceptionInfo)))
@@ -28,7 +29,7 @@
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
            (is (= new-config (:form-params req)))
            {:status 204})]
-        (is (true? (vault-kv/write-config! client mount new-config)))))))
+        (is (true? (vault-kvv2/write-config! client mount new-config)))))))
 
 
 (deftest read-config-test
@@ -48,7 +49,7 @@
            (is (= (str vault-url "/v1/" mount "/config") (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
            {:body {:data config}})]
-        (is (= config (vault-kv/read-config client mount)))))))
+        (is (= config (vault-kvv2/read-config client mount)))))))
 
 
 (deftest read-test
@@ -71,7 +72,7 @@
            (is (= (str vault-url "/v1/" mount "/data/" path-passed-in) (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
            {:body lookup-response-valid-path})]
-        (is (= {:foo "bar"} (vault-kv/read-secret client mount path-passed-in)))))
+        (is (= {:foo "bar"} (vault-kvv2/read-secret client mount path-passed-in)))))
     (testing "Read secrets sends correct request and responds correctly if no secret is found"
       (with-redefs
         [clj-http.client/request
@@ -82,13 +83,13 @@
            (throw (ex-info "not found" {:errors [] :status 404 :type :vault.api-util/api-error})))]
         (try
           (is (= {:default-val :is-here}
-                 (vault-kv/read-secret
+                 (vault-kvv2/read-secret
                    client
                    mount
                    "different/path"
                    {:not-found {:default-val :is-here}})))
 
-          (vault-kv/read-secret client mount "different/path")
+          (vault-kvv2/read-secret client mount "different/path")
           (is false)
           (catch ExceptionInfo e
             (is (= {:errors nil
@@ -121,7 +122,7 @@
                   (:form-params req)))
            {:body create-success
             :status 200})]
-        (is (= (:data create-success) (vault-kv/write-secret! client mount path-passed-in write-data)))))
+        (is (= (:data create-success) (vault-kvv2/write-secret! client mount path-passed-in write-data)))))
     (testing "Write secrets sends correct request and returns false upon failure"
       (with-redefs
         [clj-http.client/request
@@ -133,4 +134,34 @@
                   (:form-params req)))
            {:errors []
             :status 404})]
-        (is (false? (vault-kv/write-secret! client mount "other-path" write-data)))))))
+        (is (false? (vault-kvv2/write-secret! client mount "other-path" write-data)))))))
+
+
+;; -------- Mock Client -------------------------------------------------------
+
+(defn mock-client-kvv2
+  "Creates a mock client with the data in `vault/secrets/secret-fixture-kvv2.edn`"
+  []
+  (mock-test/mock-client-authenticated "vault/secrets/secret-fixture-kvv2.edn"))
+
+
+(deftest mock-client-test
+  (testing "Mock client can correctly read values it was initialized with"
+    (is (= {:batman         "Bruce Wayne"
+            :captain-marvel "Carol Danvers"}
+           (vault-kvv2/read-secret (mock-client-kvv2) "mount" "identities"))))
+  (testing "Mock client correctly responds with a 404 to reading non-existent paths"
+    (is (thrown-with-msg? ExceptionInfo #"No such secret: mount/data/hello"
+          (vault-kvv2/read-secret (mock-client-kvv2) "mount" "hello")))
+    (is (thrown-with-msg? ExceptionInfo #"No such secret: mount/data/identities"
+          (vault-kvv2/read-secret (vault/new-client "mock:-") "mount" "identities"))))
+  (testing "Mock client can write/update and read data"
+    (let [client (mock-client-kvv2)]
+      (is (thrown-with-msg? ExceptionInfo #"No such secret: mount/data/hello"
+            (vault-kvv2/read-secret client "mount" "hello")))
+      (is (true? (vault-kvv2/write-secret! client "mount" "hello" {:and-i-say "goodbye"})))
+      (is (true? (vault-kvv2/write-secret! client "mount" "identities" {:intersect "Chuck"})))
+      (is (= {:and-i-say "goodbye"}
+             (vault-kvv2/read-secret client "mount" "hello")))
+      (is (= {:intersect       "Chuck"}
+             (vault-kvv2/read-secret client "mount" "identities"))))))
