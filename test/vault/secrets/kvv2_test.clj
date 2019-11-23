@@ -170,7 +170,7 @@
                (is (= :post (:method req)))
                (is (= (str vault-url "/v1/" mount "/delete/" path-passed-in) (:url req)))
                (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
-               (is (= [12 14 147] (:form-params req)))
+               (is (= {:versions [12 14 147]} (:form-params req)))
                {:status 204})]
             (is (true? (vault-kvv2/delete-secret! client mount path-passed-in [12 14 147])))))
         (testing "delete secrets send correct request and returns false upon failure when multiple versions passed in"
@@ -180,7 +180,7 @@
                (is (= :post (:method req)))
                (is (= (str vault-url "/v1/" mount "/delete/" path-passed-in) (:url req)))
                (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
-               (is (= [123] (:form-params req)))
+               (is (= {:versions [123]} (:form-params req)))
                {:status 404})]
             (is (false? (vault-kvv2/delete-secret! client mount path-passed-in [123])))))))))
 

@@ -51,6 +51,6 @@
   ([client mount path versions]
    (if (empty? versions)
      (vault/delete-secret! client (str mount "/data/" path))
-     (vault/write-secret! client (str mount "/delete/" path) versions)))
+     (vault/write-secret! client (str mount "/delete/" path) {:versions versions})))
   ([client mount path]
    (delete-secret! client mount path nil)))
