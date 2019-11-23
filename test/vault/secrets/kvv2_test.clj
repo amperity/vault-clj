@@ -137,6 +137,54 @@
         (is (false? (vault-kvv2/write-secret! client mount "other-path" write-data)))))))
 
 
+(deftest delete-test
+  (let [mount "mount"
+        path-passed-in "path/passed/in"
+        token-passed-in "fake-token"
+        vault-url "https://vault.example.amperity.com"
+        client (http-client/http-client vault-url)]
+    (vault/authenticate! client :token token-passed-in)
+    (testing "delete secrets send correct request and returns true upon success when no versions passed in"
+      (with-redefs
+        [clj-http.client/request
+         (fn [req]
+           (is (= :delete (:method req)))
+           (is (= (str vault-url "/v1/" mount "/data/" path-passed-in) (:url req)))
+           (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
+           {:status 204})]
+        (is (true? (vault-kvv2/delete-secret! client mount path-passed-in))
+            (is (true? (vault-kvv2/delete-secret! client mount path-passed-in []))))
+        (testing "delete secrets send correct request and returns false upon failure when no versions passed in"
+          (with-redefs
+            [clj-http.client/request
+             (fn [req]
+               (is (= :delete (:method req)))
+               (is (= (str vault-url "/v1/" mount "/data/" path-passed-in) (:url req)))
+               (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
+               {:status 404})]
+            (is (false? (vault-kvv2/delete-secret! client mount path-passed-in)))))
+        (testing "delete secrets send correct request and returns true upon success when multiple versions passed in"
+          (with-redefs
+            [clj-http.client/request
+             (fn [req]
+               (is (= :post (:method req)))
+               (is (= (str vault-url "/v1/" mount "/delete/" path-passed-in) (:url req)))
+               (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
+               (is (= [12 14 147] (:form-params req)))
+               {:status 204})]
+            (is (true? (vault-kvv2/delete-secret! client mount path-passed-in [12 14 147])))))
+        (testing "delete secrets send correct request and returns false upon failure when multiple versions passed in"
+          (with-redefs
+            [clj-http.client/request
+             (fn [req]
+               (is (= :post (:method req)))
+               (is (= (str vault-url "/v1/" mount "/delete/" path-passed-in) (:url req)))
+               (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
+               (is (= [123] (:form-params req)))
+               {:status 404})]
+            (is (false? (vault-kvv2/delete-secret! client mount path-passed-in [123])))))))))
+
+
 ;; -------- Mock Client -------------------------------------------------------
 
 (defn mock-client-kvv2
@@ -173,4 +221,12 @@
       (is (thrown? ExceptionInfo
             (vault-kvv2/read-config client "mount")))
       (is (true? (vault-kvv2/write-config! client "mount" config)))
-      (is (= config (vault-kvv2/read-config client "mount"))))))
+      (is (= config (vault-kvv2/read-config client "mount")))))
+  (testing "Mock client returns true if path is found on delete for secret, false if not when no versions specified"
+    (let [client (mock-client-kvv2)]
+      (is (true? (vault-kvv2/delete-secret! client "mount" "identities")))
+      (is (false? (vault-kvv2/delete-secret! client "mount" "eggsactly")))))
+  (testing "Mock client always returns true on delete for secret when versions specified"
+    (let [client (mock-client-kvv2)]
+      (is (true? (vault-kvv2/delete-secret! client "mount" "identities" [1])))
+      (is (true? (vault-kvv2/delete-secret! client "mount" "eggsactly" [4 5 6]))))))

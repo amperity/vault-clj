@@ -200,8 +200,9 @@
 
   (delete-secret!
     [this path]
-    (swap! memory dissoc path)
-    true)
+    (let [was-in-memeory (contains? @memory path)]
+      (swap! memory dissoc path)
+      was-in-memeory))
 
 
   vault/WrappingClient
