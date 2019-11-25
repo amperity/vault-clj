@@ -138,15 +138,23 @@
 
   (list-secrets
     [client path]
-    "List the secrets located under a path.")
+    "Returns a vector of the secrets names located under a path.
+
+     Params:
+     - `client`: `vault.client`, A client that handles vault auth and reading
+     - `path`: `String`, the path in vault of the secret you wish to read")
 
   (read-secret
     [client path opts]
-    "Reads a secret from a path. Returns the full map of stored secret data if
-    the secret exists, or throws an exception if not.
+    "Reads a resource from a path. Returns the full map of stored data if the resource exists, or throws an exception
+    if not.
+
+    Params:
+    - `client`: `vault.client`, A client that handles vault auth and reading
+    - `path`: `String`, the path in vault of the secret you wish to read
+    - `opts`: `map`, Further optional read described below.
 
     Additional options may include:
-
     - `:not-found`
       If the requested path is not found, return this value instead of throwing
       an exception.
@@ -160,13 +168,20 @@
 
   (write-secret!
     [client path data]
-    "Writes secret data to a path. `data` should be a map. Returns a
-    boolean indicating whether the write was successful.")
+    "Writes secret data to a path. Returns a boolean indicating whether the write was successful.
+
+    Params:
+    - `client`: `vault.client`, A client that handles vault auth and reading
+    - `path`: `String`, the path in vault of the secret you wish to read
+    - `data`: `map`, Further optional read described below.")
 
   (delete-secret!
     [client path]
-    "Removes secret data from a path. Returns a boolean indicating whether the
-    deletion was successful."))
+    "Removes secret data from a path. Returns a boolean indicating whether the deletion was successful.
+
+    Params:
+    - `client`: `vault.client`, A client that handles vault auth and reading
+    - `path`: `String`, the path in vault of the secret you wish to read"))
 
 
 (defprotocol WrappingClient
