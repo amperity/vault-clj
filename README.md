@@ -39,7 +39,10 @@ Leiningen, add the following dependency to your project definition:
  :lease-timer nil
  :leases #<Atom@640b3e30 {}>}
 
-=> (vault/read-secret client "secret/foo/bar")
+; Pull in the secret engine you wish to use:
+=> (require '[vault.secrets.kvv1 :as kvv1])
+
+=> (kvv1/read-secret client "secret/foo/bar")
 {:data "baz qux"}
 ```
 
@@ -57,9 +60,47 @@ secret fixture data.
 
 => (def mock-client (vault/new-client "mock:dev/secrets.edn"))
 
+; Pull in the secret engine you wish to use:
+=> (require '[vault.secrets.kvv1 :as kvv1])
+
 => (vault/read-secret mock-client "secret/service/foo/login")
 {:user "foo", :pass "abc123"}
 ```
+
+## Secret Engines
+Vault supports many different [secret engines](https://www.vaultproject.io/docs/secrets/), each with very different
+capabilities. For the most part, secrets engine behave similar to virtual filesystems, supporting CRUD operations.
+Secret engines are very flexible, so please check out the [Vault docs](https://www.vaultproject.io/docs/secrets/)
+for more info.
+
+**You should require these for any operations involving secrets in Vault, preferring them to the basic CRUD operations
+exposed in `vault.core`**
+
+### Currently Supported Secret Engines
+
+#### [KV V1](https://www.vaultproject.io/docs/secrets/kv/kv-v1.html)
+
+```clojure
+(require '[vault.secrets.kvv1 :as kvv1])
+```
+
+#### [KV V2](https://www.vaultproject.io/docs/secrets/kv/kv-v2.html)
+
+```clojure
+(require '[vault.secrets.kvv2 :as kvv2])
+```
+
+### Adding your own Secret Engines
+Custom secret engines can be added without contributing to `vault-clj`, but we appreciate PRs adding support for new
+engines!
+
+Most operations on Vault secret engines can break down into some combination of logical CRUD operations that the Vault
+clients expose. These CRUD operations are outlined by the `vault.core/SecretEngine` protocol. This allows our mocking
+to work out of the box for some operations if engines are written to send Vault API calls through the client, as the
+diagram below describes:
+
+![vault-clj Multi-engine Support](./vault-clj_multi-engine_support.png)
+
 
 ## Environment Resolution
 
@@ -82,10 +123,10 @@ client and resolve a map of config variables to their secret values.
      [:foo-user :foo-pass :bar])
 {:foo-user "foo"
  :foo-pass "abc123"
- :bar "direct-value}
+ :bar "direct-value"}
 ```
 
-## Mount Points
+## Auth Mount Points
 
 The auth mount point configuration can be used to address any of the
  auth methods under a custom mount point. 
@@ -95,7 +136,7 @@ The auth mount point configuration can be used to address any of the
                                     :auth-mount-point "auth/mountpath/"
                                     :lease-renewal-window 00
                                     :lease-check-period   00
-                                    :lease-check-jitter   00))
+                                    :lease-check-jitter   00)))
 ```
  
 
