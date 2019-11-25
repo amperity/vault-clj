@@ -1,4 +1,5 @@
 (ns vault.secrets.kvv1
+  "Interface for communicating with a Vault key value version 1 secret store (generic)"
   (:require
     [vault.core :as vault]))
 
@@ -7,8 +8,8 @@
   "Returns a vector of the secrets names located under a path.
 
   Params:
-  - `client`: `vault.client`, A client that handles vault auth and reading
-  - `path`: `String`, the path in vault of the secret you wish to read"
+  - `client`: `vault.client`, A client that handles vault auth, leases, and basic CRUD ops
+  - `path`: `String`, the path in vault of the secret you wish to list secrets at"
   [client path]
   (vault/list-secrets client path))
 
@@ -18,12 +19,11 @@
   the secret exists, or throws an exception if not.
 
   Params:
-  - `client`: `vault.client`, A client that handles vault auth and reading
+  - `client`: `vault.client`, A client that handles vault auth, leases, and basic CRUD ops
   - `path`: `String`, the path in vault of the secret you wish to read
   - `opts`: `map`, Further optional read described below.
 
   Additional options may include:
-
   - `:not-found`
     If the requested path is not found, return this value instead of throwing
     an exception.
@@ -44,8 +44,8 @@
   "Writes secret data to a path. Returns a boolean indicating whether the write was successful.
 
    Params:
-   - `client`: `vault.client`, A client that handles vault auth and reading
-   - `path`: `String`, the path in vault of the secret you wish to read
+   - `client`: `vault.client`, A client that handles vault auth, leases, and basic CRUD ops
+   - `path`: `String`, the path in vault of the secret you wish to write the secret to
    - `data`: `map`, The data you wish to write to the given secret path."
   [client path data]
   (vault/write-secret! client path data))
@@ -55,7 +55,7 @@
   "Removes secret data from a path. Returns a boolean indicating whether the deletion was successful.
 
    Params:
-   - `client`: `vault.client`, A client that handles vault auth and reading
-   - `path`: `String`, the path in vault of the secret you wish to read"
+   - `client`: `vault.client`, A client that handles vault auth, leases, and basic CRUD ops
+   - `path`: `String`, the path in vault of the secret you wish to delete"
   [client path]
   (vault/delete-secret! client path))

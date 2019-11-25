@@ -134,15 +134,16 @@
 (defprotocol SecretEngine
   "Basic API for listing, reading, and writing secrets.
 
-  `eng` is a keyword representing the secret engine/mount"
+  **NOTE**: These are meant to be used as basic CRUD operations on Vault and is helpful for writing new Secret Engines.
+  End users will likely want to use Secret Engines directly (see `vault.secrets`)"
 
   (list-secrets
     [client path]
     "Returns a vector of the secrets names located under a path.
 
      Params:
-     - `client`: `vault.client`, A client that handles vault auth and reading
-     - `path`: `String`, the path in vault of the secret you wish to read")
+     - `client`: `vault.client`, A client that handles vault auth, leases, and basic CRUD ops
+     - `path`: `String`, the path in vault of the secret you wish to list secrets at")
 
   (read-secret
     [client path opts]
@@ -150,7 +151,7 @@
     if not.
 
     Params:
-    - `client`: `vault.client`, A client that handles vault auth and reading
+    - `client`: `vault.client`, A client that handles vault auth, leases, and basic CRUD ops
     - `path`: `String`, the path in vault of the secret you wish to read
     - `opts`: `map`, Further optional read described below.
 
@@ -171,17 +172,17 @@
     "Writes secret data to a path. Returns a boolean indicating whether the write was successful.
 
     Params:
-    - `client`: `vault.client`, A client that handles vault auth and reading
-    - `path`: `String`, the path in vault of the secret you wish to read
-    - `data`: `map`, Further optional read described below.")
+    - `client`: `vault.client`, A client that handles vault auth, leases, and basic CRUD ops
+    - `path`: `String`, the path in vault of the secret you wish to write the secret to
+    - `data`: `map`, the data you wish to write to the given path.")
 
   (delete-secret!
     [client path]
     "Removes secret data from a path. Returns a boolean indicating whether the deletion was successful.
 
     Params:
-    - `client`: `vault.client`, A client that handles vault auth and reading
-    - `path`: `String`, the path in vault of the secret you wish to read"))
+    - `client`: `vault.client`, A client that handles vault auth, leases, and basic CRUD ops
+    - `path`: `String`, the path in vault of the secret you wish to delete the secret from"))
 
 
 (defprotocol WrappingClient
