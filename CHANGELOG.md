@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 This change log follows the conventions of [keepachangelog.com](http://keepachangelog.com/).
 
 ## [Unreleased]
+- Large internal refactors that may result in unexpected behavior
+  [#35](https://github.com/amperity/vault-clj/pull/35)
+- Added support for the KV V2 API
+  [#33](https://github.com/amperity/vault-clj/issues/33)
+- Added support for externally defined secret engines
+  [#33](https://github.com/amperity/vault-clj/issues/33)
+- Bugfix for mocking delete
+  [#35](https://github.com/amperity/vault-clj/pull/35)
 
 ...
 
