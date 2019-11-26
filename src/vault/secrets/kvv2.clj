@@ -1,7 +1,7 @@
 (ns vault.secrets.kvv2
   "Interface for communicating with a Vault key value version 2 secret store (kv)"
   (:require
-    [vault.api-util :as api-util]
+    [vault.client.api-util :as api-util]
     [vault.core :as vault])
   (:import
     (clojure.lang

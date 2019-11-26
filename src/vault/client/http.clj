@@ -4,7 +4,7 @@
     [clojure.string :as str]
     [clojure.tools.logging :as log]
     [com.stuartsierra.component :as component]
-    [vault.api-util :as api-util]
+    [vault.client.api-util :as api-util]
     [vault.authenticate :as authenticate]
     [vault.core :as vault]
     [vault.lease :as lease]

@@ -1,4 +1,4 @@
-(ns vault.api-util
+(ns vault.client.api-util
   (:require
     [cheshire.core :as json]
     [clj-http.client :as http]

@@ -3,7 +3,7 @@
   (:require
     [clojure.string :as str]
     [clojure.tools.logging :as log]
-    [vault.api-util :as api-util]
+    [vault.client.api-util :as api-util]
     [vault.core :as vault])
   (:import
     java.time.Instant))
@@ -169,7 +169,7 @@
                   (:lease-id new-info))
         (watch-fn new-info)))))
 
-;; Larger scale lease logic
+;; ----- Lease operations that work on the client level -----------------------
 
 (defn ^:no-doc try-renew-lease!
   "Attempts to renew the given secret lease. Updates the lease store or catches
