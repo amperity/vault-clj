@@ -5,8 +5,9 @@
     [clojure.string :as str]
     [clojure.tools.namespace.repl :refer [refresh]]
     [com.stuartsierra.component :as component]
+    [vault.client.http]
+    [vault.client.mock]
     [vault.core :as vault]
-    (vault.client http mock)
     [vault.env :as venv]
     [vault.lease :as lease]))
 

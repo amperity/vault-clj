@@ -1,13 +1,12 @@
 (ns vault.client.mock
+  "Defines the mock Vault client"
   (:require
     [clojure.edn :as edn]
     [clojure.java.io :as io]
     [clojure.string :as str]
-    [clojure.tools.logging :as log]
     [vault.core :as vault])
   (:import
     java.net.URI
-    java.text.SimpleDateFormat
     (java.util
       Date
       UUID)))
@@ -177,16 +176,11 @@
     this)
 
 
-  vault/SecretClient
+  vault/SecretEngine
 
   (list-secrets
     [this path]
     (filter #(str/starts-with? % (str path)) (keys @memory)))
-
-
-  (read-secret
-    [this path]
-    (.read-secret this path nil))
 
 
   (read-secret
@@ -206,8 +200,9 @@
 
   (delete-secret!
     [this path]
-    (swap! memory dissoc path)
-    true)
+    (let [was-in-memeory (contains? @memory path)]
+      (swap! memory dissoc path)
+      was-in-memeory))
 
 
   vault/WrappingClient

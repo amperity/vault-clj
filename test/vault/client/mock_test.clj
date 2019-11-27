@@ -8,11 +8,13 @@
 
 
 (defn mock-client-authenticated
-  "A mock vault client using the secrets found in `resources/secret-fixture.edn`"
-  []
-  (let [client (vault/new-client "mock:amperity/gocd/secret/vault/secret-fixture.edn")]
-    (vault/authenticate! client :token "fake-token")
-    client))
+  "A mock vault client using the secrets found in the given path, defaults to `vault/client/secret-fixture-logical.edn`"
+  ([path]
+   (let [client (vault/new-client (str "mock:" path))]
+     (vault/authenticate! client :token "fake-token")
+     client))
+  ([]
+   (mock-client-authenticated "vault/client/secret-fixture-logical.edn")))
 
 
 (deftest create-token!-test

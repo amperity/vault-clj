@@ -11,7 +11,8 @@
     ; For extensions to vault.core/new-client multimethod.
     [vault.client.http]
     [vault.client.mock]
-    [vault.core :as vault]))
+    [vault.core :as vault]
+    [vault.secrets.kvv1 :as vault-kvv1]))
 
 
 (def vault-prefix "vault:")
@@ -76,17 +77,17 @@
     (let [client (vault/new-client addr)]
       (cond
         (env :vault-token)
-          (vault/authenticate! client :token (env :vault-token))
+        (vault/authenticate! client :token (env :vault-token))
         (env :vault-wrap-token)
-          (vault/authenticate! client :wrap-token (env :vault-wrap-token))
+        (vault/authenticate! client :wrap-token (env :vault-wrap-token))
         (and (env :vault-app-id) (env :vault-user-id))
-          (vault/authenticate! client :app-id {:app (env :vault-app-id)
-                                               :user (env :vault-user-id)})
+        (vault/authenticate! client :app-id {:app (env :vault-app-id)
+                                             :user (env :vault-user-id)})
         (and (env :vault-role-id) (env :vault-secret-id))
-          (vault/authenticate! client :app-role {:role-id (env :vault-role-id)
-                                                 :secret-id (env :vault-secret-id)})
+        (vault/authenticate! client :app-role {:role-id (env :vault-role-id)
+                                               :secret-id (env :vault-secret-id)})
         :else
-          (log/warn "No authentication information found in environment!"))
+        (log/warn "No authentication information found in environment!"))
       client)))
 
 
@@ -98,7 +99,7 @@
     (throw (ex-info "Cannot resolve secret without initialized client"
                     {:uri vault-uri})))
   (let [[path attr] (str/split (subs vault-uri (count vault-prefix)) #"#")
-        secret (vault/read-secret client path)
+        secret (vault-kvv1/read-secret client path)
         attr (or (keyword attr) :data)
         value (get secret attr)]
     (when (nil? value)
