@@ -230,6 +230,38 @@
                                                                         :force-read true})))))))
 
 
+(deftest write-metadata
+  (let [payload {:max_versions 5,
+                 :cas_required false,
+                 :delete_version_after "3h25m19s"}
+        mount "mount"
+        path-passed-in "path/passed/in"
+        token-passed-in "fake-token"
+        vault-url "https://vault.example.amperity.com"
+        client (http-client/http-client vault-url)]
+    (vault/authenticate! client :token token-passed-in)
+    (testing "Write metadata sends correct request and responds with true upon success"
+      (with-redefs
+        [clj-http.client/request
+         (fn [req]
+           (is (= :post (:method req)))
+           (is (= (str vault-url "/v1/" mount "/metadata/" path-passed-in) (:url req)))
+           (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
+           (is (= payload (:form-params req)))
+           {:status 204})]
+        (is (= (true? (vault-kvv2/write-metadata! client mount path-passed-in payload))))))
+    (testing "Write metadata sends correct request and responds with false upon failure"
+      (with-redefs
+        [clj-http.client/request
+         (fn [req]
+           (is (= :post (:method req)))
+           (is (= (str vault-url "/v1/" mount "/metadata/" path-passed-in) (:url req)))
+           (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
+           (is (= payload (:form-params req)))
+           {:status 500})]
+        (is (= (false? (vault-kvv2/write-metadata! client mount path-passed-in payload))))))))
+
+
 ;; -------- Mock Client -------------------------------------------------------
 
 (defn mock-client-kvv2
@@ -271,16 +303,17 @@
     (let [client (mock-client-kvv2)]
       (is (thrown? ExceptionInfo
             (vault-kvv2/read-metadata client "mount" "doesn't exist" {:force-read true})))
-      (is (= {:data
-              {:created_time    "2018-03-22T02:24:06.945319214Z"
-               :current_version 1
-               :max_versions    0
-               :oldest_version  0
-               :updated_time    "2018-03-22T02:36:43.986212308Z"
-               :versions        {:1 {:created_time  "2018-03-22T02:24:06.945319214Z"
-                                     :deletion_time ""
-                                     :destroyed     false}}}}
+      (is (= {:created_time    "2018-03-22T02:24:06.945319214Z"
+              :current_version 1
+              :max_versions    0
+              :oldest_version  0
+              :updated_time    "2018-03-22T02:36:43.986212308Z"
+              :versions        {:1 {:created_time  "2018-03-22T02:24:06.945319214Z"
+                                    :deletion_time ""
+                                    :destroyed     false}}}
              (vault-kvv2/read-metadata client "mount" "identities" {:force-read true})))
+      (is (= (true? (vault-kvv2/write-metadata! client "mount" "hello" {:max-versions 3}))))
+      (is (= 3 (:max-versions (vault-kvv2/read-metadata client "mount" "hello"))))
       (is (= 5 (vault-kvv2/read-metadata client "mount" "doesn't exist" {:force-read true
                                                                          :not-found 5})))))
   (testing "Mock client returns true if path is found on delete for secret, false if not when no versions specified"

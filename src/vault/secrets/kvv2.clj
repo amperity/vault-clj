@@ -85,7 +85,8 @@
 
   Params:
   - `client`: `vault.client`, A client that handles vault auth, leases, and basic CRUD ops
-  - `path`: `String`, the path in vault of the secret you wish to read
+  - `mount`: `String`, the secret engine mount point you wish to read secret metadata in
+  - `path`: `String`, the path in vault of the secret you wish to read metadata for
   - `opts`: `map`, options to affect the read call, see `vault.core/read-secret` for more details"
   ([client mount path opts]
    (api-util/support-not-found
@@ -93,6 +94,28 @@
      opts))
   ([client mount path]
    (read-metadata client mount path nil)))
+
+
+(defn write-metadata!
+  "Creates a new version of a secret at the specified location. If the value does not yet exist, the calling token
+  must have an ACL policy granting the create capability. If the value already exists, the calling token must have an
+  ACL policy granting the update capability. Returns a boolean indicating whether the write was successful.
+
+  Params:
+  - `client`: `vault.client`, A client that handles vault auth, leases, and basic CRUD ops
+  - `mount`: `String`, the secret engine mount point you wish to write secret metadata in
+  - `path`: `String`, the path in vault of the secret you wish to write metadata for'
+  - `metadata`: `map` the metadata you wish to write.
+
+  Metadata options are:
+  -`:max_versions`: `int`, The number of versions to keep per key. This value applies to all keys, but a key's
+  metadata setting can overwrite this value. Once a key has more than the configured allowed versions the oldest
+  version will be permanently deleted. Defaults to 10.
+  -`:cas_required`: `boolean`, – If true all keys will require the cas parameter to be set on all write requests.
+  - :delete_version_after` `String` – If set, specifies the length of time before a version is deleted.
+  Accepts Go duration format string."
+  [client mount path metadata]
+  (vault/write-secret! client (str mount "/metadata/" path) metadata))
 
 
 (defn delete-secret!
