@@ -15,18 +15,18 @@
 
 ;; ## API Utilities
 
-(defmacro supports-not-found
-  "Tries to-try, and if a 404 occurs, looks for :not-found in to-try-opts"
-  [to-try to-try-opts]
-  (let [try-map (gensym 'api-options)]
+(defmacro support-not-found
+  "Tries to perform the api call, and if a 404 occurs, looks for :not-found in on-fail-opts"
+  [vault-api-call on-fail-opts]
+  (let [fail-map (gensym 'api-options)]
     `(try
-       ~to-try
+       ~vault-api-call
        (catch ExceptionInfo ex#
-         (let [~try-map ~to-try-opts]
-           (if (and (contains? ~try-map :not-found)
+         (let [~fail-map ~on-fail-opts]
+           (if (and (contains? ~fail-map :not-found)
                     (= ::api-error (:type (ex-data ex#)))
                     (= 404 (:status (ex-data ex#))))
-             (:not-found ~try-map)
+             (:not-found ~fail-map)
              (throw ex#)))))))
 
 
