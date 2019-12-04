@@ -6,12 +6,29 @@
     [clojure.tools.logging :as log]
     [clojure.walk :as walk])
   (:import
+    (clojure.lang
+      ExceptionInfo)
     (java.security
       MessageDigest)
     (org.apache.commons.codec.binary
       Hex)))
 
 ;; ## API Utilities
+
+(defmacro supports-not-found
+  "Tries to-try, and if a 404 occurs, looks for :not-found in to-try-opts"
+  [to-try to-try-opts]
+  (let [try-map (gensym 'api-options)]
+    `(try
+       ~to-try
+       (catch ExceptionInfo ex#
+         (let [~try-map ~to-try-opts]
+           (if (and (contains? ~try-map :not-found)
+                    (= ::api-error (:type (ex-data ex#)))
+                    (= 404 (:status (ex-data ex#))))
+             (:not-found ~try-map)
+             (throw ex#)))))))
+
 
 (defn ^:no-doc kebabify-keys
   "Rewrites keyword map keys with underscores changed to dashes."

@@ -2,10 +2,7 @@
   "Interface for communicating with a Vault key value version 2 secret store (kv)"
   (:require
     [vault.client.api-util :as api-util]
-    [vault.core :as vault])
-  (:import
-    (clojure.lang
-      ExceptionInfo)))
+    [vault.core :as vault]))
 
 
 (defn read-secret
@@ -29,15 +26,9 @@
   - `:force-read`, `boolean`
     Force the secret to be read from the server even if there is a valid lease cached."
   ([client mount path opts]
-   (try
+   (api-util/supports-not-found
      (:data (vault/read-secret client (str mount "/data/" path) (dissoc opts :not-found)))
-
-     (catch ExceptionInfo ex
-       (if (and (contains? opts :not-found)
-                (= ::api-util/api-error (:type (ex-data ex)))
-                (= 404 (:status (ex-data ex))))
-         (:not-found opts)
-         (throw ex)))))
+     opts))
   ([client mount path]
    (read-secret client mount path nil)))
 
@@ -87,6 +78,21 @@
    (vault/read-secret client (str mount "/config") opts))
   ([client mount]
    (read-config client mount nil)))
+
+
+(defn read-metadata
+  "Returns  retrieves the metadata and versions for the secret at the specified path.
+
+  Params:
+  - `client`: `vault.client`, A client that handles vault auth, leases, and basic CRUD ops
+  - `path`: `String`, the path in vault of the secret you wish to read
+  - `opts`: `map`, options to affect the read call, see `vault.core/read-secret` for more details"
+  ([client mount path opts]
+   (api-util/supports-not-found
+     (vault/read-secret client (str mount "/metadata/" path) (dissoc opts :not-found))
+     opts))
+  ([client mount path]
+   (read-metadata client mount path nil)))
 
 
 (defn delete-secret!
