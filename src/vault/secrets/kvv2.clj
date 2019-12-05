@@ -96,10 +96,23 @@
   Params:
   - `client`: `vault.client`, A client that handles vault auth, leases, and basic CRUD ops
   - `mount`: `String`, the path in vault of the secret engine you wish to configure
-  - `path`: `String`, the path aligned to the secret you wish to delete
-  - `versions`: `vector<int>`, the versions you want to delete"
+  - `path`: `String`, the path aligned to the secret you wish to destroy
+  - `versions`: `vector<int>`, the versions you want to destroy"
   [client mount path versions]
   (vault/write-secret! client (str mount "/destroy/" path) {:versions versions}))
+
+
+(defn undelete-secret!
+  "Undeletes the data for the provided version and path in the key-value store. This restores the data, allowing it to
+  be returned on get requests.
+
+  Params:
+  - `client`: `vault.client`, A client that handles vault auth, leases, and basic CRUD ops
+  - `mount`: `String`, the path in vault of the secret engine you wish to configure
+  - `path`: `String`, the path aligned to the secret you wish to undelete
+  - `versions`: `vector<int>`, the versions you want to undelete"
+  [client mount path versions]
+  (vault/write-secret! client (str mount "/undelete/" path) {:versions versions}))
 
 
 (defn delete-secret!
