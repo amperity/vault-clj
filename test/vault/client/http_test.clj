@@ -1,8 +1,8 @@
 (ns vault.client.http-test
   (:require
     [clojure.test :refer :all]
-    [vault.client.api-util :as api-util]
     [vault.authenticate :as authenticate]
+    [vault.client.api-util :as api-util]
     [vault.client.http :refer [http-client]]
     [vault.core :as vault]
     [vault.secrets.kvv1 :as vault-kvv1]))
