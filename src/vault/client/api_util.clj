@@ -18,16 +18,15 @@
 (defmacro support-not-found
   "Tries to perform the api call, and if a 404 occurs, looks for :not-found in on-fail-opts"
   [vault-api-call on-fail-opts]
-  (let [fail-map (gensym 'api-options)]
-    `(try
-       ~vault-api-call
-       (catch ExceptionInfo ex#
-         (let [~fail-map ~on-fail-opts]
-           (if (and (contains? ~fail-map :not-found)
-                    (= ::api-error (:type (ex-data ex#)))
-                    (= 404 (:status (ex-data ex#))))
-             (:not-found ~fail-map)
-             (throw ex#)))))))
+  `(try
+     ~vault-api-call
+     (catch ExceptionInfo ex#
+       (let [api-fail-options# ~on-fail-opts]
+         (if (and (contains? api-fail-options# :not-found)
+                  (= ::api-error (:type (ex-data ex#)))
+                  (= 404 (:status (ex-data ex#))))
+           (:not-found api-fail-options#)
+           (throw ex#))))))
 
 
 (defn ^:no-doc kebabify-keys
