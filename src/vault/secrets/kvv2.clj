@@ -132,3 +132,14 @@
      (vault/write-secret! client (str mount "/delete/" path) {:versions versions})))
   ([client mount path]
    (delete-secret! client mount path nil)))
+
+
+(defn delete-metadata!
+  "Permanently deletes the key metadata and all version data for the specified key.
+  All version history will be removed. This cannot be undone. A boolean indicating deletion success is returned.
+
+  - `client`: `vault.client`, A client that handles vault auth, leases, and basic CRUD ops
+  - `mount`: `String`, the Vault secret mount (the part of the path which determines which secret engine is used)
+  - `path`: `String`, the path aligned to the secret you wish to delete all data for"
+  [client mount path]
+  (vault/delete-secret! client (str mount "/metadata/" path)))

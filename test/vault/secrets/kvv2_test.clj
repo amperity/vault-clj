@@ -249,7 +249,7 @@
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
            (is (= payload (:form-params req)))
            {:status 204})]
-        (is (= (true? (vault-kvv2/write-metadata! client mount path-passed-in payload))))))
+        (is (true? (vault-kvv2/write-metadata! client mount path-passed-in payload)))))
     (testing "Write metadata sends correct request and responds with false upon failure"
       (with-redefs
         [clj-http.client/request
@@ -259,7 +259,34 @@
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
            (is (= payload (:form-params req)))
            {:status 500})]
-        (is (= (false? (vault-kvv2/write-metadata! client mount path-passed-in payload))))))))
+        (is (false? (vault-kvv2/write-metadata! client mount path-passed-in payload)))))))
+
+
+(deftest delete-metadata
+  (let [mount "mount"
+        path-passed-in "path/passed/in"
+        token-passed-in "fake-token"
+        vault-url "https://vault.example.amperity.com"
+        client (http-client/http-client vault-url)]
+    (vault/authenticate! client :token token-passed-in)
+    (testing "Sends correct request and responds correctly upon success"
+      (with-redefs
+        [clj-http.client/request
+         (fn [req]
+           (is (= :delete (:method req)))
+           (is (= (str vault-url "/v1/" mount "/metadata/" path-passed-in) (:url req)))
+           (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
+           {:status 204})]
+        (is (true? (vault-kvv2/delete-metadata! client mount path-passed-in)))))
+    (testing "Sends correct request and responds correctly upon failure"
+      (with-redefs
+        [clj-http.client/request
+         (fn [req]
+           (is (= :delete (:method req)))
+           (is (= (str vault-url "/v1/" mount "/metadata/" path-passed-in) (:url req)))
+           (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
+           {:status 500})]
+        (is (false? (vault-kvv2/delete-metadata! client mount path-passed-in)))))))
 
 
 ;; -------- Mock Client -------------------------------------------------------
@@ -312,7 +339,10 @@
                                     :deletion_time ""
                                     :destroyed     false}}}
              (vault-kvv2/read-metadata client "mount" "identities" {:force-read true})))
-      (is (= (true? (vault-kvv2/write-metadata! client "mount" "hello" {:max-versions 3}))))
+      (is (true? (vault-kvv2/delete-metadata! client "mount" "identities")))
+      (is (thrown? ExceptionInfo
+            (vault-kvv2/read-metadata client "mount" "identities" {:force-read true})))
+      (is (true? (vault-kvv2/write-metadata! client "mount" "hello" {:max-versions 3})))
       (is (= 3 (:max-versions (vault-kvv2/read-metadata client "mount" "hello"))))
       (is (= 5 (vault-kvv2/read-metadata client "mount" "doesn't exist" {:force-read true
                                                                          :not-found 5})))))
