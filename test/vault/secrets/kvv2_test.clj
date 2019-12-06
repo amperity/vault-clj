@@ -185,7 +185,7 @@
             (is (false? (vault-kvv2/delete-secret! client mount path-passed-in [123])))))))))
 
 
-(deftest read-metadata
+(deftest read-metadata-test
   (let [data {:data
               {:created_time    "2018-03-22T02:24:06.945319214Z"
                :current_version 3
@@ -230,7 +230,7 @@
                                                                         :force-read true})))))))
 
 
-(deftest write-metadata
+(deftest write-metadata-test
   (let [payload {:max_versions 5,
                  :cas_required false,
                  :delete_version_after "3h25m19s"}
@@ -262,7 +262,7 @@
         (is (false? (vault-kvv2/write-metadata! client mount path-passed-in payload)))))))
 
 
-(deftest delete-metadata
+(deftest delete-metadata-test
   (let [mount "mount"
         path-passed-in "path/passed/in"
         token-passed-in "fake-token"
@@ -287,6 +287,70 @@
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
            {:status 500})]
         (is (false? (vault-kvv2/delete-metadata! client mount path-passed-in)))))))
+
+
+(deftest destroy!-test
+  (let [mount "mount"
+        path-passed-in "path/passed/in"
+        token-passed-in "fake-token"
+        vault-url "https://vault.example.amperity.com"
+        client (http-client/http-client vault-url)
+        versions [1 2]]
+    (vault/authenticate! client :token token-passed-in)
+    (testing "Destroy secrets sends correct request and returns true upon success"
+      (with-redefs
+        [clj-http.client/request
+         (fn [req]
+           (is (= :post (:method req)))
+           (is (= (str vault-url "/v1/" mount "/destroy/" path-passed-in) (:url req)))
+           (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
+           (is (= {:versions versions}
+                  (:form-params req)))
+           {:status 204})]
+        (is (true? (vault-kvv2/destroy-secret! client mount path-passed-in versions)))))
+    (testing "Destroy secrets sends correct request and returns false upon failure"
+      (with-redefs
+        [clj-http.client/request
+         (fn [req]
+           (is (= :post (:method req)))
+           (is (= (str vault-url "/v1/" mount "/destroy/" path-passed-in) (:url req)))
+           (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
+           (is (= {:versions [1]}
+                  (:form-params req)))
+           {:status 500})]
+        (is (false? (vault-kvv2/destroy-secret! client mount path-passed-in [1])))))))
+
+
+(deftest undelete-secret!-test
+  (let [mount "mount"
+        path-passed-in "path/passed/in"
+        token-passed-in "fake-token"
+        vault-url "https://vault.example.amperity.com"
+        client (http-client/http-client vault-url)
+        versions [1 2]]
+    (vault/authenticate! client :token token-passed-in)
+    (testing "Undelete secrets sends correct request and returns true upon success"
+      (with-redefs
+        [clj-http.client/request
+         (fn [req]
+           (is (= :post (:method req)))
+           (is (= (str vault-url "/v1/" mount "/undelete/" path-passed-in) (:url req)))
+           (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
+           (is (= {:versions versions}
+                  (:form-params req)))
+           {:status 204})]
+        (is (true? (vault-kvv2/undelete-secret! client mount path-passed-in versions)))))
+    (testing "Undelete secrets sends correct request and returns false upon failure"
+      (with-redefs
+        [clj-http.client/request
+         (fn [req]
+           (is (= :post (:method req)))
+           (is (= (str vault-url "/v1/" mount "/undelete/" path-passed-in) (:url req)))
+           (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
+           (is (= {:versions [1]}
+                  (:form-params req)))
+           {:status 500})]
+        (is (false? (vault-kvv2/undelete-secret! client mount path-passed-in [1])))))))
 
 
 ;; -------- Mock Client -------------------------------------------------------
@@ -353,4 +417,8 @@
   (testing "Mock client always returns true on delete for secret when versions specified"
     (let [client (mock-client-kvv2)]
       (is (true? (vault-kvv2/delete-secret! client "mount" "identities" [1])))
-      (is (true? (vault-kvv2/delete-secret! client "mount" "eggsactly" [4 5 6]))))))
+      (is (true? (vault-kvv2/delete-secret! client "mount" "eggsactly" [4 5 6])))))
+  (testing "Mock client does not crash upon destroy"
+    (is (true? (vault-kvv2/destroy-secret! (mock-client-kvv2) "mount" "identities" [1]))))
+  (testing "Mock client does not crash upon undelete"
+    (is (true? (vault-kvv2/undelete-secret! (mock-client-kvv2) "mount" "identities" [1])))))

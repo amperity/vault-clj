@@ -116,6 +116,32 @@
   (vault/write-secret! client (str mount "/metadata/" path) metadata))
 
 
+(defn destroy-secret!
+  "Permanently removes the specified version data for the provided key and version numbers from the key-value store.
+Returns a boolean indicating whether the destroy was successful.
+
+Params:
+- `client`: `vault.client`, A client that handles vault auth, leases, and basic CRUD ops
+- `mount`: `String`, the path in vault of the secret engine you wish to configure
+- `path`: `String`, the path aligned to the secret you wish to destroy
+- `versions`: `vector<int>`, the versions you want to destroy"
+  [client mount path versions]
+  (vault/write-secret! client (str mount "/destroy/" path) {:versions versions}))
+
+
+(defn undelete-secret!
+  "Undeletes the data for the provided version and path in the key-value store. This restores the data, allowing it to
+be returned on get requests.
+
+Params:
+- `client`: `vault.client`, A client that handles vault auth, leases, and basic CRUD ops
+- `mount`: `String`, the path in vault of the secret engine you wish to configure
+- `path`: `String`, the path aligned to the secret you wish to undelete
+- `versions`: `vector<int>`, the versions you want to undelete"
+  [client mount path versions]
+  (vault/write-secret! client (str mount "/undelete/" path) {:versions versions}))
+
+
 (defn delete-secret!
   "Performs a soft delete a secret. This marks the versions as deleted and will stop them from being returned from
   reads, but the underlying data will not be removed. A delete can be undone using the `undelete` path.
