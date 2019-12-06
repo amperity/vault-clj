@@ -15,11 +15,12 @@
 
 ;; ## API Utilities
 
-(defmacro support-not-found
-  "Tries to perform the api call, and if a 404 occurs, looks for :not-found in on-fail-opts"
-  [vault-api-call on-fail-opts]
+(defmacro supports-not-found
+  "Tries to perform the body, which likely includes an API call. If a `404` `::api-error` occurs, looks for and returns
+  the value of `:not-found` in `on-fail-opts` if present"
+  [on-fail-opts & body]
   `(try
-     ~vault-api-call
+     ~@body
      (catch ExceptionInfo ex#
        (let [api-fail-options# ~on-fail-opts]
          (if (and (contains? api-fail-options# :not-found)

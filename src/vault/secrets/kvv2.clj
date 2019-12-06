@@ -26,9 +26,9 @@
   - `:force-read`, `boolean`
     Force the secret to be read from the server even if there is a valid lease cached."
   ([client mount path opts]
-   (api-util/support-not-found
-     (:data (vault/read-secret client (str mount "/data/" path) (dissoc opts :not-found)))
-     opts))
+   (api-util/supports-not-found
+     opts
+     (:data (vault/read-secret client (str mount "/data/" path) (dissoc opts :not-found)))))
   ([client mount path]
    (read-secret client mount path nil)))
 
@@ -89,9 +89,7 @@
   - `path`: `String`, the path in vault of the secret you wish to read metadata for
   - `opts`: `map`, options to affect the read call, see `vault.core/read-secret` for more details"
   ([client mount path opts]
-   (api-util/support-not-found
-     (vault/read-secret client (str mount "/metadata/" path) (dissoc opts :not-found))
-     opts))
+   (vault/read-secret client (str mount "/metadata/" path) opts))
   ([client mount path]
    (read-metadata client mount path nil)))
 

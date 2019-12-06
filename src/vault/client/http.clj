@@ -244,7 +244,8 @@
                               (lease/lookup leases path))]
           (when-not (lease/expired? lease)
             (:data lease)))
-        (api-util/support-not-found
+        (api-util/supports-not-found
+          opts
           (let [response (api-util/api-request this :get path {})
                 info (assoc (api-util/clean-body response)
                             :path path
@@ -255,8 +256,7 @@
                         path (:lease-duration info))
             (lease/update! leases info)
 
-            (:data info))
-          opts)))
+            (:data info)))))
 
 
   (write-secret!
