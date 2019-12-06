@@ -6,12 +6,29 @@
     [clojure.tools.logging :as log]
     [clojure.walk :as walk])
   (:import
+    (clojure.lang
+      ExceptionInfo)
     (java.security
       MessageDigest)
     (org.apache.commons.codec.binary
       Hex)))
 
 ;; ## API Utilities
+
+(defmacro supports-not-found
+  "Tries to perform the body, which likely includes an API call. If a `404` `::api-error` occurs, looks for and returns
+  the value of `:not-found` in `on-fail-opts` if present"
+  [on-fail-opts & body]
+  `(try
+     ~@body
+     (catch ExceptionInfo ex#
+       (let [api-fail-options# ~on-fail-opts]
+         (if (and (contains? api-fail-options# :not-found)
+                  (= ::api-error (:type (ex-data ex#)))
+                  (= 404 (:status (ex-data ex#))))
+           (:not-found api-fail-options#)
+           (throw ex#))))))
+
 
 (defn ^:no-doc kebabify-keys
   "Rewrites keyword map keys with underscores changed to dashes."

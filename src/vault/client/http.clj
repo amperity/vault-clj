@@ -244,7 +244,8 @@
                               (lease/lookup leases path))]
           (when-not (lease/expired? lease)
             (:data lease)))
-        (try
+        (api-util/supports-not-found
+          opts
           (let [response (api-util/api-request this :get path {})
                 info (assoc (api-util/clean-body response)
                             :path path
@@ -255,13 +256,7 @@
                         path (:lease-duration info))
             (lease/update! leases info)
 
-            (:data info))
-          (catch ExceptionInfo ex
-            (if (and (contains? opts :not-found)
-                     (= ::api-util/api-error (:type (ex-data ex)))
-                     (= 404 (:status (ex-data ex))))
-              (:not-found opts)
-              (throw ex))))))
+            (:data info)))))
 
 
   (write-secret!

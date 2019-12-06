@@ -4,6 +4,7 @@
     [clojure.edn :as edn]
     [clojure.java.io :as io]
     [clojure.string :as str]
+    [vault.client.api-util :as api-util]
     [vault.core :as vault])
   (:import
     java.net.URI
@@ -189,7 +190,9 @@
         (if (contains? opts :not-found)
           (:not-found opts)
           (throw (ex-info (str "No such secret: " path)
-                          {:secret path})))))
+                          {:secret path
+                           :type ::api-util/api-error
+                           :status 404})))))
 
 
   (write-secret!

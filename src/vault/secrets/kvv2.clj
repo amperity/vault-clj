@@ -2,10 +2,7 @@
   "Interface for communicating with a Vault key value version 2 secret store (kv)"
   (:require
     [vault.client.api-util :as api-util]
-    [vault.core :as vault])
-  (:import
-    (clojure.lang
-      ExceptionInfo)))
+    [vault.core :as vault]))
 
 
 (defn read-secret
@@ -29,15 +26,9 @@
   - `:force-read`, `boolean`
     Force the secret to be read from the server even if there is a valid lease cached."
   ([client mount path opts]
-   (try
-     (:data (vault/read-secret client (str mount "/data/" path) (dissoc opts :not-found)))
-
-     (catch ExceptionInfo ex
-       (if (and (contains? opts :not-found)
-                (= ::api-util/api-error (:type (ex-data ex)))
-                (= 404 (:status (ex-data ex))))
-         (:not-found opts)
-         (throw ex)))))
+   (api-util/supports-not-found
+     opts
+     (:data (vault/read-secret client (str mount "/data/" path) (dissoc opts :not-found)))))
   ([client mount path]
    (read-secret client mount path nil)))
 
@@ -89,28 +80,64 @@
    (read-config client mount nil)))
 
 
-(defn destroy-secret!
-  "Permanently removes the specified version data for the provided key and version numbers from the key-value store.
-   Returns a boolean indicating whether the destroy was successful.
+(defn read-metadata
+  "Returns  retrieves the metadata and versions for the secret at the specified path.
 
   Params:
   - `client`: `vault.client`, A client that handles vault auth, leases, and basic CRUD ops
-  - `mount`: `String`, the path in vault of the secret engine you wish to configure
-  - `path`: `String`, the path aligned to the secret you wish to destroy
-  - `versions`: `vector<int>`, the versions you want to destroy"
+  - `mount`: `String`, the secret engine mount point you wish to read secret metadata in
+  - `path`: `String`, the path in vault of the secret you wish to read metadata for
+  - `opts`: `map`, options to affect the read call, see `vault.core/read-secret` for more details"
+  ([client mount path opts]
+   (vault/read-secret client (str mount "/metadata/" path) opts))
+  ([client mount path]
+   (read-metadata client mount path nil)))
+
+
+(defn write-metadata!
+  "Creates a new version of a secret at the specified location. If the value does not yet exist, the calling token
+  must have an ACL policy granting the create capability. If the value already exists, the calling token must have an
+  ACL policy granting the update capability. Returns a boolean indicating whether the write was successful.
+
+  Params:
+  - `client`: `vault.client`, A client that handles vault auth, leases, and basic CRUD ops
+  - `mount`: `String`, the secret engine mount point you wish to write secret metadata in
+  - `path`: `String`, the path in vault of the secret you wish to write metadata for'
+  - `metadata`: `map` the metadata you wish to write.
+
+  Metadata options are:
+  -`:max_versions`: `int`, The number of versions to keep per key. This value applies to all keys, but a key's
+  metadata setting can overwrite this value. Once a key has more than the configured allowed versions the oldest
+  version will be permanently deleted. Defaults to 10.
+  -`:cas_required`: `boolean`, – If true all keys will require the cas parameter to be set on all write requests.
+  - :delete_version_after` `String` – If set, specifies the length of time before a version is deleted.
+  Accepts Go duration format string."
+  [client mount path metadata]
+  (vault/write-secret! client (str mount "/metadata/" path) metadata))
+
+
+(defn destroy-secret!
+  "Permanently removes the specified version data for the provided key and version numbers from the key-value store.
+Returns a boolean indicating whether the destroy was successful.
+
+Params:
+- `client`: `vault.client`, A client that handles vault auth, leases, and basic CRUD ops
+- `mount`: `String`, the path in vault of the secret engine you wish to configure
+- `path`: `String`, the path aligned to the secret you wish to destroy
+- `versions`: `vector<int>`, the versions you want to destroy"
   [client mount path versions]
   (vault/write-secret! client (str mount "/destroy/" path) {:versions versions}))
 
 
 (defn undelete-secret!
   "Undeletes the data for the provided version and path in the key-value store. This restores the data, allowing it to
-  be returned on get requests.
+be returned on get requests.
 
-  Params:
-  - `client`: `vault.client`, A client that handles vault auth, leases, and basic CRUD ops
-  - `mount`: `String`, the path in vault of the secret engine you wish to configure
-  - `path`: `String`, the path aligned to the secret you wish to undelete
-  - `versions`: `vector<int>`, the versions you want to undelete"
+Params:
+- `client`: `vault.client`, A client that handles vault auth, leases, and basic CRUD ops
+- `mount`: `String`, the path in vault of the secret engine you wish to configure
+- `path`: `String`, the path aligned to the secret you wish to undelete
+- `versions`: `vector<int>`, the versions you want to undelete"
   [client mount path versions]
   (vault/write-secret! client (str mount "/undelete/" path) {:versions versions}))
 
@@ -129,3 +156,14 @@
      (vault/write-secret! client (str mount "/delete/" path) {:versions versions})))
   ([client mount path]
    (delete-secret! client mount path nil)))
+
+
+(defn delete-metadata!
+  "Permanently deletes the key metadata and all version data for the specified key.
+  All version history will be removed. This cannot be undone. A boolean indicating deletion success is returned.
+
+  - `client`: `vault.client`, A client that handles vault auth, leases, and basic CRUD ops
+  - `mount`: `String`, the Vault secret mount (the part of the path which determines which secret engine is used)
+  - `path`: `String`, the path aligned to the secret you wish to delete all data for"
+  [client mount path]
+  (vault/delete-secret! client (str mount "/metadata/" path)))
