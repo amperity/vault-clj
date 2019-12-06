@@ -9,6 +9,7 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
   [#35](https://github.com/amperity/vault-clj/pull/35)
 - Added support for the KV V2 API
   [#33](https://github.com/amperity/vault-clj/issues/33)
+  [#39](https://github.com/amperity/vault-clj/issues/39)
 - Added support for externally defined secret engines
   [#33](https://github.com/amperity/vault-clj/issues/33)
 - Bugfix for mocking delete
