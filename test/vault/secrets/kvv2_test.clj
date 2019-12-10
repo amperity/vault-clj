@@ -139,25 +139,33 @@
       (with-redefs
         [clj-http.client/request
          (fn [req]
-           (is (= :post (:method req)))
-           (is (= (str vault-url "/v1/" mount "/data/" path-passed-in) (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
-           (is (= {:data write-data}
-                  (:form-params req)))
-           {:body create-success
-            :status 200})]
+           (is (= :post (:method req)))
+           (if (= (str vault-url "/v1/" mount "/metadata/" path-passed-in) (:url req))
+             (do (is (= {} (:form-params req)))
+                 {:errors []
+                  :status 200})
+             (do (is (= (str vault-url "/v1/" mount "/data/" path-passed-in) (:url req)))
+                 (is (= {:data write-data}
+                        (:form-params req)))
+                 {:body create-success
+                  :status 200})))]
         (is (= (:data create-success) (vault-kvv2/write-secret! client mount path-passed-in write-data)))))
     (testing "Write secrets sends correct request and returns false upon failure"
       (with-redefs
         [clj-http.client/request
          (fn [req]
-           (is (= :post (:method req)))
-           (is (= (str vault-url "/v1/" mount "/data/other-path") (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
-           (is (= {:data write-data}
-                  (:form-params req)))
-           {:errors []
-            :status 404})]
+           (is (= :post (:method req)))
+           (if (= (str vault-url "/v1/" mount "/metadata/other-path") (:url req))
+             (do (is (= {} (:form-params req)))
+                 {:errors []
+                  :status 200})
+             (do (is (= (str vault-url "/v1/" mount "/data/other-path") (:url req)))
+                 (is (= {:data write-data}
+                        (:form-params req)))
+                 {:errors []
+                  :status 500})))]
         (is (false? (vault-kvv2/write-secret! client mount "other-path" write-data)))))))
 
 
