@@ -55,6 +55,38 @@
           "lookup of stored secret after expiry should return nil"))))
 
 
+(deftest lease-filtering
+  (let [c (lease/new-store)
+        the-lease {:path "foo/bar"
+                   :lease-id "foo/bar/12345"
+                   :lease-duration 100
+                   :renewable true
+                   :vault.lease/renew true
+                   :vault.lease/rotate true
+                   :vault.lease/issued (Instant/ofEpochMilli   1000)
+                   :vault.lease/expiry (Instant/ofEpochMilli 101000)}]
+    (with-time 1000
+      (lease/update! c {:path "foo/bar"
+                        :data {:bar "baz"}
+                        :lease-id "foo/bar/12345"
+                        :lease-duration 100
+                        :renewable true
+                        :renew true
+                        :rotate true}))
+    (with-time 101001
+      (is (= [the-lease] (lease/list-leases c))
+          "Basic lease listing should work, and the data should match.")
+      (is (= [the-lease] (lease/rotatable-leases c 0))
+          "Expired but rotatable lease should be considered rotatable"))
+    (with-time 100000
+      (is (= [the-lease] (lease/renewable-leases c 2)),
+          "Renewable leases should be listed when not expired yet.")
+      (is (empty? (lease/renewable-leases c 1)),
+          "Renewable leases should not be listed when outside the given window.")
+      (is (empty? (lease/rotatable-leases c 0))
+          "Non-expired, renewable leases should not be considered for rotation."))))
+
+
 (deftest secret-invalidation
   (let [c (lease/new-store)]
     (is (some? (lease/update! c {:path "foo/bar"

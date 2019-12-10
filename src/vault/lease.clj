@@ -153,7 +153,10 @@
   [store window]
   (->> (list-leases store)
        (filter ::rotate)
-       (remove renewable?)
+       (filter (fn non-renewable?
+                 [lease]
+                 (or (expired? lease)
+                     (not (renewable? lease)))))
        (filter #(expires-within? % window))))
 
 

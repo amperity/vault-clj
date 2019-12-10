@@ -123,7 +123,7 @@
          (fn [req]
            (is (= :delete (:method req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
-           (is (= (str vault-url "/v1/" path-passed-in (:url req))))
+           (is (= (str vault-url "/v1/" path-passed-in) (:url req)))
            {:status 204})]
         (is (true? (vault/delete-secret! client path-passed-in)))))
     (testing "Delete secret returns correctly upon failure, and sends correct request"
@@ -132,7 +132,7 @@
          (fn [req]
            (is (= :delete (:method req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
-           (is (= (str vault-url "/v1/" path-passed-in (:url req))))
+           (is (= (str vault-url "/v1/" path-passed-in) (:url req)))
            {:status 404})]
         (is (false? (vault/delete-secret! client path-passed-in)))))))
 
