@@ -11,6 +11,30 @@
       ExceptionInfo)))
 
 
+(deftest list-secrets-test
+  (let [path "path/passed/in"
+        token-passed-in "fake-token"
+        vault-url "https://vault.example.amperity.com"
+        client (http-client/http-client vault-url)
+        response {:auth nil
+                  :data {:keys ["foo" "foo/"]}
+                  :lease_duration 2764800
+                  :lease-id ""
+                  :renewable false}]
+    (vault/authenticate! client :token token-passed-in)
+    (testing "List secrets has correct response and sends correct request"
+      (with-redefs
+        [clj-http.client/request
+         (fn [req]
+           (is (= :get (:method req)))
+           (is (= (str vault-url "/v1/listmount/metadata/" path) (:url req)))
+           (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
+           (is (true? (-> req :query-params :list)))
+           {:body response})]
+        (is (= ["foo" "foo/"]
+               (vault-kvv2/list-secrets client "listmount" path)))))))
+
+
 (deftest write-config!-test
   (let [mount "mount"
         token-passed-in "fake-token"
@@ -115,25 +139,33 @@
       (with-redefs
         [clj-http.client/request
          (fn [req]
-           (is (= :post (:method req)))
-           (is (= (str vault-url "/v1/" mount "/data/" path-passed-in) (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
-           (is (= {:data write-data}
-                  (:form-params req)))
-           {:body create-success
-            :status 200})]
+           (is (= :post (:method req)))
+           (if (= (str vault-url "/v1/" mount "/metadata/" path-passed-in) (:url req))
+             (do (is (= {} (:form-params req)))
+                 {:errors []
+                  :status 200})
+             (do (is (= (str vault-url "/v1/" mount "/data/" path-passed-in) (:url req)))
+                 (is (= {:data write-data}
+                        (:form-params req)))
+                 {:body create-success
+                  :status 200})))]
         (is (= (:data create-success) (vault-kvv2/write-secret! client mount path-passed-in write-data)))))
     (testing "Write secrets sends correct request and returns false upon failure"
       (with-redefs
         [clj-http.client/request
          (fn [req]
-           (is (= :post (:method req)))
-           (is (= (str vault-url "/v1/" mount "/data/other-path") (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
-           (is (= {:data write-data}
-                  (:form-params req)))
-           {:errors []
-            :status 404})]
+           (is (= :post (:method req)))
+           (if (= (str vault-url "/v1/" mount "/metadata/other-path") (:url req))
+             (do (is (= {} (:form-params req)))
+                 {:errors []
+                  :status 200})
+             (do (is (= (str vault-url "/v1/" mount "/data/other-path") (:url req)))
+                 (is (= {:data write-data}
+                        (:form-params req)))
+                 {:errors []
+                  :status 500})))]
         (is (false? (vault-kvv2/write-secret! client mount "other-path" write-data)))))))
 
 
@@ -418,6 +450,13 @@
     (let [client (mock-client-kvv2)]
       (is (true? (vault-kvv2/delete-secret! client "mount" "identities" [1])))
       (is (true? (vault-kvv2/delete-secret! client "mount" "eggsactly" [4 5 6])))))
+  (testing "Mock can list secrets from their associated metadata"
+    (let [client (mock-client-kvv2)]
+      (is (empty? (vault-kvv2/list-secrets client "hello" "yes")))
+      (is (true? (vault-kvv2/write-secret! client "mount" "hello" {:and-i-say "goodbye"})))
+      ;;  Paths are good enough for mock right now, but be aware they are current
+      (is (= ["identities" "hello"]
+             (into [] (vault-kvv2/list-secrets client "mount" ""))))))
   (testing "Mock client does not crash upon destroy"
     (is (true? (vault-kvv2/destroy-secret! (mock-client-kvv2) "mount" "identities" [1]))))
   (testing "Mock client does not crash upon undelete"
