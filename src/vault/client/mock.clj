@@ -181,7 +181,10 @@
 
   (list-secrets
     [this path]
-    (filter #(str/starts-with? % (str path)) (keys @memory)))
+    (->> (keys @memory)
+         (filter #(str/starts-with? % (str path)))
+         ;; TODO: Mock here relies on string replace to get correct result for kvv2, this is brittle and not extensible
+         (map #(str/replace % #"(?:\w+\/)+metadata\/" ""))))
 
 
   (read-secret

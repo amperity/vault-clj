@@ -5,12 +5,24 @@
     [vault.core :as vault]))
 
 
+(defn list-secrets
+  "Returns a vector of the secrets names located under a path.
+
+  Params:
+  - `client`: `vault.client`, A client that handles vault auth, leases, and basic CRUD ops
+  - `mount`: `String`, the path in vault of the secret engine you wish to list secrets in
+  - `path`: `String`, the path in vault of the secret you wish to list secrets at"
+  [client mount path]
+  (vault/list-secrets client (str mount "/metadata/" path)))
+
+
 (defn read-secret
   "Reads a secret from a path. Returns the full map of stored secret data if
   the secret exists, or throws an exception if not.
 
   Params:
   - `client`: `vault.client`, A client that handles vault auth, leases, and basic CRUD ops
+    - `mount`: `String`, the path in vault of the secret engine you wish to read a secret in
   - `path`: `String`, the path in vault of the secret you wish to read
   - `opts`: `map`, Further optional read described below.
 
@@ -31,53 +43,6 @@
      (:data (vault/read-secret client (str mount "/data/" path) (dissoc opts :not-found)))))
   ([client mount path]
    (read-secret client mount path nil)))
-
-
-(defn write-secret!
-  "Writes secret data to a path. Returns a boolean indicating whether the write was successful.
-
-  Params:
-  - `client`: `vault.client`, A client that handles vault auth, leases, and basic CRUD ops
-  - `mount`: `String`, the path in vault of the secret engine you wish to write a secret in
-  - `path`: `String`, the path of the secret you wish to write the data to
-  - `data`: `map`, the secret data you wish to write"
-  [client mount path data]
-  (let [result (vault/write-secret! client (str mount "/data/" path) {:data data})]
-    (or (:data result) result)))
-
-
-(defn write-config!
-  "Configures backend level settings that are applied to every key in the key-value store for a given secret engine.
-   Returns a boolean indicating whether the write was successful.
-
-  Params:
-  - `client`: `vault.client`, A client that handles vault auth, leases, and basic CRUD ops
-  - `mount`: `String`, the path in vault of the secret engine you wish to configure
-  - `config`: `map`, the configurations you wish to write.
-
-  Configuration options are:
-  -`:max_versions`: `int`, The number of versions to keep per key. This value applies to all keys, but a key's
-  metadata setting can overwrite this value. Once a key has more than the configured allowed versions the oldest
-  version will be permanently deleted. Defaults to 10.
-  - `:cas_required`: `boolean`, – If true all keys will require the cas parameter to be set on all write requests.
-  - `:delete_version_after` `String` – If set, specifies the length of time before a version is deleted.
-  Accepts Go duration format string."
-
-  [client mount config]
-  (vault/write-secret! client (str mount "/config") config))
-
-
-(defn read-config
-  "Returns the current configuration for the secrets backend at the given path (mount)
-
-  Params:
-  - `client`: `vault.client`, A client that handles vault auth, leases, and basic CRUD ops
-  - `mount`: `String`, the path in vault of the secret engine you wish to read configurations for
-  - `opts`: `map`, options to affect the read call, see `vault.core/read-secret` for more details"
-  ([client mount opts]
-   (vault/read-secret client (str mount "/config") opts))
-  ([client mount]
-   (read-config client mount nil)))
 
 
 (defn read-metadata
@@ -114,6 +79,55 @@
   Accepts Go duration format string."
   [client mount path metadata]
   (vault/write-secret! client (str mount "/metadata/" path) metadata))
+
+
+(defn write-secret!
+  "Writes secret data to a path. Returns a boolean indicating whether the write was successful.
+
+  Params:
+  - `client`: `vault.client`, A client that handles vault auth, leases, and basic CRUD ops
+  - `mount`: `String`, the path in vault of the secret engine you wish to write a secret in
+  - `path`: `String`, the path of the secret you wish to write the data to
+  - `data`: `map`, the secret data you wish to write"
+  [client mount path data]
+  ;; this gets the mock client to also write metadata, and shouldn't meaningfully affect the http client
+  (write-metadata! client mount path {})
+  (let [result (vault/write-secret! client (str mount "/data/" path) {:data data})]
+    (or (:data result) result)))
+
+
+(defn write-config!
+  "Configures backend level settings that are applied to every key in the key-value store for a given secret engine.
+   Returns a boolean indicating whether the write was successful.
+
+  Params:
+  - `client`: `vault.client`, A client that handles vault auth, leases, and basic CRUD ops
+  - `mount`: `String`, the path in vault of the secret engine you wish to configure
+  - `config`: `map`, the configurations you wish to write.
+
+  Configuration options are:
+  -`:max_versions`: `int`, The number of versions to keep per key. This value applies to all keys, but a key's
+  metadata setting can overwrite this value. Once a key has more than the configured allowed versions the oldest
+  version will be permanently deleted. Defaults to 10.
+  - `:cas_required`: `boolean`, – If true all keys will require the cas parameter to be set on all write requests.
+  - `:delete_version_after` `String` – If set, specifies the length of time before a version is deleted.
+  Accepts Go duration format string."
+
+  [client mount config]
+  (vault/write-secret! client (str mount "/config") config))
+
+
+(defn read-config
+  "Returns the current configuration for the secrets backend at the given path (mount)
+
+  Params:
+  - `client`: `vault.client`, A client that handles vault auth, leases, and basic CRUD ops
+  - `mount`: `String`, the path in vault of the secret engine you wish to read configurations for
+  - `opts`: `map`, options to affect the read call, see `vault.core/read-secret` for more details"
+  ([client mount opts]
+   (vault/read-secret client (str mount "/config") opts))
+  ([client mount]
+   (read-config client mount nil)))
 
 
 (defn destroy-secret!
