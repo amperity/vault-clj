@@ -146,7 +146,7 @@
      - `path`: `String`, the path in vault of the secret you wish to list secrets at")
 
   (read-secret
-    [client path opts]
+    [client path opts merge-req] [client path opts]
     "Reads a resource from a path. Returns the full map of stored data if the resource exists, or throws an exception
     if not.
 

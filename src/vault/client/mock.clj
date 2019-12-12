@@ -188,7 +188,7 @@
 
 
   (read-secret
-    [this path opts]
+    [this path opts merge-req]
     (or (get @memory path)
         (if (contains? opts :not-found)
           (:not-found opts)
@@ -196,6 +196,10 @@
                           {:secret path
                            :type ::api-util/api-error
                            :status 404})))))
+
+  (read-secret
+    [this path opts]
+    (.read-secret this path opts {}))
 
 
   (write-secret!

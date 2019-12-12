@@ -239,14 +239,14 @@
 
 
   (read-secret
-    [this path opts]
+    [this path opts merge-req]
     (or (when-let [lease (and (not (:force-read opts))
                               (lease/lookup leases path))]
           (when-not (lease/expired? lease)
             (:data lease)))
         (api-util/supports-not-found
           opts
-          (let [response (api-util/api-request this :get path {})
+          (let [response (api-util/api-request this :get path merge-req)
                 info (assoc (api-util/clean-body response)
                             :path path
                             :renew (:renew opts)
@@ -257,6 +257,11 @@
             (lease/update! leases info)
 
             (:data info)))))
+
+
+  (read-secret
+    [this path opts]
+    (.read-secret this path opts {}))
 
 
   (write-secret!

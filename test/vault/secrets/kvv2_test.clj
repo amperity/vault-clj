@@ -97,6 +97,16 @@
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
            {:body lookup-response-valid-path})]
         (is (= {:foo "bar"} (vault-kvv2/read-secret client mount path-passed-in)))))
+    (testing "Read secrets sends correct request and responds correctly if secret with version is successfully located"
+      (with-redefs
+        [clj-http.client/request
+         (fn [req]
+           (is (= :get (:method req)))
+           (is (= (str vault-url "/v1/" mount "/data/" path-passed-in) (:url req)))
+           (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
+           (is (= {"version" 3} (:query-params req)))
+           {:body lookup-response-valid-path})]
+        (is (= {:foo "bar"} (vault-kvv2/read-secret client mount path-passed-in {:version 3 :force-read true})))))
     (testing "Read secrets sends correct request and responds correctly if no secret is found"
       (with-redefs
         [clj-http.client/request
