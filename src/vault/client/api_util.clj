@@ -30,11 +30,11 @@
            (throw ex#))))))
 
 
-(defn ^:no-doc kebabify-keys
+(defn- ^:no-doc keyword-swap-chars
   "Rewrites keyword map keys with underscores changed to dashes."
-  [value]
-  (let [kebab-kw #(-> % name (str/replace "_" "-") keyword)
-        xf-entry (juxt (comp kebab-kw key) val)]
+  [value find replace]
+  (let [replace-kw #(-> % name (str/replace find replace) keyword)
+        xf-entry (juxt (comp replace-kw key) val)]
     (walk/postwalk
       (fn xf-maps
         [x]
@@ -42,6 +42,18 @@
           (into {} (map xf-entry) x)
           x))
       value)))
+
+
+(defn ^:no-doc kebabify-keys
+  "Rewrites keyword map keys with underscores changed to dashes."
+  [value]
+  (keyword-swap-chars value "_" "-"))
+
+
+(defn ^:no-doc snakeify-keys
+  "Rewrites keyword map keys with dashes changed to underscores."
+  [value]
+  (keyword-swap-chars value "-" "_"))
 
 
 (defn ^:no-doc sha-256
