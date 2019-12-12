@@ -22,7 +22,7 @@
 
   Params:
   - `client`: `vault.client`, A client that handles vault auth, leases, and basic CRUD ops
-    - `mount`: `String`, the path in vault of the secret engine you wish to read a secret in
+  - `mount`: `String`, the path in vault of the secret engine you wish to read a secret in
   - `path`: `String`, the path in vault of the secret you wish to read
   - `opts`: `map`, Further optional read described below.
 
@@ -36,11 +36,18 @@
     Whether or not to rotate this secret when the lease is near expiry and
     cannot be renewed.
   - `:force-read`, `boolean`
-    Force the secret to be read from the server even if there is a valid lease cached."
+    Force the secret to be read from the server even if there is a valid lease cached.
+  - `:version`, `nat num`, the version of the secret you wish to read"
   ([client mount path opts]
    (api-util/supports-not-found
      opts
-     (:data (vault/read-secret client (str mount "/data/" path) (dissoc opts :not-found)))))
+     (:data
+       (vault/read-secret
+         client
+         (str mount "/data/" path)
+         (-> opts
+             (dissoc :not-found)
+             (assoc :request-opts (if-let [ver (:version opts)] {:query-params {"version" ver}} {})))))))
   ([client mount path]
    (read-secret client mount path nil)))
 
