@@ -246,7 +246,7 @@
             (:data lease)))
         (api-util/supports-not-found
           opts
-          (let [response (api-util/api-request this :get path {})
+          (let [response (api-util/api-request this :get path (:request-opts opts))
                 info (assoc (api-util/clean-body response)
                             :path path
                             :renew (:renew opts)

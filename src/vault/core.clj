@@ -165,7 +165,9 @@
       Whether or not to rotate this secret when the lease is near expiry and
       cannot be renewed.
     - `:force-read`
-      Force the secret to be read from the server even if there is a valid lease cached.")
+      Force the secret to be read from the server even if there is a valid lease cached.
+    - `:request-opts`
+      Additional top level opts supported by clj-http")
 
   (write-secret!
     [client path data]
