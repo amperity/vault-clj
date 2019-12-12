@@ -61,7 +61,7 @@
   - `path`: `String`, the path in vault of the secret you wish to read metadata for
   - `opts`: `map`, options to affect the read call, see `vault.core/read-secret` for more details"
   ([client mount path opts]
-   (vault/read-secret client (str mount "/metadata/" path) opts))
+   (api-util/kebabify-keys (vault/read-secret client (str mount "/metadata/" path) opts)))
   ([client mount path]
    (read-metadata client mount path nil)))
 
@@ -78,14 +78,14 @@
   - `metadata`: `map` the metadata you wish to write.
 
   Metadata options are:
-  -`:max_versions`: `int`, The number of versions to keep per key. This value applies to all keys, but a key's
+  -`:max-versions`: `int`, The number of versions to keep per key. This value applies to all keys, but a key's
   metadata setting can overwrite this value. Once a key has more than the configured allowed versions the oldest
   version will be permanently deleted. Defaults to 10.
-  -`:cas_required`: `boolean`, – If true all keys will require the cas parameter to be set on all write requests.
-  - :delete_version_after` `String` – If set, specifies the length of time before a version is deleted.
+  -`:cas-required`: `boolean`, – If true all keys will require the cas parameter to be set on all write requests.
+  - :delete-version-after` `String` – If set, specifies the length of time before a version is deleted.
   Accepts Go duration format string."
   [client mount path metadata]
-  (vault/write-secret! client (str mount "/metadata/" path) metadata))
+  (vault/write-secret! client (str mount "/metadata/" path) (api-util/snakeify-keys metadata)))
 
 
 (defn write-secret!
@@ -113,15 +113,14 @@
   - `config`: `map`, the configurations you wish to write.
 
   Configuration options are:
-  -`:max_versions`: `int`, The number of versions to keep per key. This value applies to all keys, but a key's
+  - `:max-versions`: `int`, The number of versions to keep per key. This value applies to all keys, but a key's
   metadata setting can overwrite this value. Once a key has more than the configured allowed versions the oldest
   version will be permanently deleted. Defaults to 10.
-  - `:cas_required`: `boolean`, – If true all keys will require the cas parameter to be set on all write requests.
-  - `:delete_version_after` `String` – If set, specifies the length of time before a version is deleted.
+  - `:cas-required`: `boolean`, – If true all keys will require the cas parameter to be set on all write requests.
+  - `:delete-version-after` `String` – If set, specifies the length of time before a version is deleted.
   Accepts Go duration format string."
-
   [client mount config]
-  (vault/write-secret! client (str mount "/config") config))
+  (vault/write-secret! client (str mount "/config") (api-util/snakeify-keys config)))
 
 
 (defn read-config
@@ -132,33 +131,33 @@
   - `mount`: `String`, the path in vault of the secret engine you wish to read configurations for
   - `opts`: `map`, options to affect the read call, see `vault.core/read-secret` for more details"
   ([client mount opts]
-   (vault/read-secret client (str mount "/config") opts))
+   (api-util/kebabify-keys (vault/read-secret client (str mount "/config") opts)))
   ([client mount]
    (read-config client mount nil)))
 
 
 (defn destroy-secret!
   "Permanently removes the specified version data for the provided key and version numbers from the key-value store.
-Returns a boolean indicating whether the destroy was successful.
+  Returns a boolean indicating whether the destroy was successful.
 
-Params:
-- `client`: `vault.client`, A client that handles vault auth, leases, and basic CRUD ops
-- `mount`: `String`, the path in vault of the secret engine you wish to configure
-- `path`: `String`, the path aligned to the secret you wish to destroy
-- `versions`: `vector<int>`, the versions you want to destroy"
+  Params:
+  - `client`: `vault.client`, A client that handles vault auth, leases, and basic CRUD ops
+  - `mount`: `String`, the path in vault of the secret engine you wish to configure
+  - `path`: `String`, the path aligned to the secret you wish to destroy
+  - `versions`: `vector<int>`, the versions you want to destroy"
   [client mount path versions]
   (vault/write-secret! client (str mount "/destroy/" path) {:versions versions}))
 
 
 (defn undelete-secret!
   "Undeletes the data for the provided version and path in the key-value store. This restores the data, allowing it to
-be returned on get requests.
+  be returned on get requests.
 
-Params:
-- `client`: `vault.client`, A client that handles vault auth, leases, and basic CRUD ops
-- `mount`: `String`, the path in vault of the secret engine you wish to configure
-- `path`: `String`, the path aligned to the secret you wish to undelete
-- `versions`: `vector<int>`, the versions you want to undelete"
+  Params:
+  - `client`: `vault.client`, A client that handles vault auth, leases, and basic CRUD ops
+  - `mount`: `String`, the path in vault of the secret engine you wish to configure
+  - `path`: `String`, the path aligned to the secret you wish to undelete
+  - `versions`: `vector<int>`, the versions you want to undelete"
   [client mount path versions]
   (vault/write-secret! client (str mount "/undelete/" path) {:versions versions}))
 

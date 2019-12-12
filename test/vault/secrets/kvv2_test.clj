@@ -19,7 +19,7 @@
         response {:auth nil
                   :data {:keys ["foo" "foo/"]}
                   :lease_duration 2764800
-                  :lease-id ""
+                  :lease_id ""
                   :renewable false}]
     (vault/authenticate! client :token token-passed-in)
     (testing "List secrets has correct response and sends correct request"
@@ -40,9 +40,12 @@
         token-passed-in "fake-token"
         vault-url "https://vault.example.amperity.com"
         client (http-client/http-client vault-url)
-        new-config {:max_versions 5
-                    :cas_required false
-                    :delete_version_after "3h25m19s"}]
+        new-config-kebab {:max-versions 5
+                          :cas-required false
+                          :delete-version-after "3h25m19s"}
+        new-config-snake {:max_versions 5
+                          :cas_required false
+                          :delete_version_after "3h25m19s"}]
     (vault/authenticate! client :token token-passed-in)
     (testing "Write config sends correct request and returns true on valid call"
       (with-redefs
@@ -51,15 +54,15 @@
            (is (= :post (:method req)))
            (is (= (str vault-url "/v1/" mount "/config") (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
-           (is (= new-config (:form-params req)))
+           (is (= new-config-snake (:form-params req)))
            {:status 204})]
-        (is (true? (vault-kvv2/write-config! client mount new-config)))))))
+        (is (true? (vault-kvv2/write-config! client mount new-config-kebab)))))))
 
 
 (deftest read-config-test
-  (let [config {:max_versions 5
-                :cas_required false
-                :delete_version_after "3h25m19s"}
+  (let [config {:max-versions 5
+                :cas-required false
+                :delete-version-after "3h25m19s"}
         mount "mount"
         token-passed-in "fake-token"
         vault-url "https://vault.example.amperity.com"
@@ -72,7 +75,7 @@
            (is (= :get (:method req)))
            (is (= (str vault-url "/v1/" mount "/config") (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
-           {:body {:data config}})]
+           {:body {:data (api-util/snakeify-keys config)}})]
         (is (= config (vault-kvv2/read-config client mount)))))))
 
 
@@ -243,6 +246,20 @@
                                  :3 {:created_time  "2018-03-22T02:36:43.986212308Z"
                                      :deletion_time ""
                                      :destroyed     false}}}}
+        kebab-metadata {:created-time    "2018-03-22T02:24:06.945319214Z"
+                        :current-version 3
+                        :max-versions    0
+                        :oldest-version  0
+                        :updated-time    "2018-03-22T02:36:43.986212308Z"
+                        :versions        {:1 {:created-time  "2018-03-22T02:24:06.945319214Z"
+                                              :deletion-time ""
+                                              :destroyed     false}
+                                          :2 {:created-time  "2018-03-22T02:36:33.954880664Z"
+                                              :deletion-time ""
+                                              :destroyed     false}
+                                          :3 {:created-time  "2018-03-22T02:36:43.986212308Z"
+                                              :deletion-time ""
+                                              :destroyed     false}}}
         mount "mount"
         path-passed-in "path/passed/in"
         token-passed-in "fake-token"
@@ -258,7 +275,7 @@
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
            {:body   data
             :status 200})]
-        (is (= (:data data) (vault-kvv2/read-metadata client mount path-passed-in)))))
+        (is (= kebab-metadata (vault-kvv2/read-metadata client mount path-passed-in)))))
     (testing "Sends correct request and responds correctly when metadata not found"
       (with-redefs
         [clj-http.client/request
@@ -273,9 +290,9 @@
 
 
 (deftest write-metadata-test
-  (let [payload {:max_versions 5,
-                 :cas_required false,
-                 :delete_version_after "3h25m19s"}
+  (let [payload {:max-versions 5,
+                 :cas-required false,
+                 :delete-version-after "3h25m19s"}
         mount "mount"
         path-passed-in "path/passed/in"
         token-passed-in "fake-token"
@@ -289,7 +306,7 @@
            (is (= :post (:method req)))
            (is (= (str vault-url "/v1/" mount "/metadata/" path-passed-in) (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
-           (is (= payload (:form-params req)))
+           (is (= (api-util/snakeify-keys payload) (:form-params req)))
            {:status 204})]
         (is (true? (vault-kvv2/write-metadata! client mount path-passed-in payload)))))
     (testing "Write metadata sends correct request and responds with false upon failure"
@@ -299,7 +316,7 @@
            (is (= :post (:method req)))
            (is (= (str vault-url "/v1/" mount "/metadata/" path-passed-in) (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
-           (is (= payload (:form-params req)))
+           (is (= (api-util/snakeify-keys payload) (:form-params req)))
            {:status 500})]
         (is (false? (vault-kvv2/write-metadata! client mount path-passed-in payload)))))))
 
@@ -426,8 +443,8 @@
   (testing "Mock client can write and read config"
     (let [client (mock-client-kvv2)
           config {:max-versions 5
-                  :cas_required false
-                  :delete_version_after "3h23m19s"}]
+                  :cas-required false
+                  :delete-version-after "3h23m19s"}]
       (is (thrown? ExceptionInfo
             (vault-kvv2/read-config client "mount")))
       (is (true? (vault-kvv2/write-config! client "mount" config)))
@@ -436,13 +453,13 @@
     (let [client (mock-client-kvv2)]
       (is (thrown? ExceptionInfo
             (vault-kvv2/read-metadata client "mount" "doesn't exist" {:force-read true})))
-      (is (= {:created_time    "2018-03-22T02:24:06.945319214Z"
-              :current_version 1
-              :max_versions    0
-              :oldest_version  0
-              :updated_time    "2018-03-22T02:36:43.986212308Z"
-              :versions        {:1 {:created_time  "2018-03-22T02:24:06.945319214Z"
-                                    :deletion_time ""
+      (is (= {:created-time    "2018-03-22T02:24:06.945319214Z"
+              :current-version 1
+              :max-versions    0
+              :oldest-version  0
+              :updated-time    "2018-03-22T02:36:43.986212308Z"
+              :versions        {:1 {:created-time  "2018-03-22T02:24:06.945319214Z"
+                                    :deletion-time ""
                                     :destroyed     false}}}
              (vault-kvv2/read-metadata client "mount" "identities" {:force-read true})))
       (is (true? (vault-kvv2/delete-metadata! client "mount" "identities")))
