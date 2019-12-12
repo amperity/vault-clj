@@ -40,9 +40,9 @@ Leiningen, add the following dependency to your project definition:
  :leases #<Atom@640b3e30 {}>}
 
 ; Pull in the secret engine you wish to use:
-=> (require '[vault.secrets.kvv1 :as kvv1])
+=> (require '[vault.secrets.kvv1 :as vault-kvv1])
 
-=> (kvv1/read-secret client "secret/foo/bar")
+=> (vault-kvv1/read-secret client "secret/foo/bar")
 {:data "baz qux"}
 ```
 
@@ -61,15 +61,15 @@ secret fixture data.
 => (def mock-client (vault/new-client "mock:dev/secrets.edn"))
 
 ; Pull in the secret engine you wish to use:
-=> (require '[vault.secrets.kvv1 :as kvv1])
+=> (require '[vault.secrets.kvv1 :as vault-kvv1])
 
-=> (vault/read-secret mock-client "secret/service/foo/login")
+=> (vault-kvv1/read-secret mock-client "secret/service/foo/login")
 {:user "foo", :pass "abc123"}
 ```
 
 ## Secret Engines
 Vault supports many different [secret engines](https://www.vaultproject.io/docs/secrets/), each with very different
-capabilities. For the most part, secrets engine behave similar to virtual filesystems, supporting CRUD operations.
+capabilities. For the most part, secret engines behave similar to virtual filesystems, supporting CRUD operations.
 Secret engines are very flexible, so please check out the [Vault docs](https://www.vaultproject.io/docs/secrets/)
 for more info.
 
@@ -81,13 +81,13 @@ exposed in `vault.core`**
 #### [KV V1](https://www.vaultproject.io/docs/secrets/kv/kv-v1.html)
 
 ```clojure
-(require '[vault.secrets.kvv1 :as kvv1])
+(require '[vault.secrets.kvv1 :as vault-kvv1])
 ```
 
 #### [KV V2](https://www.vaultproject.io/docs/secrets/kv/kv-v2.html)
 
 ```clojure
-(require '[vault.secrets.kvv2 :as kvv2])
+(require '[vault.secrets.kvv2 :as vault-kvv2])
 ```
 
 ### Adding your own Secret Engines
