@@ -146,7 +146,7 @@
      - `path`: `String`, the path in vault of the secret you wish to list secrets at")
 
   (read-secret
-    [client path opts merge-req] [client path opts]
+    [client path opts]
     "Reads a resource from a path. Returns the full map of stored data if the resource exists, or throws an exception
     if not.
 
@@ -165,7 +165,9 @@
       Whether or not to rotate this secret when the lease is near expiry and
       cannot be renewed.
     - `:force-read`
-      Force the secret to be read from the server even if there is a valid lease cached.")
+      Force the secret to be read from the server even if there is a valid lease cached.
+    - `:request-opts`
+      Additional top level opts supported by clj-http")
 
   (write-secret!
     [client path data]
