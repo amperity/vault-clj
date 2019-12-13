@@ -1,13 +1,13 @@
 (ns vault.client.mock
+  "Defines the mock Vault client"
   (:require
     [clojure.edn :as edn]
     [clojure.java.io :as io]
     [clojure.string :as str]
-    [clojure.tools.logging :as log]
+    [vault.client.api-util :as api-util]
     [vault.core :as vault])
   (:import
     java.net.URI
-    java.text.SimpleDateFormat
     (java.util
       Date
       UUID)))
@@ -177,16 +177,14 @@
     this)
 
 
-  vault/SecretClient
+  vault/SecretEngine
 
   (list-secrets
     [this path]
-    (filter #(str/starts-with? % (str path)) (keys @memory)))
-
-
-  (read-secret
-    [this path]
-    (.read-secret this path nil))
+    (->> (keys @memory)
+         (filter #(str/starts-with? % (str path)))
+         ;; TODO: Mock here relies on string replace to get correct result for kvv2, this is brittle and not extensible
+         (map #(str/replace % #"(?:\w+\/)+metadata\/" ""))))
 
 
   (read-secret
@@ -195,7 +193,9 @@
         (if (contains? opts :not-found)
           (:not-found opts)
           (throw (ex-info (str "No such secret: " path)
-                          {:secret path})))))
+                          {:secret path
+                           :type ::api-util/api-error
+                           :status 404})))))
 
 
   (write-secret!
@@ -206,8 +206,9 @@
 
   (delete-secret!
     [this path]
-    (swap! memory dissoc path)
-    true)
+    (let [was-in-memeory (contains? @memory path)]
+      (swap! memory dissoc path)
+      was-in-memeory))
 
 
   vault/WrappingClient

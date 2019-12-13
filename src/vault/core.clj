@@ -131,21 +131,31 @@
     "Removes the watch function registered with the given key, if any."))
 
 
-(defprotocol SecretClient
-  "Basic API for listing, reading, and writing secrets."
+(defprotocol SecretEngine
+  "Basic API for listing, reading, and writing secrets.
+
+  **NOTE**: These are meant to be used as basic CRUD operations on Vault and is helpful for writing new Secret Engines.
+  End users will likely want to use Secret Engines directly (see `vault.secrets`)"
 
   (list-secrets
     [client path]
-    "List the secrets located under a path.")
+    "Returns a vector of the secrets names located under a path.
+
+     Params:
+     - `client`: `vault.client`, A client that handles vault auth, leases, and basic CRUD ops
+     - `path`: `String`, the path in vault of the secret you wish to list secrets at")
 
   (read-secret
-    [client path]
     [client path opts]
-    "Reads a secret from a path. Returns the full map of stored secret data if
-    the secret exists, or throws an exception if not.
+    "Reads a resource from a path. Returns the full map of stored data if the resource exists, or throws an exception
+    if not.
+
+    Params:
+    - `client`: `vault.client`, A client that handles vault auth, leases, and basic CRUD ops
+    - `path`: `String`, the path in vault of the secret you wish to read
+    - `opts`: `map`, Further optional read described below.
 
     Additional options may include:
-
     - `:not-found`
       If the requested path is not found, return this value instead of throwing
       an exception.
@@ -155,17 +165,26 @@
       Whether or not to rotate this secret when the lease is near expiry and
       cannot be renewed.
     - `:force-read`
-      Force the secret to be read from the server even if there is a valid lease cached.")
+      Force the secret to be read from the server even if there is a valid lease cached.
+    - `:request-opts`
+      Additional top level opts supported by clj-http")
 
   (write-secret!
     [client path data]
-    "Writes secret data to a path. `data` should be a map. Returns a
-    boolean indicating whether the write was successful.")
+    "Writes secret data to a path. Returns a boolean indicating whether the write was successful.
+
+    Params:
+    - `client`: `vault.client`, A client that handles vault auth, leases, and basic CRUD ops
+    - `path`: `String`, the path in vault of the secret you wish to write the secret to
+    - `data`: `map`, the data you wish to write to the given path.")
 
   (delete-secret!
     [client path]
-    "Removes secret data from a path. Returns a boolean indicating whether the
-    deletion was successful."))
+    "Removes secret data from a path. Returns a boolean indicating whether the deletion was successful.
+
+    Params:
+    - `client`: `vault.client`, A client that handles vault auth, leases, and basic CRUD ops
+    - `path`: `String`, the path in vault of the secret you wish to delete the secret from"))
 
 
 (defprotocol WrappingClient
@@ -179,7 +198,6 @@
   (unwrap!
     [client wrap-token]
     "Returns the original response wrapped by the given token."))
-
 
 
 ;; ## Client Construction

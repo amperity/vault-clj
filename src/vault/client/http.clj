@@ -1,313 +1,17 @@
 (ns vault.client.http
+  "Defines the Vault HTTP client and constructors"
   (:require
-    [cheshire.core :as json]
-    [clj-http.client :as http]
     [clojure.string :as str]
     [clojure.tools.logging :as log]
-    [clojure.walk :as walk]
     [com.stuartsierra.component :as component]
+    [vault.authenticate :as authenticate]
+    [vault.client.api-util :as api-util]
     [vault.core :as vault]
     [vault.lease :as lease]
     [vault.timer :as timer])
   (:import
-    java.security.MessageDigest
-    org.apache.commons.codec.binary.Hex))
-
-
-;; ## API Utilities
-
-(defn- kebabify-keys
-  "Rewrites keyword map keys with underscores changed to dashes."
-  [value]
-  (let [kebab-kw #(-> % name (str/replace "_" "-") keyword)
-        xf-entry (juxt (comp kebab-kw key) val)]
-    (walk/postwalk
-      (fn xf-maps
-        [x]
-        (if (map? x)
-          (into {} (map xf-entry) x)
-          x))
-      value)))
-
-
-(defn- sha-256
-  "Geerate a SHA-2 256 bit digest from a string."
-  [s]
-  (let [hasher (MessageDigest/getInstance "SHA-256")
-        str-bytes (.getBytes (str s) "UTF-8")]
-    (.update hasher str-bytes)
-    (Hex/encodeHexString (.digest hasher))))
-
-
-(defn- clean-body
-  "Cleans up a response from the Vault API by rewriting some keywords and
-  dropping extraneous information. Note that this changes the `:data` in the
-  response to the original result to preserve accuracy."
-  [response]
-  (->
-    (:body response)
-    (kebabify-keys)
-    (assoc :data (:data (:body response)))
-    (->> (into {} (filter (comp some? val))))))
-
-
-(defn- api-error
-  "Inspects an exception and returns a cleaned-up version if the type is well
-  understood. Otherwise returns the original error."
-  [ex]
-  (let [data (ex-data ex)
-        status (:status data)]
-    (if (and status (<= 400 status))
-      (let [body (try
-                   (json/parse-string (:body data) true)
-                   (catch Exception _
-                     nil))
-            errors (if (:errors body)
-                     (str/join ", " (:errors body))
-                     (pr-str body))]
-        (ex-info (str "Vault API errors: " errors)
-                 {:type ::api-error
-                  :status status
-                  :errors (:errors body)}
-                 ex))
-      ex)))
-
-
-(defn ^:no-doc do-api-request
-  "Performs a request against the API, following redirects at most twice. The
-  `request-url` should be the full API endpoint."
-  [method request-url req]
-  (let [redirects (::redirects req 0)]
-    (when (<= 2 redirects)
-      (throw (ex-info (str "Aborting Vault API request after " redirects " redirects")
-                      {:method method, :url request-url})))
-    (let [resp (try
-                 (http/request (assoc req :method method :url request-url))
-                 (catch Exception ex
-                   (throw (api-error ex))))]
-      (if-let [location (and (#{303 307} (:status resp))
-                             (get-in resp [:headers "Location"]))]
-        (do (log/debug "Retrying API request redirected to " location)
-            (recur method location (assoc req ::redirects (inc redirects))))
-        resp))))
-
-
-(defn- api-request
-  "Helper method to perform an API request with common headers and values.
-  Currently always uses API version `v1`. The `path` should be relative to the
-  version root."
-  [client method path req]
-  ; Check API path.
-  (when-not (and (string? path) (not (empty? path)))
-    (throw (IllegalArgumentException.
-             (str "API path must be a non-empty string, got: "
-                  (pr-str path)))))
-  ; Check client authentication.
-  (when-not (some-> client :auth deref :client-token)
-    (throw (IllegalStateException.
-             "Cannot call API path with unauthenticated client.")))
-  ; Call API with standard arguments.
-  (do-api-request
-    method
-    (str (:api-url client) "/v1/" path)
-    (merge
-      (:http-opts client)
-      {:accept :json
-       :as :json}
-      req
-      {:headers (merge {"X-Vault-Token" (:client-token @(:auth client))}
-                       (:headers req))})))
-
-
-(defn- unwrap-secret
-  "Common function to call the token unwrap endpoint."
-  [client wrap-token]
-  (do-api-request
-    :post (str (:api-url client) "/v1/sys/wrapping/unwrap")
-    (merge
-      (:http-opts client)
-      {:headers {"X-Vault-Token" wrap-token}
-       :content-type :json
-       :accept :json
-       :as :json})))
-
-
-
-;; ## Authentication Methods
-
-(defn ^:no-doc api-auth!
-  "Validate the response from a vault auth call, update auth-ref with additional
-  tracking state like lease metadata."
-  [claim auth-ref response]
-  (let [auth-info (lease/auth-lease (:auth (clean-body response)))]
-    (when-not (:client-token auth-info)
-      (throw (ex-info (str "No client token returned from non-error API response: "
-                           (:status response) " " (:reason-phrase response))
-                      {:body (:body response)})))
-    (log/infof "Successfully authenticated to Vault as %s for policies: %s"
-               claim (str/join ", " (:policies auth-info)))
-    (reset! auth-ref auth-info)))
-
-
-(defmulti authenticate*
-  "Authenticate the client with vault using the given auth-type and credentials."
-  (fn [client auth-type credentials] auth-type))
-
-
-(defmethod authenticate* :default
-  [client auth-type _]
-  (throw (ex-info (str "Unsupported auth-type " (pr-str auth-type))
-                      {:auth-type auth-type})))
-
-
-(defmethod authenticate* :token
-  [client _ token]
-  (when-not (string? token)
-    (throw (IllegalArgumentException. "Token credential must be a string")))
-  (reset! (:auth client) {:client-token (str/trim token)}))
-
-
-(defmethod authenticate* :wrap-token
-  [client _ credentials]
-  (api-auth!
-    "wrapped token"
-    (:auth client)
-    (unwrap-secret client credentials)))
-
-
-(defmethod authenticate* :userpass
-  [client _ credentials]
-  (let [{:keys [username password]} credentials]
-    (api-auth!
-      (str "user " username)
-      (:auth client)
-      (do-api-request
-       :post (str (:api-url client) "/v1/auth/userpass/" (:auth-mount-point client) "login/" username)
-        (merge
-          (:http-opts client)
-          {:form-params {:password password}
-           :content-type :json
-           :accept :json
-           :as :json})))))
-
-
-(defmethod authenticate* :app-id
-  [client _ credentials]
-  (let [{:keys [app user]} credentials]
-    (api-auth!
-      (str "app-id " app)
-      (:auth client)
-      (do-api-request
-       :post (str (:api-url client) "/v1/auth/app-id/" (:auth-mount-point client) "login")
-        (merge
-          (:http-opts client)
-          {:form-params {:app_id app, :user_id user}
-           :content-type :json
-           :accept :json
-           :as :json})))))
-
-
-(defmethod authenticate* :app-role
-  [client _ credentials]
-  (let [{:keys [role-id secret-id]} credentials]
-    (api-auth!
-      (str "role-id sha256:" (sha-256 role-id))
-      (:auth client)
-      (do-api-request
-       :post (str (:api-url client) "/v1/auth/approle/" (:auth-mount-point client) "login")
-        (merge
-          (:http-opts client)
-          {:form-params {:role_id role-id, :secret_id secret-id}
-           :content-type :json
-           :accept :json
-           :as :json})))))
-
-
-(defmethod authenticate* :ldap
-  [client _ credentials]
-  (let [{:keys [username password]} credentials]
-    (api-auth!
-      (str "LDAP user " username)
-      (:auth client)
-      (do-api-request
-       :post (str (:api-url client) "/v1/auth/ldap/" (:auth-mount-point client) "login/" username)
-        (merge
-          (:http-opts client)
-          {:form-params {:password password}
-           :content-type :json
-           :accept :json
-           :as :json})))))
-
-
-(defmethod authenticate* :k8s
-  [client _ credentials]
-  (let [{:keys [api-path jwt role]} credentials
-        api-path (or api-path (str "/v1/auth/kubernetes/" (:auth-mount-point client) "login"))]
-    (when-not jwt
-      (throw (IllegalArgumentException. "Kubernetes auth credentials must include :jwt")))
-    (when-not role
-      (throw (IllegalArgumentException. "Kubernetes auth credentials must include :role")))
-    (api-auth!
-      (str "Kubernetes auth role=" role)
-      (:auth client)
-      (do-api-request
-        :post (str (:api-url client) api-path)
-        (merge
-          (:http-opts client)
-          {:form-params {:jwt jwt :role role}
-           :content-type :json
-           :accept :json
-           :as :json})))))
-
-
-;; ## Timer Logic
-
-(defn- try-renew-lease!
-  "Attempts to renew the given secret lease. Updates the lease store or catches
-  and logs any exception."
-  [client secret]
-  (try
-    (vault/renew-lease client (:lease-id secret))
-    (catch Exception ex
-      (log/error ex "Failed to renew secret lease" (:lease-id secret)))))
-
-
-(defn- try-rotate-secret!
-  "Attempts to rotate the given secret lease. Updates the lease store or catches
-  and logs any exception."
-  [client secret]
-  (try
-    (log/info "Rotating secret lease" (:lease-id secret))
-    (let [response (api-request client :get (:path secret) {})
-          info (assoc (clean-body response) :path (:path secret))]
-      (lease/update! (:leases client) info))
-    (catch Exception ex
-      (log/error ex "Failed to rotate secret" (:lease-id secret)))))
-
-
-(defn- maintain-leases!
-  [client window]
-  (log/trace "Checking for renewable leases...")
-  ; Check auth token for renewal.
-  (let [auth @(:auth client)]
-    (when (and (:renewable auth)
-               (lease/expires-within? auth window))
-      (try
-        (log/info "Renewing Vault client token")
-        (vault/renew-token client)
-        (catch Exception ex
-          (log/error ex "Failed to renew client token!")))))
-  ; Renew leases that are within expiry window and are configured for renewal.
-  ; Rotate secrets that are about to expire and not renewable.
-  (let [renewable (lease/renewable-leases (:leases client) window)
-        rotatable (lease/rotatable-leases (:leases client) window)]
-    (doseq [secret renewable]
-      (try-renew-lease! client secret))
-    ; Rotate leases that are within expiry window and not renewable.
-    (doseq [secret rotatable]
-      (try-rotate-secret! client secret)))
-  ; Drop any expired leases.
-  (lease/sweep! (:leases client)))
+    (clojure.lang
+      ExceptionInfo)))
 
 
 ;; ## HTTP Client Type
@@ -338,7 +42,7 @@
             period (:lease-check-period   this  60)
             jitter (:lease-check-jitter   this  10)
             thread (timer/start! "vault-lease-timer"
-                                 #(maintain-leases! this window)
+                                 #(lease/maintain-leases! this window)
                                  period
                                  jitter)]
         (assoc this :lease-timer thread))))
@@ -368,18 +72,18 @@
 
   (authenticate!
     [this auth-type credentials]
-    (authenticate* this auth-type credentials)
+    (authenticate/authenticate* this auth-type credentials)
     this)
 
 
   (status
     [this]
-    (-> (do-api-request
+    (-> (api-util/do-api-request
           :get (str api-url "/v1/sys/health")
           (assoc http-opts
                  :accept :json
                  :as :json))
-        (clean-body)))
+        (api-util/clean-body)))
 
 
   vault/TokenManager
@@ -389,40 +93,40 @@
     (let [params (->> (dissoc opts :wrap-ttl)
                       (map (fn [[k v]] [(str/replace (name k) "-" "_") v]))
                       (into {}))
-          response (api-request
+          response (api-util/api-request
                      this :post "auth/token/create"
                      {:headers (when-let [ttl (:wrap-ttl opts)]
                                  {"X-Vault-Wrap-TTL" ttl})
                       :form-params params
                       :content-type :json})]
       ; Return auth info if available, or wrap info if not.
-      (or (-> response :body :auth kebabify-keys)
-          (-> response :body :wrap_info kebabify-keys)
+      (or (-> response :body :auth api-util/kebabify-keys)
+          (-> response :body :wrap_info api-util/kebabify-keys)
           (throw (ex-info "No auth or wrap-info in response body"
                           {:body (:body response)})))))
 
 
   (lookup-token
     [this]
-    (-> (api-request this :get "auth/token/lookup-self" {})
+    (-> (api-util/api-request this :get "auth/token/lookup-self" {})
         (get-in [:body :data])
-        (kebabify-keys)))
+        (api-util/kebabify-keys)))
 
 
   (lookup-token
     [this token]
-    (-> (api-request
+    (-> (api-util/api-request
           this :post "auth/token/lookup"
           {:form-params {:token token}
            :content-type :json})
         (get-in [:body :data])
-        (kebabify-keys)))
+        (api-util/kebabify-keys)))
 
 
   (renew-token
     [this]
-    (let [response (api-request this :post "auth/token/renew-self" {})
-          auth-info (lease/auth-lease (:auth (clean-body response)))]
+    (let [response (api-util/api-request this :post "auth/token/renew-self" {})
+          auth-info (lease/auth-lease (:auth (api-util/clean-body response)))]
       (when-not (:client-token auth-info)
         (throw (ex-info (str "No client token returned from token renewal response: "
                              (:status response) " " (:reason-phrase response))
@@ -433,11 +137,11 @@
 
   (renew-token
     [this token]
-    (-> (api-request
+    (-> (api-util/api-request
           this :post "auth/token/renew"
           {:form-params {:token token}
            :content-type :json})
-        (clean-body)
+        (api-util/clean-body)
         (:auth)))
 
 
@@ -449,7 +153,7 @@
 
   (revoke-token!
     [this token]
-    (let [response (api-request
+    (let [response (api-util/api-request
                      this :post "auth/token/revoke"
                      {:form-params {:token token}
                       :content-type :json})]
@@ -458,17 +162,17 @@
 
   (lookup-accessor
     [this token-accessor]
-    (-> (api-request
+    (-> (api-util/api-request
           this :post "auth/token/lookup-accessor"
           {:form-params {:accessor token-accessor}
            :content-type :json})
         (get-in [:body :data])
-        (kebabify-keys)))
+        (api-util/kebabify-keys)))
 
 
   (revoke-accessor!
     [this token-accessor]
-    (let [response (api-request
+    (let [response (api-util/api-request
                      this :post "auth/token/revoke-accessor"
                      {:form-params {:accessor token-accessor}
                       :content-type :json})]
@@ -486,11 +190,11 @@
     [this lease-id]
     (log/debug "Renewing lease" lease-id)
     (let [current (lease/lookup leases lease-id)
-          response (api-request
+          response (api-util/api-request
                      this :put "sys/renew"
                      {:form-params {:lease_id lease-id}
                       :content-type :json})
-          info (clean-body response)]
+          info (api-util/clean-body response)]
       ; If the lease looks renewable but the lease-duration is shorter than the
       ; existing lease, we're up against the max-ttl and the lease should not
       ; be considered renewable.
@@ -506,7 +210,7 @@
   (revoke-lease!
     [this lease-id]
     (log/debug "Revoking lease" lease-id)
-    (let [response (api-request this :put (str "sys/revoke/" lease-id) {})]
+    (let [response (api-util/api-request this :put (str "sys/revoke/" lease-id) {})]
       (lease/remove-lease! leases lease-id)
       (= 204 (:status response))))
 
@@ -523,21 +227,15 @@
     this)
 
 
-  vault/SecretClient
+  vault/SecretEngine
+
 
   (list-secrets
     [this path]
-    (let [response (api-request
-                     this :get path
-                     {:query-params {:list true}})
+    (let [response (api-util/api-request this :get path {:query-params {:list true}})
           data (get-in response [:body :data :keys])]
       (log/debugf "List %s (%d results)" path (count data))
       data))
-
-
-  (read-secret
-    [this path]
-    (.read-secret this path nil))
 
 
   (read-secret
@@ -546,31 +244,28 @@
                               (lease/lookup leases path))]
           (when-not (lease/expired? lease)
             (:data lease)))
-        (try
-          (let [response (api-request this :get path {})
-                info (assoc (clean-body response)
+        (api-util/supports-not-found
+          opts
+          (let [response (api-util/api-request this :get path (:request-opts opts))
+                info (assoc (api-util/clean-body response)
                             :path path
                             :renew (:renew opts)
                             :rotate (:rotate opts))]
+
             (log/debugf "Read %s (valid for %d seconds)"
                         path (:lease-duration info))
             (lease/update! leases info)
-            (:data info))
-          (catch clojure.lang.ExceptionInfo ex
-            (if (and (contains? opts :not-found)
-                     (= ::api-error (:type (ex-data ex)))
-                     (= 404 (:status (ex-data ex))))
-              (:not-found opts)
-              (throw ex))))))
+
+            (:data info)))))
 
 
   (write-secret!
     [this path data]
-    (let [response (api-request
+    (let [response (api-util/api-request
                      this :post path
                      {:form-params data
                       :content-type :json})]
-      (log/debug "Wrote secret" path)
+      (log/debug "Vault client wrote to" path)
       (lease/remove-path! leases path)
       (case (int (:status response -1))
         204 true
@@ -580,8 +275,8 @@
 
   (delete-secret!
     [this path]
-    (let [response (api-request this :delete path {})]
-      (log/debug "Deleted secret" path)
+    (let [response (api-util/api-request this :delete path {})]
+      (log/debug "Vault client deleted resources at" path)
       (lease/remove-path! leases path)
       (= 204 (:status response))))
 
@@ -590,23 +285,22 @@
 
   (wrap!
     [this data ttl]
-    (-> (api-request
+    (-> (api-util/api-request
           this :post "sys/wrapping/wrap"
           {:headers {"X-Vault-Wrap-TTL" ttl}
            :form-params data
            :content-type :json})
         (get-in [:body :wrap_info])
-        (kebabify-keys)))
+        (api-util/kebabify-keys)))
 
 
   (unwrap!
     [this wrap-token]
-    (let [response (unwrap-secret this wrap-token)]
-      (or (-> response :body :auth kebabify-keys)
+    (let [response (api-util/unwrap-secret this wrap-token)]
+      (or (-> response :body :auth api-util/kebabify-keys)
           (-> response :body :data)
           (throw (ex-info "No auth info or data in response body"
                           {:body (:body response)}))))))
-
 
 
 ;; ## Constructors

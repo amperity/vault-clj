@@ -2,7 +2,9 @@
   "Storage logic for Vault secrets and their associated leases."
   (:require
     [clojure.string :as str]
-    [clojure.tools.logging :as log])
+    [clojure.tools.logging :as log]
+    [vault.client.api-util :as api-util]
+    [vault.core :as vault])
   (:import
     java.time.Instant))
 
@@ -12,7 +14,6 @@
   ^java.time.Instant
   []
   (Instant/now))
-
 
 
 ;; ## Lease Construction
@@ -37,7 +38,6 @@
     (:data info)           (assoc :data (:data info) ::issued (now))
     (some? (:renew info))  (assoc ::renew (boolean (:renew info)))
     (some? (:rotate info)) (assoc ::rotate (boolean (:rotate info)))))
-
 
 
 ;; ## Lease Logic
@@ -68,7 +68,6 @@
   "Determines whether the lease has expired."
   [lease]
   (expires-within? lease 0))
-
 
 
 ;; ## Secret Storage
@@ -154,7 +153,10 @@
   [store window]
   (->> (list-leases store)
        (filter ::rotate)
-       (remove renewable?)
+       (filter (fn non-renewable?
+                 [lease]
+                 (or (expired? lease)
+                     (not (renewable? lease)))))
        (filter #(expires-within? % window))))
 
 
@@ -169,3 +171,52 @@
       (when (not= (:lease-id old-info)
                   (:lease-id new-info))
         (watch-fn new-info)))))
+
+;; ----- Lease operations that work on the client level -----------------------
+
+(defn ^:no-doc try-renew-lease!
+  "Attempts to renew the given secret lease. Updates the lease store or catches
+  and logs any exception."
+  [client secret]
+  (try
+    (vault/renew-lease client (:lease-id secret))
+    (catch Exception ex
+      (log/error ex "Failed to renew secret lease" (:lease-id secret)))))
+
+
+(defn ^:no-doc try-rotate-secret!
+  "Attempts to rotate the given secret lease. Updates the lease store or catches
+  and logs any exception."
+  [client secret]
+  (try
+    (log/info "Rotating secret lease" (:lease-id secret))
+    (let [response (api-util/api-request client :get (:path secret) {})
+          info (assoc (api-util/clean-body response) :path (:path secret))]
+      (update! (:leases client) info))
+    (catch Exception ex
+      (log/error ex "Failed to rotate secret" (:lease-id secret)))))
+
+
+(defn ^:no-doc maintain-leases!
+  [client window]
+  (log/trace "Checking for renewable leases...")
+  ; Check auth token for renewal.
+  (let [auth @(:auth client)]
+    (when (and (:renewable auth)
+               (expires-within? auth window))
+      (try
+        (log/info "Renewing Vault client token")
+        (vault/renew-token client)
+        (catch Exception ex
+          (log/error ex "Failed to renew client token!")))))
+  ; Renew leases that are within expiry window and are configured for renewal.
+  ; Rotate secrets that are about to expire and not renewable.
+  (let [renewable (renewable-leases (:leases client) window)
+        rotatable (rotatable-leases (:leases client) window)]
+    (doseq [secret renewable]
+      (try-renew-lease! client secret))
+    ; Rotate leases that are within expiry window and not renewable.
+    (doseq [secret rotatable]
+      (try-rotate-secret! client secret)))
+  ; Drop any expired leases.
+  (sweep! (:leases client)))
