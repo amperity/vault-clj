@@ -5,7 +5,13 @@ All notable changes to this project will be documented in this file.
 This change log follows the conventions of [keepachangelog.com](http://keepachangelog.com/).
 
 ## [Unreleased]
-- Large internal refactors that may result in unexpected behavior
+...
+
+## [1.0.0] - 2019-12-13
+
+**THIS RELEASE CONTAINS SOME BREAKING CHANGES!**
+
+- Large internal refactor that may result in unexpected behavior
   [#35](https://github.com/amperity/vault-clj/pull/35)
 - Added support for the KV V2 API
   [#33](https://github.com/amperity/vault-clj/issues/33)
@@ -14,8 +20,6 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
   [#33](https://github.com/amperity/vault-clj/issues/33)
 - Bugfix for mocking delete
   [#35](https://github.com/amperity/vault-clj/pull/35)
-
-...
 
 ## [0.7.1] - 2019-11-20
 
@@ -242,7 +246,8 @@ With this version, the project has been forked to the Amperity organization.
 ### Added
 - Initial library implementation.
 
-[Unreleased]: https://github.com/amperity/vault-clj/compare/0.7.1...HEAD
+[Unreleased]: https://github.com/amperity/vault-clj/compare/1.0.0...HEAD
+[1.0.0]: https://github.com/amperity/vault-clj/compare/0.7.1...1.0.0
 [0.7.1]: https://github.com/amperity/vault-clj/compare/0.7.0...0.7.1
 [0.7.0]: https://github.com/amperity/vault-clj/compare/0.6.6...0.7.0
 [0.6.6]: https://github.com/amperity/vault-clj/compare/0.6.5...0.6.6
