@@ -15,15 +15,6 @@
    [clj-http "3.11.0"]
    [com.stuartsierra/component "1.0.0"]]
 
-  :codox
-  {:metadata {:doc/format :markdown}
-   :source-uri "https://github.com/amperity/vault-clj/blob/master/{filepath}#L{line}"
-   :output-path "target/doc/api"}
-
-  :cljfmt
-  {:padding-lines 2
-   :max-consecutive-blank-lines 3}
-
   :profiles
   {:dev
    {:dependencies [[commons-logging "1.2"]]}
