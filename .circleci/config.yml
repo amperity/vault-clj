@@ -1,61 +1,93 @@
-version: 2.0
+version: 2.1
 
-references:
-  default-container: &default-container
+# Common executor configuration
+executors:
+  clojure:
     docker:
-      - image: clojure:lein-2.8.1
-    working_directory: /root/vault-clj
-  restore-m2-cache: &restore-m2-cache
-    restore_cache:
-      keys:
-        - v1-jars-{{ checksum "project.clj" }}
-  save-m2-cache: &save-m2-cache
-    save_cache:
-      key: v1-jars-{{ checksum "project.clj" }}
-      paths:
-        - /root/.m2
+      - image: circleci/clojure:openjdk-11-lein-2.9.1
+    working_directory: ~/repo
 
+
+# Job definitions
+jobs:
+  style:
+    executor: clojure
+    steps:
+      - checkout
+      - run:
+          name: Install cljstyle
+          environment:
+            CLJSTYLE_VERSION: 0.14.0
+          command: |
+            wget https://github.com/greglook/cljstyle/releases/download/${CLJSTYLE_VERSION}/cljstyle_${CLJSTYLE_VERSION}_linux.tar.gz
+            tar -xzf cljstyle_${CLJSTYLE_VERSION}_linux.tar.gz
+      - run:
+          name: Check source formatting
+          command: "./cljstyle check --report"
+
+  lint:
+    executor: clojure
+    steps:
+      - checkout
+      - run:
+          name: Install clj-kondo
+          environment:
+            CLJ_KONDO_VERSION: 2020.12.12
+          command: |
+            wget https://github.com/borkdude/clj-kondo/releases/download/v${CLJ_KONDO_VERSION}/clj-kondo-${CLJ_KONDO_VERSION}-linux-amd64.zip
+            unzip clj-kondo-${CLJ_KONDO_VERSION}-linux-amd64.zip
+      - run:
+          name: Lint source code
+          command: "./clj-kondo --lint src test"
+
+  test:
+    executor: clojure
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - v1-test-{{ checksum "project.clj" }}
+            - v1-test-
+      - run: lein deps
+      - run: lein check
+      - run: lein test
+      - save_cache:
+          key: v1-test-{{ checksum "project.clj" }}
+          paths:
+            - ~/.m2
+
+  coverage:
+    executor: clojure
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - v1-coverage-{{ checksum "project.clj" }}
+            - v1-coverage-
+            - v1-test-
+      - run:
+          name: Generate test coverage
+          command: lein with-profile +test cloverage --codecov
+      - save_cache:
+          paths:
+            - ~/.m2
+          key: v1-coverage-{{ checksum "project.clj" }}
+      - store_artifacts:
+          path: target/coverage
+          destination: coverage
+      - run:
+          name: Publish Coverage
+          command: 'bash <(curl -s https://codecov.io/bash) -f target/coverage/codecov.json'
+
+
+# Workflow definitions
 workflows:
   version: 2
-  build:
+  test:
     jobs:
-      - update-m2-cache
-      - check:
-          requires:
-            - update-m2-cache
-      - test:
-          requires:
-            - update-m2-cache
+      - style
+      - lint
+      - test
       - coverage:
           requires:
-            - update-m2-cache
-
-jobs:
-  update-m2-cache:
-    <<: *default-container
-    steps:
-      - checkout
-      - *restore-m2-cache
-      - run: lein deps
-      - *save-m2-cache
-  check:
-    <<: *default-container
-    steps:
-      - checkout
-      - *restore-m2-cache
-      - run: lein check
-  test:
-    <<: *default-container
-    steps:
-      - checkout
-      - *restore-m2-cache
-      - run: lein test
-  coverage:
-    <<: *default-container
-    steps:
-      - checkout
-      - *restore-m2-cache
-      - run: lein with-profile +test cloverage --codecov
-      - run: bash <(curl -s https://codecov.io/bash) -f target/coverage/codecov.json
-      - store_artifacts:
-          path: /root/target/coverage
+            - test

@@ -1,0 +1,9 @@
+;; Clojure formatting rules
+;; vim: filetype=clojure
+{:files
+ {:ignore #{"checkouts" "target"}}
+
+ :rules
+ {:blank-lines
+  {:padding-lines 2
+   :max-consecutive 3}}}

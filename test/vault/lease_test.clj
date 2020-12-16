@@ -1,6 +1,6 @@
 (ns vault.lease-test
   (:require
-    [clojure.test :refer :all]
+    [clojure.test :refer [deftest is]]
     [vault.lease :as lease])
   (:import
     java.time.Instant))

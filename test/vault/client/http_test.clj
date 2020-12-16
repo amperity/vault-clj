@@ -1,6 +1,6 @@
 (ns vault.client.http-test
   (:require
-    [clojure.test :refer :all]
+    [clojure.test :refer [deftest testing is]]
     [vault.authenticate :as authenticate]
     [vault.client.api-util :as api-util]
     [vault.client.http :refer [http-client]]
@@ -33,11 +33,9 @@
   (let [api-endpoint (str example-url "/v1/auth/approle/login")
         client (http-client example-url)
         connection-attempt (atom nil)]
-    (with-redefs [api-util/do-api-request
-                  (fn [method url req]
-                    (reset! connection-attempt url))
-                  authenticate/api-auth!
-                  (fn [claim auth-ref response] nil)]
+    (with-redefs [api-util/do-api-request (fn [_method url _req]
+                                            (reset! connection-attempt url))
+                  authenticate/api-auth! (constantly nil)]
       (vault/authenticate! client :app-role {:secret-id "secret"
                                              :role-id "role-id"})
       (is (= @connection-attempt api-endpoint)

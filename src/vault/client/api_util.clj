@@ -124,7 +124,7 @@
   version root."
   [client method path req]
   ; Check API path.
-  (when-not (and (string? path) (not (empty? path)))
+  (when-not (and (string? path) (not (str/blank? path)))
     (throw (IllegalArgumentException.
              (str "API path must be a non-empty string, got: "
                   (pr-str path)))))
