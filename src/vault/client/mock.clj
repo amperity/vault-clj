@@ -43,12 +43,12 @@
   vault/Client
 
   (authenticate!
-    [this auth-type credentials]
+    [this _ _]
     this)
 
 
   (status
-    [this]
+    [_]
     {:initialized true
      :sealed false
      :standby false
@@ -101,86 +101,38 @@
            :metadata       nil}))))
 
 
-  (lookup-token
-    [this]
-    ; TODO: implement
-    (throw (UnsupportedOperationException. "NYI")))
-
-
-  (lookup-token
-    [this token]
-    ; TODO: implement
-    (throw (UnsupportedOperationException. "NYI")))
-
-
-  (renew-token
-    [this]
-    ; TODO: implement
-    (throw (UnsupportedOperationException. "NYI")))
-
-
-  (renew-token
-    [this token]
-    ; TODO: implement
-    (throw (UnsupportedOperationException. "NYI")))
-
-
-  (revoke-token!
-    [this]
-    ; TODO: implement
-    (throw (UnsupportedOperationException. "NYI")))
-
-
-  (revoke-token!
-    [this token]
-    ; TODO: implement
-    (throw (UnsupportedOperationException. "NYI")))
-
-
-  (lookup-accessor
-    [this token-accessor]
-    ; TODO: implement
-    (throw (UnsupportedOperationException. "NYI")))
-
-
-  (revoke-accessor!
-    [this token]
-    ; TODO: implement
-    (throw (UnsupportedOperationException. "NYI")))
-
-
   vault/LeaseManager
 
   (list-leases
-    [this]
+    [_]
     [])
 
 
   (renew-lease
-    [this lease-id]
+    [_ _]
     ; TODO: implement
     (throw (UnsupportedOperationException. "NYI")))
 
 
   (revoke-lease!
-    [this lease-id]
+    [_ _]
     true)
 
 
   (add-lease-watch
-    [this watch-key path watch-fn]
+    [this _ _ _]
     this)
 
 
   (remove-lease-watch
-    [this watch-key]
+    [this _]
     this)
 
 
   vault/SecretEngine
 
   (list-secrets
-    [this path]
+    [_ path]
     (->> (keys @memory)
          (filter #(str/starts-with? % (str path)))
          ;; TODO: Mock here relies on string replace to get correct result for kvv2, this is brittle and not extensible
@@ -188,7 +140,7 @@
 
 
   (read-secret
-    [this path opts]
+    [_ path opts]
     (or (get @memory path)
         (if (contains? opts :not-found)
           (:not-found opts)
@@ -199,13 +151,13 @@
 
 
   (write-secret!
-    [this path data]
+    [_ path data]
     (swap! memory assoc path data)
     true)
 
 
   (delete-secret!
-    [this path]
+    [_ path]
     (let [was-in-memeory (contains? @memory path)]
       (swap! memory dissoc path)
       was-in-memeory))
@@ -214,7 +166,7 @@
   vault/WrappingClient
 
   (wrap!
-    [this data ttl]
+    [_ data _]
     (let [wrap-token (gen-uuid)]
       (swap! cubbies assoc wrap-token data)
       {:token wrap-token
@@ -223,7 +175,7 @@
 
 
   (unwrap!
-    [this wrap-token]
+    [_ wrap-token]
     (if-let [data (get @cubbies wrap-token)]
       (do (swap! cubbies dissoc wrap-token)
           data)

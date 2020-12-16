@@ -23,11 +23,13 @@
 
 (defmulti authenticate*
   "Authenticate the client with vault using the given auth-type and credentials."
-  (fn [client auth-type credentials] auth-type))
+  (fn dispatch
+    [_client auth-type _credentials]
+    auth-type))
 
 
 (defmethod authenticate* :default
-  [client auth-type _]
+  [_ auth-type _]
   (throw (ex-info (str "Unsupported auth-type " (pr-str auth-type))
                   {:auth-type auth-type})))
 

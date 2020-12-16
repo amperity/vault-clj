@@ -1,5 +1,6 @@
 (ns vault.secrets.kvv1-test
   (:require
+    [clj-http.client]
     [clojure.test :refer [is testing deftest]]
     [vault.client.http :as http-client]
     [vault.client.mock-test :as mock-test]

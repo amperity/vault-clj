@@ -8,10 +8,7 @@
     [vault.client.api-util :as api-util]
     [vault.core :as vault]
     [vault.lease :as lease]
-    [vault.timer :as timer])
-  (:import
-    (clojure.lang
-      ExceptionInfo)))
+    [vault.timer :as timer]))
 
 
 ;; ## HTTP Client Type
@@ -77,7 +74,7 @@
 
 
   (status
-    [this]
+    [_]
     (-> (api-util/do-api-request
           :get (str api-url "/v1/sys/health")
           (assoc http-opts
@@ -182,7 +179,7 @@
   vault/LeaseManager
 
   (list-leases
-    [this]
+    [_]
     (lease/list-leases leases))
 
 
@@ -228,7 +225,6 @@
 
 
   vault/SecretEngine
-
 
   (list-secrets
     [this path]

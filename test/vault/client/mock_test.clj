@@ -1,6 +1,7 @@
 (ns vault.client.mock-test
   (:require
-    [clojure.test :refer :all]
+    [clojure.string :as str]
+    [clojure.test :refer [deftest testing is]]
     [vault.core :as vault])
   (:import
     (clojure.lang
@@ -24,11 +25,11 @@
       (is (= false (:renewable result)))
       (is (= "" (:entity-id result)))
       (is (= ["root"] (:token-policies result)))
-      (is (and (string? (:accessor result)) (not (empty? (:accessor result)))))
+      (is (not (str/blank? (:accessor result))))
       (is (= 0 (:lease-duration result)))
       (is (= "service" (:token-type result)))
       (is (= false (:orphan result)))
-      (is (and (string? (:client-token result)) (not (empty? (:client-token result)))))
+      (is (not (str/blank? (:client-token result))))
       (is (contains? result :metadata))))
   (testing "The return value of create-token is correct when not wrapped and some options are specified"
     (let [result (vault/create-token! (mock-client-authenticated) {:policies ["hello" "goodbye"]
@@ -37,11 +38,11 @@
       (is (= false (:renewable result)))
       (is (= "" (:entity-id result)))
       (is (= ["default" "hello" "goodbye"] (:token-policies result)))
-      (is (and (string? (:accessor result)) (not (empty? (:accessor result)))))
+      (is (not (str/blank? (:accessor result))))
       (is (= 604800 (:lease-duration result)))
       (is (= "service" (:token-type result)))
       (is (= false (:orphan result)))
-      (is (and (string? (:client-token result)) (not (empty? (:client-token result)))))
+      (is (not (str/blank? (:client-token result))))
       (is (contains? result :metadata))))
   (testing "The client throws a helpful error for debugging if ttl is incorrectly formatted"
     (is (thrown-with-msg? ExceptionInfo
@@ -57,17 +58,17 @@
       (is (= true (:renewable result)))
       (is (= "" (:entity-id result)))
       (is (= ["hello" "goodbye"] (:token-policies result)))
-      (is (and (string? (:accessor result)) (not (empty? (:accessor result)))))
+      (is (not (str/blank? (:accessor result))))
       (is (= 10 (:lease-duration result)))
       (is (= "service" (:token-type result)))
       (is (= true (:orphan result)))
-      (is (and (string? (:client-token result)) (not (empty? (:client-token result)))))
+      (is (not (str/blank? (:client-token result))))
       (is (contains? result :metadata))))
   (testing "The return value of create-token is correct when wrapped"
     (let [result (vault/create-token! (mock-client-authenticated) {:wrap-ttl "2h"})]
-      (is (and (string? (:token result)) (not (empty? (:token result)))))
-      (is (and (string? (:accessor result)) (not (empty? (:accessor result)))))
+      (is (not (str/blank? (:token result))))
+      (is (not (str/blank? (:accessor result))))
       (is (= 7200 (:ttl result)))
-      (is (and (string? (:creation-time result)) (not (empty? (:creation-time result)))))
+      (is (not (str/blank? (:creation-time result))))
       (is (= "auth/token/create" (:creation-path result)))
-      (is (and (string? (:wrapped-accessor result)) (not (empty? (:wrapped-accessor result))))))))
+      (is (not (str/blank? (:wrapped-accessor result)))))))
