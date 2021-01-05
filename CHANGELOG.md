@@ -5,28 +5,46 @@ All notable changes to this project will be documented in this file.
 This change log follows the conventions of [keepachangelog.com](http://keepachangelog.com/).
 
 ## [Unreleased]
+
 ...
+
+
+## [1.0.1] - 2021-01-04
+
+### Changed
+- Updated various dependencies.
+  [#48](https://github.com/amperity/vault-clj/issues/48)
+- Migrate to `cljstyle` and `clj-kondo` for style and linting.
+
 
 ## [1.0.0] - 2019-12-13
 
 **THIS RELEASE CONTAINS SOME BREAKING CHANGES!**
 
+### Changed
 - Large internal refactor that may result in unexpected behavior
   [#35](https://github.com/amperity/vault-clj/pull/35)
-- Added support for the KV V2 API
-  [#33](https://github.com/amperity/vault-clj/issues/33)
-  [#39](https://github.com/amperity/vault-clj/issues/39)
+
+### Added
 - Added support for externally defined secret engines
   [#33](https://github.com/amperity/vault-clj/issues/33)
+- Added support for the KV V2 API
+  [#39](https://github.com/amperity/vault-clj/issues/39)
+
+### Fixed
 - Bugfix for mocking delete
   [#35](https://github.com/amperity/vault-clj/pull/35)
 
+
 ## [0.7.1] - 2019-11-20
 
-- Bugfix in mock client so that it acts more similarly to http client when creating tokens (create-token!)
-  [#36](https://github.com/amperity/vault-clj/issues/36)
+### Added
 - Added support for auth mount points to support authentication methods under a custom mount point
   [#27](https://github.com/amperity/vault-clj/issues/27)
+
+### Fixed
+- Bugfix in mock client so that it acts more similarly to http client when creating tokens (create-token!)
+  [#36](https://github.com/amperity/vault-clj/issues/36)
 
 
 ## [0.7.0] - 2019-06-20
@@ -246,7 +264,9 @@ With this version, the project has been forked to the Amperity organization.
 ### Added
 - Initial library implementation.
 
-[Unreleased]: https://github.com/amperity/vault-clj/compare/1.0.0...HEAD
+
+[Unreleased]: https://github.com/amperity/vault-clj/compare/1.0.1...HEAD
+[1.0.1]: https://github.com/amperity/vault-clj/compare/1.0.0...1.0.1
 [1.0.0]: https://github.com/amperity/vault-clj/compare/0.7.1...1.0.0
 [0.7.1]: https://github.com/amperity/vault-clj/compare/0.7.0...0.7.1
 [0.7.0]: https://github.com/amperity/vault-clj/compare/0.6.6...0.7.0
