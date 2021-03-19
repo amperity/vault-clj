@@ -90,3 +90,111 @@
               (vault/authenticate! client :k8s {:jwt "fake-jwt-goes-here"})))
         (is (empty? @api-requests))
         (is (empty? @api-auths))))))
+
+
+(deftest authenticate-via-aws
+  (testing "When all parameters are specified"
+    (let [client (http-client example-url)
+          api-requests (atom [])
+          api-auths (atom [])]
+      (with-redefs [api-util/do-api-request (fn [& args]
+                                              (swap! api-requests conj args)
+                                              :do-api-request-response)
+                    authenticate/api-auth! (fn [& args]
+                                             (swap! api-auths conj args)
+                                             :api-auth!-response)]
+        (vault/authenticate! client :aws {:role "my-role"
+                                          :iam-http-request-method "POST"
+                                          :iam-request-url "fake.sts.com"
+                                          :iam-request-body "FakeAction&Version=1"
+                                          :iam-request-headers "{'foo':'bar'}"})
+        (is (= [[:post
+                 (str example-url "/v1/auth/aws/login")
+                 {:form-params {:iam_http_request_method "POST"
+                                :iam_request_url "fake.sts.com"
+                                :iam_request_body "FakeAction&Version=1"
+                                :iam_request_headers "{'foo':'bar'}"
+                                :role "my-role"}
+                  :content-type :json
+                  :accept :json
+                  :as :json}]]
+               @api-requests))
+        (is (= [[(str "AWS auth role=my-role")
+                 (:auth client)
+                 :do-api-request-response]]
+               @api-auths)))))
+  (testing "When no iam-http-request-method is specified"
+    (let [client (http-client example-url)
+          api-requests (atom [])
+          api-auths (atom [])]
+      (with-redefs [api-util/do-api-request (fn [& args]
+                                              (swap! api-requests conj args))
+                    authenticate/api-auth! (fn [& args]
+                                             (swap! api-auths conj args))]
+        (is (thrown? IllegalArgumentException
+              (vault/authenticate! client :aws {:role "my-role"
+                                                :iam-request-url "fake.sts.com"
+                                                :iam-request-body "FakeAction&Version=1"
+                                                :iam-request-headers "{'foo':'bar'}"})))
+        (is (empty? @api-requests))
+        (is (empty? @api-auths)))))
+  (testing "When no iam-request-url is specified"
+    (let [client (http-client example-url)
+          api-requests (atom [])
+          api-auths (atom [])]
+      (with-redefs [api-util/do-api-request (fn [& args]
+                                              (swap! api-requests conj args))
+                    authenticate/api-auth! (fn [& args]
+                                             (swap! api-auths conj args))]
+        (is (thrown? IllegalArgumentException
+              (vault/authenticate! client :aws {:role "my-role"
+                                                :iam-http-request-method "POST"
+                                                :iam-request-body "FakeAction&Version=1"
+                                                :iam-request-headers "{'foo':'bar'}"})))
+        (is (empty? @api-requests))
+        (is (empty? @api-auths)))))
+  (testing "When no iam-request-body is specified"
+    (let [client (http-client example-url)
+          api-requests (atom [])
+          api-auths (atom [])]
+      (with-redefs [api-util/do-api-request (fn [& args]
+                                              (swap! api-requests conj args))
+                    authenticate/api-auth! (fn [& args]
+                                             (swap! api-auths conj args))]
+        (is (thrown? IllegalArgumentException
+              (vault/authenticate! client :aws {:role "my-role"
+                                                :iam-http-request-method "POST"
+                                                :iam-request-url "fake.sts.com"
+                                                :iam-request-headers "{'foo':'bar'}"})))
+        (is (empty? @api-requests))
+        (is (empty? @api-auths)))))
+  (testing "When no iam-request-headers is specified"
+    (let [client (http-client example-url)
+          api-requests (atom [])
+          api-auths (atom [])]
+      (with-redefs [api-util/do-api-request (fn [& args]
+                                              (swap! api-requests conj args))
+                    authenticate/api-auth! (fn [& args]
+                                             (swap! api-auths conj args))]
+        (is (thrown? IllegalArgumentException
+              (vault/authenticate! client :aws {:role "my-role"
+                                                :iam-http-request-method "POST"
+                                                :iam-request-url "fake.sts.com"
+                                                :iam-request-body "FakeAction&Version=1"})))
+        (is (empty? @api-requests))
+        (is (empty? @api-auths)))))
+  (testing "When no role is specified"
+    (let [client (http-client example-url)
+          api-requests (atom [])
+          api-auths (atom [])]
+      (with-redefs [api-util/do-api-request (fn [& args]
+                                              (swap! api-requests conj args))
+                    authenticate/api-auth! (fn [& args]
+                                             (swap! api-auths conj args))]
+        (is (thrown? IllegalArgumentException
+              (vault/authenticate! client :aws {:iam-http-request-method "POST"
+                                                :iam-request-url "fake.sts.com"
+                                                :iam-request-body "FakeAction&Version=1"
+                                                :iam-request-headers "{'foo':'bar'}"})))
+        (is (empty? @api-requests))
+        (is (empty? @api-auths))))))
