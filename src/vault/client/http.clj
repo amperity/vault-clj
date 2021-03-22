@@ -144,8 +144,8 @@
 
   (revoke-token!
     [this]
-    (when-let [token (:client-token @auth)]
-      (.revoke-token! this token)))
+    (let [response (api-util/api-request this :post "auth/token/revoke-self" {})]
+      (= 204 (:status response))))
 
 
   (revoke-token!
