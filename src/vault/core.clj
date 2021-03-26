@@ -21,7 +21,7 @@
     - `:k8s {:jwt \"...\", :role \"...\"}`
     - `:app-id {:app \"foo-service-dev\", :user \"...\"}`
     - `:app-role {:role-id \"...\", :secret-id \"...\"}
-    - `:aws {:iam-http-request-method \"...\", iam-request-url \"...\", iam-request-body \"...\", iam-request-headers \"...\", :role \"...\"}`")
+    - `:aws-iam {:http-request-method \"...\", :request-url \"...\", :request-body \"...\", :request-headers \"...\", :role \"...\"}`")
 
   (status
     [client]

@@ -103,7 +103,7 @@
                     authenticate/api-auth! (fn [& args]
                                              (swap! api-auths conj args)
                                              :api-auth!-response)]
-        (vault/authenticate! client :aws {:role "my-role"
+        (vault/authenticate! client :aws-iam {:role "my-role"
                                           :iam-http-request-method "POST"
                                           :iam-request-url "fake.sts.com"
                                           :iam-request-body "FakeAction&Version=1"
@@ -132,7 +132,7 @@
                     authenticate/api-auth! (fn [& args]
                                              (swap! api-auths conj args))]
         (is (thrown? IllegalArgumentException
-              (vault/authenticate! client :aws {:role "my-role"
+              (vault/authenticate! client :aws-iam {:role "my-role"
                                                 :iam-request-url "fake.sts.com"
                                                 :iam-request-body "FakeAction&Version=1"
                                                 :iam-request-headers "{'foo':'bar'}"})))
@@ -147,7 +147,7 @@
                     authenticate/api-auth! (fn [& args]
                                              (swap! api-auths conj args))]
         (is (thrown? IllegalArgumentException
-              (vault/authenticate! client :aws {:role "my-role"
+              (vault/authenticate! client :aws-iam {:role "my-role"
                                                 :iam-http-request-method "POST"
                                                 :iam-request-body "FakeAction&Version=1"
                                                 :iam-request-headers "{'foo':'bar'}"})))
@@ -162,7 +162,7 @@
                     authenticate/api-auth! (fn [& args]
                                              (swap! api-auths conj args))]
         (is (thrown? IllegalArgumentException
-              (vault/authenticate! client :aws {:role "my-role"
+              (vault/authenticate! client :aws-iam {:role "my-role"
                                                 :iam-http-request-method "POST"
                                                 :iam-request-url "fake.sts.com"
                                                 :iam-request-headers "{'foo':'bar'}"})))
@@ -177,7 +177,7 @@
                     authenticate/api-auth! (fn [& args]
                                              (swap! api-auths conj args))]
         (is (thrown? IllegalArgumentException
-              (vault/authenticate! client :aws {:role "my-role"
+              (vault/authenticate! client :aws-iam {:role "my-role"
                                                 :iam-http-request-method "POST"
                                                 :iam-request-url "fake.sts.com"
                                                 :iam-request-body "FakeAction&Version=1"})))
@@ -192,7 +192,7 @@
                     authenticate/api-auth! (fn [& args]
                                              (swap! api-auths conj args))]
         (is (thrown? IllegalArgumentException
-              (vault/authenticate! client :aws {:iam-http-request-method "POST"
+              (vault/authenticate! client :aws-iam {:iam-http-request-method "POST"
                                                 :iam-request-url "fake.sts.com"
                                                 :iam-request-body "FakeAction&Version=1"
                                                 :iam-request-headers "{'foo':'bar'}"})))
