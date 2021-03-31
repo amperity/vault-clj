@@ -8,6 +8,11 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 
 ...
 
+## [1.0.2] - 2021-03-31
+
+### Changed
+- Add aws-iam authentication support
+  [#50](https://github.com/amperity/vault-clj/pull/50)
 
 ## [1.0.1] - 2021-01-04
 
