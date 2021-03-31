@@ -119,7 +119,7 @@
                   :accept :json
                   :as :json}]]
                @api-requests))
-        (is (= [[(str "AWS auth role=my-role")
+        (is (= [["AWS auth role=my-role"
                  (:auth client)
                  :do-api-request-response]]
                @api-auths)))))
