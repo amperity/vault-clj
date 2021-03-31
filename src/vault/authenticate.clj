@@ -132,3 +132,35 @@
            :content-type :json
            :accept :json
            :as :json})))))
+
+
+(defmethod authenticate* :aws-iam
+  [client _ credentials]
+  (let [{:keys [api-path http-request-method request-url request-body request-headers
+                role]} credentials
+        api-path (or api-path (str "/v1/auth/aws/" (:auth-mount-point client) "login"))]
+    (when-not http-request-method
+      (throw (IllegalArgumentException. "AWS auth credentials must include :http-request-method")))
+    (when-not request-url
+      (throw (IllegalArgumentException. "AWS auth credentials must include :request-url")))
+    (when-not request-body
+      (throw (IllegalArgumentException. "AWS auth credentials must include :request-body")))
+    (when-not request-headers
+      (throw (IllegalArgumentException. "AWS auth credentials must include :request-headers")))
+    (when-not role
+      (throw (IllegalArgumentException. "AWS auth credentials must include :role")))
+    (api-auth!
+      (str "AWS auth role=" role)
+      (:auth client)
+      (api-util/do-api-request
+        :post (str (:api-url client) api-path)
+        (merge
+          (:http-opts client)
+          {:form-params {:iam_http_request_method http-request-method
+                         :iam_request_url request-url
+                         :iam_request_body request-body
+                         :iam_request_headers request-headers
+                         :role role}
+           :content-type :json
+           :accept :json
+           :as :json})))))
