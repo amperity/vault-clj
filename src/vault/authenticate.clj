@@ -16,8 +16,8 @@
       (throw (ex-info (str "No client token returned from non-error API response: "
                            (:status response) " " (:reason-phrase response))
                       {:body (:body response)})))
-    (log/info "Successfully authenticated to Vault as %s for policies: %s"
-              claim (str/join ", " (:policies auth-info)))
+    (log/infof "Successfully authenticated to Vault as %s for policies: %s"
+               claim (str/join ", " (:policies auth-info)))
     (reset! auth-ref auth-info)))
 
 
