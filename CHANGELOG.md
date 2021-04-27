@@ -8,6 +8,13 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 
 ...
 
+
+## [1.0.2] - 2021-04-26
+
+### Changed
+- Fix authenticate logging for syntax replacement
+  [#51](https://github.com/amperity/vault-clj/pull/51)
+
 ## [1.0.2] - 2021-03-31
 
 ### Changed
