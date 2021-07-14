@@ -9,9 +9,7 @@
     (clojure.lang
       ExceptionInfo)
     (java.security
-      MessageDigest)
-    (org.apache.commons.codec.binary
-      Hex)))
+      MessageDigest)))
 
 ;; ## API Utilities
 
@@ -55,6 +53,11 @@
   [value]
   (keyword-swap-chars value "-" "_"))
 
+(defn ^String encode-hex-string
+  "Encode an array of bytes to hex string."
+  [^bytes bytes]
+  (->> (map #(format "%02x" %) bytes)
+       (apply str)))
 
 (defn ^:no-doc sha-256
   "Geerate a SHA-2 256 bit digest from a string."
@@ -62,7 +65,7 @@
   (let [hasher (MessageDigest/getInstance "SHA-256")
         str-bytes (.getBytes (str s) "UTF-8")]
     (.update hasher str-bytes)
-    (Hex/encodeHexString (.digest hasher))))
+    (encode-hex-string (.digest hasher))))
 
 
 (defn ^:no-doc clean-body
@@ -108,7 +111,7 @@
       (throw (ex-info (str "Aborting Vault API request after " redirects " redirects")
                       {:method method, :url request-url})))
     (let [resp (try
-                 (http/request (assoc req :method method :url request-url))
+                 @(http/request (assoc req :method method :url request-url))
                  (catch Exception ex
                    (throw (api-error ex))))]
       (if-let [location (and (#{303 307} (:status resp))
@@ -125,12 +128,12 @@
   [client method path req]
   ; Check API path.
   (when-not (and (string? path) (not (str/blank? path)))
-    (throw (IllegalArgumentException.
+    (throw (java.lang.RuntimeException.
              (str "API path must be a non-empty string, got: "
                   (pr-str path)))))
   ; Check client authentication.
   (when-not (some-> client :auth deref :client-token)
-    (throw (IllegalStateException.
+    (throw (java.lang.RuntimeException.
              "Cannot call API path with unauthenticated client.")))
   ; Call API with standard arguments.
   (do-api-request
@@ -156,3 +159,12 @@
        :content-type :json
        :accept :json
        :as :json})))
+
+
+(comment
+
+  (let [ba (byte-array (range 255))]
+    #_(Hex/encodeHexString ba)
+    (encode-hex-string ba))
+
+  0)
