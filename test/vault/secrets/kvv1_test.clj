@@ -1,6 +1,6 @@
 (ns vault.secrets.kvv1-test
   (:require
-    [clj-http.client]
+    [org.httpkit.client :as http]
     [clojure.test :refer [is testing deftest]]
     [vault.client.http :as http-client]
     [vault.client.mock-test :as mock-test]
@@ -26,7 +26,7 @@
     (vault/authenticate! client :token token-passed-in)
     (testing "List secrets has correct response and sends correct request"
       (with-redefs
-        [clj-http.client/request
+        [http/request
          (fn [req]
            (is (= :get (:method req)))
            (is (= (str vault-url "/v1/" path) (:url req)))
@@ -52,7 +52,7 @@
     (vault/authenticate! client :token token-passed-in)
     (testing "Read secrets sends correct request and responds correctly if secret is successfully located"
       (with-redefs
-        [clj-http.client/request
+        [http/request
          (fn [req]
            (is (= :get (:method req)))
            (is (= (str vault-url "/v1/" path-passed-in) (:url req)))
@@ -61,7 +61,7 @@
         (is (= {:foo "bar" :ttl "1h"} (vault-kvv1/read-secret client path-passed-in)))))
     (testing "Read secrets sends correct request and responds correctly if no secret is found"
       (with-redefs
-        [clj-http.client/request
+        [http/request
          (fn [req]
            (is (= (str vault-url "/v1/" path-passed-in2) (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
@@ -89,7 +89,7 @@
     (vault/authenticate! client :token token-passed-in)
     (testing "Write secrets sends correct request and returns true upon success"
       (with-redefs
-        [clj-http.client/request
+        [http/request
          (fn [req]
            (is (= :post (:method req)))
            (is (= (str vault-url "/v1/" path-passed-in) (:url req)))
@@ -100,7 +100,7 @@
         (is (true? (vault-kvv1/write-secret! client path-passed-in write-data)))))
     (testing "Write secrets sends correct request and returns false upon failure"
       (with-redefs
-        [clj-http.client/request
+        [http/request
          (fn [req]
            (is (= :post (:method req)))
            (is (= (str vault-url "/v1/" path-passed-in) (:url req)))
@@ -120,7 +120,7 @@
     (vault/authenticate! client :token "fake-token")
     (testing "Delete secret returns correctly upon success, and sends correct request"
       (with-redefs
-        [clj-http.client/request
+        [http/request
          (fn [req]
            (is (= :delete (:method req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
@@ -129,7 +129,7 @@
         (is (true? (vault/delete-secret! client path-passed-in)))))
     (testing "Delete secret returns correctly upon failure, and sends correct request"
       (with-redefs
-        [clj-http.client/request
+        [http/request
          (fn [req]
            (is (= :delete (:method req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))

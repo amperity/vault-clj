@@ -1,10 +1,10 @@
 (ns vault.client.api-util
   (:require
-    [cheshire.core :as json]
-    [clj-http.client :as http]
-    [clojure.string :as str]
-    [clojure.tools.logging :as log]
-    [clojure.walk :as walk])
+   [cheshire.core :as json]
+   [org.httpkit.client :as http]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [clojure.walk :as walk])
   (:import
     (clojure.lang
       ExceptionInfo)

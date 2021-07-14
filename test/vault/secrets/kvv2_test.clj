@@ -1,6 +1,6 @@
 (ns vault.secrets.kvv2-test
   (:require
-    [clj-http.client]
+    [org.httpkit.client :as http]
     [clojure.test :refer [testing deftest is]]
     [vault.client.api-util :as api-util]
     [vault.client.http :as http-client]
@@ -25,7 +25,7 @@
     (vault/authenticate! client :token token-passed-in)
     (testing "List secrets has correct response and sends correct request"
       (with-redefs
-        [clj-http.client/request
+        [http/request
          (fn [req]
            (is (= :get (:method req)))
            (is (= (str vault-url "/v1/listmount/metadata/" path) (:url req)))
@@ -50,7 +50,7 @@
     (vault/authenticate! client :token token-passed-in)
     (testing "Write config sends correct request and returns true on valid call"
       (with-redefs
-        [clj-http.client/request
+        [http/request
          (fn [req]
            (is (= :post (:method req)))
            (is (= (str vault-url "/v1/" mount "/config") (:url req)))
@@ -71,7 +71,7 @@
     (vault/authenticate! client :token token-passed-in)
     (testing "Read config sends correct request and returns the config with valid call"
       (with-redefs
-        [clj-http.client/request
+        [http/request
          (fn [req]
            (is (= :get (:method req)))
            (is (= (str vault-url "/v1/" mount "/config") (:url req)))
@@ -94,7 +94,7 @@
     (vault/authenticate! client :token token-passed-in)
     (testing "Read secrets sends correct request and responds correctly if secret is successfully located"
       (with-redefs
-        [clj-http.client/request
+        [http/request
          (fn [req]
            (is (= :get (:method req)))
            (is (= (str vault-url "/v1/" mount "/data/" path-passed-in) (:url req)))
@@ -103,7 +103,7 @@
         (is (= {:foo "bar"} (vault-kvv2/read-secret client mount path-passed-in)))))
     (testing "Read secrets sends correct request and responds correctly if secret with version is successfully located"
       (with-redefs
-        [clj-http.client/request
+        [http/request
          (fn [req]
            (is (= :get (:method req)))
            (is (= (str vault-url "/v1/" mount "/data/" path-passed-in) (:url req)))
@@ -113,7 +113,7 @@
         (is (= {:foo "bar"} (vault-kvv2/read-secret client mount path-passed-in {:version 3 :force-read true})))))
     (testing "Read secrets sends correct request and responds correctly if no secret is found"
       (with-redefs
-        [clj-http.client/request
+        [http/request
          (fn [req]
            (is (= :get (:method req)))
            (is (= (str vault-url "/v1/" mount "/data/different/path") (:url req)))
@@ -151,7 +151,7 @@
     (vault/authenticate! client :token token-passed-in)
     (testing "Write secrets sends correct request and returns true upon success"
       (with-redefs
-        [clj-http.client/request
+        [http/request
          (fn [req]
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
            (is (= :post (:method req)))
@@ -167,7 +167,7 @@
         (is (= (:data create-success) (vault-kvv2/write-secret! client mount path-passed-in write-data)))))
     (testing "Write secrets sends correct request and returns false upon failure"
       (with-redefs
-        [clj-http.client/request
+        [http/request
          (fn [req]
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
            (is (= :post (:method req)))
@@ -192,7 +192,7 @@
     (vault/authenticate! client :token token-passed-in)
     (testing "delete secrets send correct request and returns true upon success when no versions passed in"
       (with-redefs
-        [clj-http.client/request
+        [http/request
          (fn [req]
            (is (= :delete (:method req)))
            (is (= (str vault-url "/v1/" mount "/data/" path-passed-in) (:url req)))
@@ -202,7 +202,7 @@
             (is (true? (vault-kvv2/delete-secret! client mount path-passed-in []))))
         (testing "delete secrets send correct request and returns false upon failure when no versions passed in"
           (with-redefs
-            [clj-http.client/request
+            [http/request
              (fn [req]
                (is (= :delete (:method req)))
                (is (= (str vault-url "/v1/" mount "/data/" path-passed-in) (:url req)))
@@ -211,7 +211,7 @@
             (is (false? (vault-kvv2/delete-secret! client mount path-passed-in)))))
         (testing "delete secrets send correct request and returns true upon success when multiple versions passed in"
           (with-redefs
-            [clj-http.client/request
+            [http/request
              (fn [req]
                (is (= :post (:method req)))
                (is (= (str vault-url "/v1/" mount "/delete/" path-passed-in) (:url req)))
@@ -221,7 +221,7 @@
             (is (true? (vault-kvv2/delete-secret! client mount path-passed-in [12 14 147])))))
         (testing "delete secrets send correct request and returns false upon failure when multiple versions passed in"
           (with-redefs
-            [clj-http.client/request
+            [http/request
              (fn [req]
                (is (= :post (:method req)))
                (is (= (str vault-url "/v1/" mount "/delete/" path-passed-in) (:url req)))
@@ -269,7 +269,7 @@
     (vault/authenticate! client :token token-passed-in)
     (testing "Sends correct request and responds correctly upon success"
       (with-redefs
-        [clj-http.client/request
+        [http/request
          (fn [req]
            (is (= :get (:method req)))
            (is (= (str vault-url "/v1/" mount "/metadata/" path-passed-in) (:url req)))
@@ -279,7 +279,7 @@
         (is (= kebab-metadata (vault-kvv2/read-metadata client mount path-passed-in)))))
     (testing "Sends correct request and responds correctly when metadata not found"
       (with-redefs
-        [clj-http.client/request
+        [http/request
          (fn [req]
            (is (= :get (:method req)))
            (is (= (str vault-url "/v1/" mount "/metadata/" path-passed-in) (:url req)))
@@ -302,7 +302,7 @@
     (vault/authenticate! client :token token-passed-in)
     (testing "Write metadata sends correct request and responds with true upon success"
       (with-redefs
-        [clj-http.client/request
+        [http/request
          (fn [req]
            (is (= :post (:method req)))
            (is (= (str vault-url "/v1/" mount "/metadata/" path-passed-in) (:url req)))
@@ -312,7 +312,7 @@
         (is (true? (vault-kvv2/write-metadata! client mount path-passed-in payload)))))
     (testing "Write metadata sends correct request and responds with false upon failure"
       (with-redefs
-        [clj-http.client/request
+        [http/request
          (fn [req]
            (is (= :post (:method req)))
            (is (= (str vault-url "/v1/" mount "/metadata/" path-passed-in) (:url req)))
@@ -331,7 +331,7 @@
     (vault/authenticate! client :token token-passed-in)
     (testing "Sends correct request and responds correctly upon success"
       (with-redefs
-        [clj-http.client/request
+        [http/request
          (fn [req]
            (is (= :delete (:method req)))
            (is (= (str vault-url "/v1/" mount "/metadata/" path-passed-in) (:url req)))
@@ -340,7 +340,7 @@
         (is (true? (vault-kvv2/delete-metadata! client mount path-passed-in)))))
     (testing "Sends correct request and responds correctly upon failure"
       (with-redefs
-        [clj-http.client/request
+        [http/request
          (fn [req]
            (is (= :delete (:method req)))
            (is (= (str vault-url "/v1/" mount "/metadata/" path-passed-in) (:url req)))
@@ -359,7 +359,7 @@
     (vault/authenticate! client :token token-passed-in)
     (testing "Destroy secrets sends correct request and returns true upon success"
       (with-redefs
-        [clj-http.client/request
+        [http/request
          (fn [req]
            (is (= :post (:method req)))
            (is (= (str vault-url "/v1/" mount "/destroy/" path-passed-in) (:url req)))
@@ -370,7 +370,7 @@
         (is (true? (vault-kvv2/destroy-secret! client mount path-passed-in versions)))))
     (testing "Destroy secrets sends correct request and returns false upon failure"
       (with-redefs
-        [clj-http.client/request
+        [http/request
          (fn [req]
            (is (= :post (:method req)))
            (is (= (str vault-url "/v1/" mount "/destroy/" path-passed-in) (:url req)))
@@ -391,7 +391,7 @@
     (vault/authenticate! client :token token-passed-in)
     (testing "Undelete secrets sends correct request and returns true upon success"
       (with-redefs
-        [clj-http.client/request
+        [http/request
          (fn [req]
            (is (= :post (:method req)))
            (is (= (str vault-url "/v1/" mount "/undelete/" path-passed-in) (:url req)))
@@ -402,7 +402,7 @@
         (is (true? (vault-kvv2/undelete-secret! client mount path-passed-in versions)))))
     (testing "Undelete secrets sends correct request and returns false upon failure"
       (with-redefs
-        [clj-http.client/request
+        [http/request
          (fn [req]
            (is (= :post (:method req)))
            (is (= (str vault-url "/v1/" mount "/undelete/" path-passed-in) (:url req)))
