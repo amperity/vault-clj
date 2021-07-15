@@ -74,10 +74,9 @@
   response to the original result to preserve accuracy."
   [response]
   (->
-    (:body response)
-    (kebabify-keys)
-    (assoc :data (:data (:body response)))
-    (->> (into {} (filter (comp some? val))))))
+   (:body response)
+   (json/parse-string true)
+   (kebabify-keys)))
 
 
 (defn ^:no-doc api-error
@@ -111,8 +110,10 @@
       (throw (ex-info (str "Aborting Vault API request after " redirects " redirects")
                       {:method method, :url request-url})))
     (let [resp (try
-                 @(http/request (assoc req :method method :url request-url))
+                 (let [response (http/request (assoc req :method method :url request-url))]
+                   @response)
                  (catch Exception ex
+                   (log/debug "Exception " ex)
                    (throw (api-error ex))))]
       (if-let [location (and (#{303 307} (:status resp))
                              (get-in resp [:headers "Location"]))]
@@ -128,12 +129,12 @@
   [client method path req]
   ; Check API path.
   (when-not (and (string? path) (not (str/blank? path)))
-    (throw (java.lang.RuntimeException.
+    (throw (IllegalArgumentException.
              (str "API path must be a non-empty string, got: "
                   (pr-str path)))))
   ; Check client authentication.
   (when-not (some-> client :auth deref :client-token)
-    (throw (java.lang.RuntimeException.
+    (throw (RuntimeException.
              "Cannot call API path with unauthenticated client.")))
   ; Call API with standard arguments.
   (do-api-request
@@ -141,8 +142,7 @@
     (str (:api-url client) "/v1/" path)
     (merge
       (:http-opts client)
-      {:accept :json
-       :as :json}
+      {:accept :json}
       req
       {:headers (merge {"X-Vault-Token" (:client-token @(:auth client))}
                        (:headers req))})))
@@ -157,8 +157,7 @@
       (:http-opts client)
       {:headers {"X-Vault-Token" wrap-token}
        :content-type :json
-       :accept :json
-       :as :json})))
+       :accept :json})))
 
 
 (comment

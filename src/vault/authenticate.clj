@@ -62,7 +62,7 @@
           {:form-params {:password password}
            :content-type :json
            :accept :json
-           :as :json})))))
+           })))))
 
 
 (defmethod authenticate* :app-id
@@ -78,7 +78,7 @@
           {:form-params {:app_id app, :user_id user}
            :content-type :json
            :accept :json
-           :as :json})))))
+           })))))
 
 
 (defmethod authenticate* :app-role
@@ -94,7 +94,7 @@
           {:form-params {:role_id role-id, :secret_id secret-id}
            :content-type :json
            :accept :json
-           :as :json})))))
+           })))))
 
 
 (defmethod authenticate* :ldap
@@ -110,7 +110,7 @@
           {:form-params {:password password}
            :content-type :json
            :accept :json
-           :as :json})))))
+           })))))
 
 
 (defmethod authenticate* :k8s
@@ -131,7 +131,7 @@
           {:form-params {:jwt jwt :role role}
            :content-type :json
            :accept :json
-           :as :json})))))
+           })))))
 
 
 (defmethod authenticate* :aws-iam
@@ -163,4 +163,4 @@
                          :role role}
            :content-type :json
            :accept :json
-           :as :json})))))
+           })))))

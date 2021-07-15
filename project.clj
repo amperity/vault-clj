@@ -18,6 +18,7 @@
   :profiles
   {:dev
    {:dependencies [[commons-logging "1.2"]
+                   [org.clojure/tools.trace "0.7.11"]
                    [org.slf4j/slf4j-simple "1.7.30"]]}
 
    :repl

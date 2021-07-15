@@ -1,15 +1,19 @@
 (ns user
   (:require
-    [clojure.java.io :as io]
-    [clojure.repl :refer :all]
-    [clojure.string :as str]
-    [clojure.tools.namespace.repl :refer [refresh]]
-    [com.stuartsierra.component :as component]
-    [vault.client.http]
-    [vault.client.mock]
-    [vault.core :as vault]
-    [vault.env :as venv]
-    [vault.lease :as lease]))
+   [clojure.java.io :as io]
+   [clojure.repl :refer :all]
+   [clojure.tools.trace :as trace]
+   [clojure.string :as str]
+   [clojure.tools.namespace.repl :refer [refresh]]
+   [com.stuartsierra.component :as component]
+   [vault.client.http]
+   [vault.client.mock]
+   [vault.client.api-util]
+   [org.httpkit.client]
+   [vault.core :as vault]
+   [vault.secrets.kvv2 :as kvv2]
+   [vault.env :as venv]
+   [vault.lease :as lease]))
 
 
 (def client nil)
@@ -34,3 +38,22 @@
     (when vault-token
       (vault/authenticate! vault-client :token vault-token))
     (alter-var-root #'client (constantly (component/start vault-client)))))
+
+
+(comment
+
+  (trace/trace-ns vault.client.http)
+  (trace/trace-ns vault.core)
+  (trace/trace-ns vault.client.api-util)
+  (trace/trace-ns vault.secrets.kvv2)
+  (trace/trace-ns org.httpkit.client)
+
+  ;; export VAULT_TOKEN="Token value"
+  (let [client (vault/new-client (System/getenv "VAULT_ADDR"))]
+    (vault/authenticate! client :token (System/getenv "VAULT_TOKEN"))
+    (kvv2/read-secret client "DocSearch" "stage/app"))
+
+  (System/getenv "VAULT_TOKEN")
+
+  0
+  )

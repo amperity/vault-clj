@@ -2,20 +2,17 @@
 ;; Type bb <task-name> or bb run <task-name> to run a task
 {:min-bb-version "0.4.0"
  :paths ["script"]
- :deps {amperity/vault-clj {:git/url "https://github.com/ieugen/vault-clj.git"
-                            :sha "3fe14779eae3ad8cc64cefb9ac7eb7e3eb2c5da2"}
-        org.clojure/tools.logging {:mvn/version "1.1.0"}}
+ :deps {;; amperity/vault-clj {:git/url "https://github.com/ieugen/vault-clj.git"
+        ;;                     :sha "3fe14779eae3ad8cc64cefb9ac7eb7e3eb2c5da2"}
+        amperity/vault-clj {:local/root "."}}
  :tasks {:requires ([vault.core :as vault]
                     [vault.client.http]
-                    [clojure.tools.logging :as log])
-         :init     (do
-                     (def client (vault/new-client "https://vault.do.drevidence.com:8200")))
+                    [vault.secrets.kvv2 :as kvv2])
+         :init     (do)
          ;; Helpers
          vault-get-dev {:doc "Get dev secrets from vault - requires vault cli."
                         :task (do
-                                (client "secret/foo/bar"))}
-         log-me {:doc "Log test"
-                       :task (do
-                               (log/info "hello")
-                               (log/trace "hmm"))}}}
+                                (let [client (vault/new-client (System/getenv "VAULT_ADDR"))]
+                                  (vault/authenticate! client :token (System/getenv "VAULT_TOKEN"))
+                                  (println (kvv2/read-secret client "DocSearch" "stage/app"))))}}}
 

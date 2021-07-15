@@ -78,8 +78,7 @@
     (-> (api-util/do-api-request
           :get (str api-url "/v1/sys/health")
           (assoc http-opts
-                 :accept :json
-                 :as :json))
+                 :accept :json))
         (api-util/clean-body)))
 
 
