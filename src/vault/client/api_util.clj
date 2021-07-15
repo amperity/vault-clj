@@ -1,15 +1,16 @@
 (ns vault.client.api-util
   (:require
-   [cheshire.core :as json]
-   [org.httpkit.client :as http]
-   [clojure.string :as str]
-   [clojure.tools.logging :as log]
-   [clojure.walk :as walk])
+    [cheshire.core :as json]
+    [clojure.string :as str]
+    [clojure.tools.logging :as log]
+    [clojure.walk :as walk]
+    [org.httpkit.client :as http])
   (:import
     (clojure.lang
       ExceptionInfo)
     (java.security
       MessageDigest)))
+
 
 ;; ## API Utilities
 
@@ -53,11 +54,13 @@
   [value]
   (keyword-swap-chars value "-" "_"))
 
+
 (defn ^String encode-hex-string
   "Encode an array of bytes to hex string."
   [^bytes bytes]
   (->> (map #(format "%02x" %) bytes)
        (apply str)))
+
 
 (defn ^:no-doc sha-256
   "Geerate a SHA-2 256 bit digest from a string."
@@ -74,9 +77,9 @@
   response to the original result to preserve accuracy."
   [response]
   (->
-   (:body response)
-   (json/parse-string true)
-   (kebabify-keys)))
+    (:body response)
+    (json/parse-string true)
+    (kebabify-keys)))
 
 
 (defn ^:no-doc api-error
@@ -127,16 +130,16 @@
   Currently always uses API version `v1`. The `path` should be relative to the
   version root."
   [client method path req]
-  ; Check API path.
+  ;; Check API path.
   (when-not (and (string? path) (not (str/blank? path)))
     (throw (IllegalArgumentException.
              (str "API path must be a non-empty string, got: "
                   (pr-str path)))))
-  ; Check client authentication.
+  ;; Check client authentication.
   (when-not (some-> client :auth deref :client-token)
     (throw (RuntimeException.
              "Cannot call API path with unauthenticated client.")))
-  ; Call API with standard arguments.
+  ;; Call API with standard arguments.
   (do-api-request
     method
     (str (:api-url client) "/v1/" path)

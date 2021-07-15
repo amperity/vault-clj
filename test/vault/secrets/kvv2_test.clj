@@ -1,13 +1,13 @@
 (ns vault.secrets.kvv2-test
   (:require
-    [org.httpkit.client :as http]
+    [cheshire.core :as json]
     [clojure.test :refer [testing deftest is]]
+    [org.httpkit.client :as http]
     [vault.client.api-util :as api-util]
     [vault.client.http :as http-client]
     [vault.client.mock-test :as mock-test]
     [vault.core :as vault]
-    [vault.secrets.kvv2 :as vault-kvv2]
-    [cheshire.core :as json])
+    [vault.secrets.kvv2 :as vault-kvv2])
   (:import
     (clojure.lang
       ExceptionInfo)))
@@ -84,10 +84,10 @@
 
 (deftest read-test
   (let [lookup-response-valid-path (json/generate-string {:data {:data     {:foo "bar"}
-                                                            :metadata {:created_time  "2018-03-22T02:24:06.945319214Z"
-                                                                       :deletion_time ""
-                                                                       :destroyed     false
-                                                                       :version       1}}})
+                                                                 :metadata {:created_time  "2018-03-22T02:24:06.945319214Z"
+                                                                            :deletion_time ""
+                                                                            :destroyed     false
+                                                                            :version       1}}})
         mount "mount"
         path-passed-in "path/passed/in"
         token-passed-in "fake-token"

@@ -172,6 +172,7 @@
                   (:lease-id new-info))
         (watch-fn new-info)))))
 
+
 ;; ----- Lease operations that work on the client level -----------------------
 
 (defn ^:no-doc try-renew-lease!
@@ -200,7 +201,7 @@
 (defn ^:no-doc maintain-leases!
   [client window]
   (log/debug "Checking for renewable leases...")
-  ; Check auth token for renewal.
+  ;; Check auth token for renewal.
   (let [auth @(:auth client)]
     (when (and (:renewable auth)
                (expires-within? auth window))
@@ -209,14 +210,14 @@
         (vault/renew-token client)
         (catch Exception ex
           (log/error ex "Failed to renew client token!")))))
-  ; Renew leases that are within expiry window and are configured for renewal.
-  ; Rotate secrets that are about to expire and not renewable.
+  ;; Renew leases that are within expiry window and are configured for renewal.
+  ;; Rotate secrets that are about to expire and not renewable.
   (let [renewable (renewable-leases (:leases client) window)
         rotatable (rotatable-leases (:leases client) window)]
     (doseq [secret renewable]
       (try-renew-lease! client secret))
-    ; Rotate leases that are within expiry window and not renewable.
+    ;; Rotate leases that are within expiry window and not renewable.
     (doseq [secret rotatable]
       (try-rotate-secret! client secret)))
-  ; Drop any expired leases.
+  ;; Drop any expired leases.
   (sweep! (:leases client)))

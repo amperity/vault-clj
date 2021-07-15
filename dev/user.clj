@@ -1,19 +1,19 @@
 (ns user
   (:require
-   [clojure.java.io :as io]
-   [clojure.repl :refer :all]
-   [clojure.tools.trace :as trace]
-   [clojure.string :as str]
-   [clojure.tools.namespace.repl :refer [refresh]]
-   [com.stuartsierra.component :as component]
-   [vault.client.http]
-   [vault.client.mock]
-   [vault.client.api-util]
-   [org.httpkit.client]
-   [vault.core :as vault]
-   [vault.secrets.kvv2 :as kvv2]
-   [vault.env :as venv]
-   [vault.lease :as lease]))
+    [clojure.java.io :as io]
+    [clojure.repl :refer :all]
+    [clojure.string :as str]
+    [clojure.tools.namespace.repl :refer [refresh]]
+    [clojure.tools.trace :as trace]
+    [com.stuartsierra.component :as component]
+    [org.httpkit.client]
+    [vault.client.api-util]
+    [vault.client.http]
+    [vault.client.mock]
+    [vault.core :as vault]
+    [vault.env :as venv]
+    [vault.lease :as lease]
+    [vault.secrets.kvv2 :as kvv2]))
 
 
 (def client nil)

@@ -1,8 +1,8 @@
 (ns vault.secrets.kvv1-test
   (:require
-    [org.httpkit.client :as http]
-    [clojure.test :refer [is testing deftest]]
     [cheshire.core :as json]
+    [clojure.test :refer [is testing deftest]]
+    [org.httpkit.client :as http]
     [vault.client.http :as http-client]
     [vault.client.mock-test :as mock-test]
     [vault.core :as vault]
