@@ -6,7 +6,8 @@
     [vault.client.http :as http-client]
     [vault.client.mock-test :as mock-test]
     [vault.core :as vault]
-    [vault.secrets.kvv2 :as vault-kvv2])
+    [vault.secrets.kvv2 :as vault-kvv2]
+    [cheshire.core :as json])
   (:import
     (clojure.lang
       ExceptionInfo)))
@@ -81,11 +82,11 @@
 
 
 (deftest read-test
-  (let [lookup-response-valid-path {:data {:data     {:foo "bar"}
-                                           :metadata {:created_time  "2018-03-22T02:24:06.945319214Z"
-                                                      :deletion_time ""
-                                                      :destroyed     false
-                                                      :version       1}}}
+  (let [lookup-response-valid-path (json/generate-string {:data {:data     {:foo "bar"}
+                                                            :metadata {:created_time  "2018-03-22T02:24:06.945319214Z"
+                                                                       :deletion_time ""
+                                                                       :destroyed     false
+                                                                       :version       1}}})
         mount "mount"
         path-passed-in "path/passed/in"
         token-passed-in "fake-token"
@@ -99,7 +100,7 @@
            (is (= :get (:method req)))
            (is (= (str vault-url "/v1/" mount "/data/" path-passed-in) (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
-           {:body lookup-response-valid-path})]
+           (atom {:body lookup-response-valid-path}))]
         (is (= {:foo "bar"} (vault-kvv2/read-secret client mount path-passed-in)))))
     (testing "Read secrets sends correct request and responds correctly if secret with version is successfully located"
       (with-redefs
@@ -109,7 +110,7 @@
            (is (= (str vault-url "/v1/" mount "/data/" path-passed-in) (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
            (is (= {"version" 3} (:query-params req)))
-           {:body lookup-response-valid-path})]
+           (atom {:body lookup-response-valid-path}))]
         (is (= {:foo "bar"} (vault-kvv2/read-secret client mount path-passed-in {:version 3 :force-read true})))))
     (testing "Read secrets sends correct request and responds correctly if no secret is found"
       (with-redefs
