@@ -2,9 +2,7 @@
 ;; Type bb <task-name> or bb run <task-name> to run a task
 {:min-bb-version "0.4.0"
  :paths ["script"]
- :deps {;; amperity/vault-clj {:git/url "https://github.com/ieugen/vault-clj.git"
-        ;;                     :sha "3fe14779eae3ad8cc64cefb9ac7eb7e3eb2c5da2"}
-        amperity/vault-clj {:local/root "."}}
+ :deps {amperity/vault-clj {:local/root "."}}
  :tasks {:requires ([vault.core :as vault]
                     [vault.client.http]
                     [vault.secrets.kvv2 :as kvv2])

@@ -132,12 +132,12 @@
   [client method path req]
   ;; Check API path.
   (when-not (and (string? path) (not (str/blank? path)))
-    (throw (IllegalArgumentException.
+    (throw (java.lang.IllegalArgumentException.
              (str "API path must be a non-empty string, got: "
                   (pr-str path)))))
   ;; Check client authentication.
   (when-not (some-> client :auth deref :client-token)
-    (throw (RuntimeException.
+    (throw (java.lang.IllegalStateException.
              "Cannot call API path with unauthenticated client.")))
   ;; Call API with standard arguments.
   (do-api-request
@@ -161,12 +161,3 @@
       {:headers {"X-Vault-Token" wrap-token}
        :content-type :json
        :accept :json})))
-
-
-(comment
-
-  (let [ba (byte-array (range 255))]
-    #_(Hex/encodeHexString ba)
-    (encode-hex-string ba))
-
-  0)

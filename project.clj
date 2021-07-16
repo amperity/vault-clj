@@ -5,7 +5,7 @@
             :url "http://www.apache.org/licenses/LICENSE-2.0"}
 
   :deploy-branches ["master"]
-  ;; :pedantic? :abort
+  :pedantic? :abort
 
   :dependencies
   [[org.clojure/clojure "1.10.1"]

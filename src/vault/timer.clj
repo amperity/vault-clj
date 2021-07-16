@@ -23,8 +23,7 @@
             (catch Exception ex
               (log/error ex "Exception while running timer handler!")))
           (recur)))
-      (catch Exception e
-        (log/debug "Exception" e)
+      (catch InterruptedException _
         nil))))
 
 
