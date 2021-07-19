@@ -8,8 +8,13 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 
 ...
 
+## [1.0.4] - 2021-07-19
 
-## [1.0.2] - 2021-04-26
+### Changed
+- Update dep clj-http to http-kit, add [babashka](https://github.com/babashka/babashka) support
+  [#54](https://github.com/amperity/vault-clj/pull/54)
+
+## [1.0.3] - 2021-04-26
 
 ### Changed
 - Fix authenticate logging for syntax replacement
