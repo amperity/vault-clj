@@ -9,3 +9,7 @@ pom.xml.asc
 /.nrepl-port
 .idea/
 *.iml
+
+.calva
+.lsp
+.cpcache

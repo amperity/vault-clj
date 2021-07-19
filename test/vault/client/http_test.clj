@@ -24,7 +24,7 @@
     (is (thrown? IllegalArgumentException
           (vault-kvv1/read-secret client nil))
         "should throw an exception on non-string path")
-    (is (thrown? IllegalStateException
+    (is (thrown? RuntimeException
           (vault-kvv1/read-secret client "secret/foo/bar"))
         "should throw an exception on unauthenticated client")))
 
@@ -59,8 +59,7 @@
                  (str example-url "/v1/auth/kubernetes/login")
                  {:form-params {:jwt "fake-jwt-goes-here" :role "my-role"}
                   :content-type :json
-                  :accept :json
-                  :as :json}]]
+                  :accept :json}]]
                @api-requests))
         (is (= [[(str "Kubernetes auth role=my-role")
                  (:auth client)
@@ -116,8 +115,7 @@
                                 :iam_request_headers "{'foo':'bar'}"
                                 :role "my-role"}
                   :content-type :json
-                  :accept :json
-                  :as :json}]]
+                  :accept :json}]]
                @api-requests))
         (is (= [["AWS auth role=my-role"
                  (:auth client)

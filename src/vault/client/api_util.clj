@@ -1,17 +1,16 @@
 (ns vault.client.api-util
   (:require
     [cheshire.core :as json]
-    [clj-http.client :as http]
     [clojure.string :as str]
     [clojure.tools.logging :as log]
-    [clojure.walk :as walk])
+    [clojure.walk :as walk]
+    [org.httpkit.client :as http])
   (:import
     (clojure.lang
       ExceptionInfo)
     (java.security
-      MessageDigest)
-    (org.apache.commons.codec.binary
-      Hex)))
+      MessageDigest)))
+
 
 ;; ## API Utilities
 
@@ -56,13 +55,20 @@
   (keyword-swap-chars value "-" "_"))
 
 
+(defn ^String encode-hex-string
+  "Encode an array of bytes to hex string."
+  [^bytes bytes]
+  (->> (map #(format "%02x" %) bytes)
+       (apply str)))
+
+
 (defn ^:no-doc sha-256
   "Geerate a SHA-2 256 bit digest from a string."
   [s]
   (let [hasher (MessageDigest/getInstance "SHA-256")
         str-bytes (.getBytes (str s) "UTF-8")]
     (.update hasher str-bytes)
-    (Hex/encodeHexString (.digest hasher))))
+    (encode-hex-string (.digest hasher))))
 
 
 (defn ^:no-doc clean-body
@@ -72,9 +78,8 @@
   [response]
   (->
     (:body response)
-    (kebabify-keys)
-    (assoc :data (:data (:body response)))
-    (->> (into {} (filter (comp some? val))))))
+    (json/parse-string true)
+    (kebabify-keys)))
 
 
 (defn ^:no-doc api-error
@@ -108,8 +113,10 @@
       (throw (ex-info (str "Aborting Vault API request after " redirects " redirects")
                       {:method method, :url request-url})))
     (let [resp (try
-                 (http/request (assoc req :method method :url request-url))
+                 (let [response (http/request (assoc req :method method :url request-url))]
+                   @response)
                  (catch Exception ex
+                   (log/debug "Exception " ex)
                    (throw (api-error ex))))]
       (if-let [location (and (#{303 307} (:status resp))
                              (get-in resp [:headers "Location"]))]
@@ -123,23 +130,22 @@
   Currently always uses API version `v1`. The `path` should be relative to the
   version root."
   [client method path req]
-  ; Check API path.
+  ;; Check API path.
   (when-not (and (string? path) (not (str/blank? path)))
-    (throw (IllegalArgumentException.
+    (throw (java.lang.IllegalArgumentException.
              (str "API path must be a non-empty string, got: "
                   (pr-str path)))))
-  ; Check client authentication.
+  ;; Check client authentication.
   (when-not (some-> client :auth deref :client-token)
-    (throw (IllegalStateException.
+    (throw (java.lang.IllegalStateException.
              "Cannot call API path with unauthenticated client.")))
-  ; Call API with standard arguments.
+  ;; Call API with standard arguments.
   (do-api-request
     method
     (str (:api-url client) "/v1/" path)
     (merge
       (:http-opts client)
-      {:accept :json
-       :as :json}
+      {:accept :json}
       req
       {:headers (merge {"X-Vault-Token" (:client-token @(:auth client))}
                        (:headers req))})))
@@ -154,5 +160,4 @@
       (:http-opts client)
       {:headers {"X-Vault-Token" wrap-token}
        :content-type :json
-       :accept :json
-       :as :json})))
+       :accept :json})))

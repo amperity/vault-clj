@@ -61,8 +61,7 @@
           (:http-opts client)
           {:form-params {:password password}
            :content-type :json
-           :accept :json
-           :as :json})))))
+           :accept :json})))))
 
 
 (defmethod authenticate* :app-id
@@ -77,8 +76,7 @@
           (:http-opts client)
           {:form-params {:app_id app, :user_id user}
            :content-type :json
-           :accept :json
-           :as :json})))))
+           :accept :json})))))
 
 
 (defmethod authenticate* :app-role
@@ -93,8 +91,7 @@
           (:http-opts client)
           {:form-params {:role_id role-id, :secret_id secret-id}
            :content-type :json
-           :accept :json
-           :as :json})))))
+           :accept :json})))))
 
 
 (defmethod authenticate* :ldap
@@ -109,8 +106,7 @@
           (:http-opts client)
           {:form-params {:password password}
            :content-type :json
-           :accept :json
-           :as :json})))))
+           :accept :json})))))
 
 
 (defmethod authenticate* :k8s
@@ -130,8 +126,7 @@
           (:http-opts client)
           {:form-params {:jwt jwt :role role}
            :content-type :json
-           :accept :json
-           :as :json})))))
+           :accept :json})))))
 
 
 (defmethod authenticate* :aws-iam
@@ -162,5 +157,4 @@
                          :iam_request_headers request-headers
                          :role role}
            :content-type :json
-           :accept :json
-           :as :json})))))
+           :accept :json})))))

@@ -32,9 +32,9 @@
   (start
     [this]
     (if lease-timer
-      ; Already running
+      ;; Already running
       this
-      ; Start lease heartbeat thread.
+      ;; Start lease heartbeat thread.
       (let [window (:lease-renewal-window this 300)
             period (:lease-check-period   this  60)
             jitter (:lease-check-jitter   this  10)
@@ -49,9 +49,9 @@
     [this]
     (if lease-timer
       (do
-        ; Stop lease timer thread.
+        ;; Stop lease timer thread.
         (timer/stop! lease-timer)
-        ; Revoke all outstanding leases.
+        ;; Revoke all outstanding leases.
         (when-let [outstanding (and (:revoke-on-stop? this)
                                     (seq (filter lease/leased? (vault/list-leases this))))]
           (log/infof "Revoking %d outstanding secret leases" (count outstanding))
@@ -61,7 +61,7 @@
               (catch Exception ex
                 (log/error ex "Failed to revoke lease" (:lease-id secret))))))
         (assoc this :lease-timer nil))
-      ; Already stopped.
+      ;; Already stopped.
       this))
 
 
@@ -78,8 +78,7 @@
     (-> (api-util/do-api-request
           :get (str api-url "/v1/sys/health")
           (assoc http-opts
-                 :accept :json
-                 :as :json))
+                 :accept :json))
         (api-util/clean-body)))
 
 
@@ -96,7 +95,7 @@
                                  {"X-Vault-Wrap-TTL" ttl})
                       :form-params params
                       :content-type :json})]
-      ; Return auth info if available, or wrap info if not.
+      ;; Return auth info if available, or wrap info if not.
       (or (-> response :body :auth api-util/kebabify-keys)
           (-> response :body :wrap_info api-util/kebabify-keys)
           (throw (ex-info "No auth or wrap-info in response body"
@@ -192,9 +191,9 @@
                      {:form-params {:lease_id lease-id}
                       :content-type :json})
           info (api-util/clean-body response)]
-      ; If the lease looks renewable but the lease-duration is shorter than the
-      ; existing lease, we're up against the max-ttl and the lease should not
-      ; be considered renewable.
+      ;; If the lease looks renewable but the lease-duration is shorter than the
+      ;; existing lease, we're up against the max-ttl and the lease should not
+      ;; be considered renewable.
       (lease/update!
         leases
         (if (and (lease/renewable? info)

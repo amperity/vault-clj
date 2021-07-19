@@ -8,7 +8,7 @@
     [clojure.string :as str]
     [clojure.tools.logging :as log]
     [envoy.core :refer [defenv]]
-    ; For extensions to vault.core/new-client multimethod.
+    ;; For extensions to vault.core/new-client multimethod.
     [vault.client.http]
     [vault.client.mock]
     [vault.core :as vault]
@@ -116,11 +116,11 @@
     (fn resolve-var
       [env' k]
       (if-let [v (get env' k)]
-        ; Does the env value start with the Vault prefix?
+        ;; Does the env value start with the Vault prefix?
         (if (str/starts-with? v vault-prefix)
           (assoc env' k (resolve-uri client v))
           env')
-        ; Value for k is not configured in env.
+        ;; Value for k is not configured in env.
         env'))
     env secrets))
 
@@ -132,8 +132,8 @@
    (load! nil env secrets))
   ([client env secrets]
    (if (seq secrets)
-     ; Some secrets, resolve paths.
+     ;; Some secrets, resolve paths.
      (let [client (or client (config-client env))]
        (resolve-secrets client env secrets))
-     ; No secrets, return env directly.
+     ;; No secrets, return env directly.
      env)))

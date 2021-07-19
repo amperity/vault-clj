@@ -1,0 +1,16 @@
+;; Type bb tasks to see all tasks
+;; Type bb <task-name> or bb run <task-name> to run a task
+{:min-bb-version "0.4.0"
+ :paths ["script"]
+ :deps {amperity/vault-clj {:local/root "."}}
+ :tasks {:requires ([vault.core :as vault]
+                    [vault.client.http]
+                    [vault.secrets.kvv2 :as kvv2])
+         :init     (do)
+         ;; Helpers
+         vault-get-dev {:doc "Get dev secrets from vault - requires vault cli."
+                        :task (do
+                                (let [client (vault/new-client (System/getenv "VAULT_ADDR"))]
+                                  (vault/authenticate! client :token (System/getenv "VAULT_TOKEN"))
+                                  (println (kvv2/read-secret client "DocSearch" "stage/app"))))}}}
+
