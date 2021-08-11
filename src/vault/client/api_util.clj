@@ -76,12 +76,13 @@
   dropping extraneous information. Note that this changes the `:data` in the
   response to the original result to preserve accuracy."
   [body]
-  (let [parsed (json/parse-string body true)]
-    (-> parsed
-        (dissoc :data)
-        (kebabify-keys)
-        (assoc :data (:data parsed))
-        (->> (into {} (filter (comp some? val)))))))
+  (when body
+    (let [parsed (json/parse-string body true)]
+      (-> parsed
+          (dissoc :data)
+          (kebabify-keys)
+          (assoc :data (:data parsed))
+          (->> (into {} (filter (comp some? val))))))))
 
 
 (defn ^:no-doc api-error

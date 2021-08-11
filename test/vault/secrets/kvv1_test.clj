@@ -19,11 +19,12 @@
         token-passed-in "fake-token"
         vault-url "https://vault.example.amperity.com"
         client (http-client/http-client vault-url)
-        response {:auth nil
-                  :data {:keys ["foo" "foo/"]}
-                  :lease_duration 2764800
-                  :lease-id ""
-                  :renewable false}]
+        response (json/generate-string
+                   {:auth nil
+                    :data {:keys ["foo" "foo/"]}
+                    :lease-duration 2764800
+                    :lease-id ""
+                    :renewable false})]
     (vault/authenticate! client :token token-passed-in)
     (testing "List secrets has correct response and sends correct request"
       (with-redefs
@@ -95,7 +96,7 @@
            (is (= :post (:method req)))
            (is (= (str vault-url "/v1/" path-passed-in) (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
-           (is (= write-data (:form-params req)))
+           (is (= (json/generate-string write-data) (:body req)))
            (atom {:body create-success
                   :status 204}))]
         (is (true? (vault-kvv1/write-secret! client path-passed-in write-data)))))
@@ -106,8 +107,7 @@
            (is (= :post (:method req)))
            (is (= (str vault-url "/v1/" path-passed-in) (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
-           (is (= write-data
-                  (:form-params req)))
+           (is (= (json/generate-string write-data) (:body req)))
            (atom {:errors []
                   :status 400}))]
         (is (false? (vault-kvv1/write-secret! client path-passed-in write-data)))))))
