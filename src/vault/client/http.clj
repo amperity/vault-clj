@@ -75,11 +75,11 @@
 
   (status
     [_]
-    (-> (api-util/do-api-request
-          :get (str api-url "/v1/sys/health")
-          (assoc http-opts
-                 :accept :json))
-        (api-util/clean-body)))
+    (:body
+      (api-util/do-api-request
+        :get
+        (str api-url "/v1/sys/health")
+        (assoc http-opts :accept :json))))
 
 
   vault/TokenManager
@@ -122,7 +122,7 @@
   (renew-token
     [this]
     (let [response (api-util/api-request this :post "auth/token/renew-self" {})
-          auth-info (lease/auth-lease (:auth (api-util/clean-body response)))]
+          auth-info (lease/auth-lease (get-in response [:body :auth]))]
       (when-not (:client-token auth-info)
         (throw (ex-info (str "No client token returned from token renewal response: "
                              (:status response) " " (:reason-phrase response))
@@ -133,12 +133,12 @@
 
   (renew-token
     [this token]
-    (-> (api-util/api-request
-          this :post "auth/token/renew"
-          {:form-params {:token token}
-           :content-type :json})
-        (api-util/clean-body)
-        (:auth)))
+    (get-in
+      (api-util/api-request
+        this :post "auth/token/renew"
+        {:form-params {:token token}
+         :content-type :json})
+      [:body :auth]))
 
 
   (revoke-token!
@@ -190,7 +190,7 @@
                      this :put "sys/renew"
                      {:form-params {:lease_id lease-id}
                       :content-type :json})
-          info (api-util/clean-body response)]
+          info (:body response)]
       ;; If the lease looks renewable but the lease-duration is shorter than the
       ;; existing lease, we're up against the max-ttl and the lease should not
       ;; be considered renewable.
@@ -242,7 +242,7 @@
         (api-util/supports-not-found
           opts
           (let [response (api-util/api-request this :get path (:request-opts opts))
-                info (assoc (api-util/clean-body response)
+                info (assoc (:body response)
                             :path path
                             :renew (:renew opts)
                             :rotate (:rotate opts))]
@@ -258,7 +258,7 @@
     [this path data]
     (let [response (api-util/api-request
                      this :post path
-                     {:form-params data
+                     {:body data
                       :content-type :json})]
       (log/debug "Vault client wrote to" path)
       (lease/remove-path! leases path)
@@ -283,10 +283,9 @@
     (-> (api-util/api-request
           this :post "sys/wrapping/wrap"
           {:headers {"X-Vault-Wrap-TTL" ttl}
-           :form-params data
+           :body data
            :content-type :json})
-        (get-in [:body :wrap_info])
-        (api-util/kebabify-keys)))
+        (get-in [:body :wrap-info])))
 
 
   (unwrap!
