@@ -18,6 +18,10 @@
    [http-kit "2.5.3"]
    [com.stuartsierra/component "1.0.0"]]
 
+  :test-selectors
+  {:default (complement :integration)
+   :integration :integration}
+
   :profiles
   {:dev
    {:dependencies
