@@ -85,24 +85,31 @@
           (->> (into {} (filter (comp some? val))))))))
 
 
+(defn- body-errors
+  "Return string representation of errors found in body of response or nil."
+  [data]
+  (try
+    (when-let [body (json/parse-string (:body data) true)]
+      (if (:errors body)
+        (str/join ", " (:errors body))
+        (pr-str body)))
+    (catch Exception _
+      nil)))
+
+
 (defn ^:no-doc api-error
   "Inspects an exception and returns a cleaned-up version if the type is well
   understood. Otherwise returns the original error."
   [ex]
   (let [data (ex-data ex)
+        error (:error data)
         status (:status data)]
-    (if (and status (<= 400 status))
-      (let [body (try
-                   (json/parse-string (:body data) true)
-                   (catch Exception _
-                     nil))
-            errors (if (:errors body)
-                     (str/join ", " (:errors body))
-                     (pr-str body))]
+    (if (or error (and status (<= 400 status)))
+      (let [errors (if error (ex-message error) (body-errors data))]
         (ex-info (str "Vault API errors: " errors)
                  {:type ::api-error
                   :status status
-                  :errors (:errors body)}
+                  :errors errors}
                  ex))
       ex)))
 
@@ -114,7 +121,7 @@
     (:error response)
     (throw (ex-info "Error in api response" response (:error response)))
 
-    (<= 400 (:status response))
+    (<= 400 (:status response 0))
     (throw (ex-info (str "status: " (:status response)) response))
 
     :else
