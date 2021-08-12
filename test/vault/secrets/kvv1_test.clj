@@ -6,10 +6,10 @@
     [vault.client.http :as http-client]
     [vault.client.mock-test :as mock-test]
     [vault.core :as vault]
+    [vault.integration :refer [with-test-client cli]]
     [vault.secrets.kvv1 :as vault-kvv1])
   (:import
-    (clojure.lang
-      ExceptionInfo)))
+    clojure.lang.ExceptionInfo))
 
 
 ;; -------- HTTP Client -------------------------------------------------------
@@ -22,7 +22,7 @@
         response (json/generate-string
                    {:auth nil
                     :data {:keys ["foo" "foo/"]}
-                    :lease-duration 2764800
+                    :lease_duration 2764800
                     :lease-id ""
                     :renewable false})]
     (vault/authenticate! client :token token-passed-in)
@@ -96,7 +96,7 @@
            (is (= :post (:method req)))
            (is (= (str vault-url "/v1/" path-passed-in) (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
-           (is (= (json/generate-string write-data) (:body req)))
+           (is (= "{\"foo\":\"bar\",\"zip\":\"zap\"}" (:body req)))
            (atom {:body create-success
                   :status 204}))]
         (is (true? (vault-kvv1/write-secret! client path-passed-in write-data)))))
@@ -107,7 +107,7 @@
            (is (= :post (:method req)))
            (is (= (str vault-url "/v1/" path-passed-in) (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
-           (is (= (json/generate-string write-data) (:body req)))
+           (is (= "{\"foo\":\"bar\",\"zip\":\"zap\"}" (:body req)))
            (atom {:errors []
                   :status 400}))]
         (is (false? (vault-kvv1/write-secret! client path-passed-in write-data)))))))
@@ -137,6 +137,42 @@
            (is (= (str vault-url "/v1/" path-passed-in) (:url req)))
            (atom {:status 404}))]
         (is (false? (vault/delete-secret! client path-passed-in)))))))
+
+
+(deftest ^:integration secret-lifecycle
+  (with-test-client
+    (cli "secrets" "enable" "-version=1" "kv")
+    (testing "write-secret!"
+      (is (true? (vault-kvv1/write-secret! client "vault-kvv1/foo/abc" {:key "xyz"})))
+      (is (true? (vault-kvv1/write-secret! client "vault-kvv1/foo/bar/baz" {:alpha true, :beta 123})))
+      (is (true? (vault-kvv1/write-secret! client "vault-kvv1/foo/qux/def" {:one "two", :three ["four"]}))))
+    (testing "list-secrets"
+      (testing "on nonexistent path"
+        (is (nil? (vault-kvv1/list-secrets client "vault-kvv1/not-here"))))
+      (testing "on grandparent path"
+        (is (= ["abc" "bar/" "qux/"] (vault-kvv1/list-secrets client "vault-kvv1/foo"))))
+      (testing "on parent path"
+        (is (= ["baz"] (vault-kvv1/list-secrets client "vault-kvv1/foo/bar")))
+        (is (= ["def"] (vault-kvv1/list-secrets client "vault-kvv1/foo/qux")))))
+    (testing "read-secret"
+      (testing "on nonexistent path"
+        (is (thrown-with-msg? ExceptionInfo #"abc"
+              (vault-kvv1/read-secret client "vault-kvv1/not/here")))
+        (is (= ::missing (vault-kvv1/read-secret client "vault-kvv1/not/here" {:not-found ::missing}))))
+      (testing "on directory path"
+        (is (thrown-with-msg? ExceptionInfo #"abc"
+              (vault-kvv1/read-secret client "vault-kvv1/foo"))))
+      (testing "on secret path"
+        (is (= {:key "xyz"} (vault-kvv1/read-secret client "vault-kvv1/foo/abc")))
+        (is (= {:alpha true, :beta 123} (vault-kvv1/read-secret client "vault-kvv1/foo/bar/baz")))
+        (is (= {:one "two", :three ["four"]} (vault-kvv1/read-secret client "vault-kvv1/foo/qux/def")))))
+    (testing "delete-secret!"
+      (testing "on nonexistent path"
+        (is (false? (vault-kvv1/delete-secret! client "vault-kvv1/not-here"))))
+      (testing "on existing secret"
+        (is (true? (vault-kvv1/delete-secret! client "vault-kvv1/foo/abc")))
+        (is (= ::missing (vault-kvv1/read-secret client "vault-kvv1/foo/abc" {:not-found ::missing}))
+            "should be gone after delete")))))
 
 
 ;; -------- Mock Client -------------------------------------------------------
