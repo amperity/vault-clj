@@ -89,7 +89,9 @@
 
 
 (defn write-secret!
-  "Writes secret data to a path. Returns a boolean indicating whether the write was successful.
+  "Writes secret data to a path.
+
+  Returns a boolean indicating whether the write was successful or throws an exception if an error occured.
 
   Params:
   - `client`: `vault.client`, A client that handles vault auth, leases, and basic CRUD ops
@@ -105,7 +107,8 @@
 
 (defn write-config!
   "Configures backend level settings that are applied to every key in the key-value store for a given secret engine.
-   Returns a boolean indicating whether the write was successful.
+
+  Returns a boolean indicating whether the write was successful or throws an exception if an error occured.
 
   Params:
   - `client`: `vault.client`, A client that handles vault auth, leases, and basic CRUD ops
@@ -138,7 +141,8 @@
 
 (defn destroy-secret!
   "Permanently removes the specified version data for the provided key and version numbers from the key-value store.
-  Returns a boolean indicating whether the destroy was successful.
+
+  Returns a boolean indicating whether the destroy was successful or throws and exception if an error occured.
 
   Params:
   - `client`: `vault.client`, A client that handles vault auth, leases, and basic CRUD ops

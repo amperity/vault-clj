@@ -106,7 +106,7 @@
         status (:status data)]
     (if (or error (and status (<= 400 status)))
       (let [errors (if error (ex-message error) (body-errors data))]
-        (ex-info (str "Vault API errors: " errors)
+        (ex-info (str "Vault API server errors: " errors)
                  {:type ::api-error
                   :status status
                   :errors errors}
