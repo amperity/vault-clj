@@ -71,15 +71,18 @@
     (encode-hex-string (.digest hasher))))
 
 
-(defn ^:no-doc clean-body
+(defn- ^:no-doc clean-body
   "Cleans up a response from the Vault API by rewriting some keywords and
   dropping extraneous information. Note that this changes the `:data` in the
   response to the original result to preserve accuracy."
-  [response]
-  (->
-    (:body response)
-    (json/parse-string true)
-    (kebabify-keys)))
+  [body]
+  (when body
+    (let [parsed (json/parse-string body true)]
+      (-> parsed
+          (dissoc :data)
+          (kebabify-keys)
+          (assoc :data (:data parsed))
+          (->> (into {} (filter (comp some? val))))))))
 
 
 (defn ^:no-doc api-error
@@ -113,8 +116,16 @@
       (throw (ex-info (str "Aborting Vault API request after " redirects " redirects")
                       {:method method, :url request-url})))
     (let [resp (try
-                 (let [response (http/request (assoc req :method method :url request-url))]
-                   @response)
+                 (->
+                   req
+                   (cond->
+                     (and (= :json (:content-type req))
+                          (:body req))
+                     (update :body json/generate-string))
+                   (assoc :method method :url request-url)
+                   (http/request)
+                   (deref)
+                   (update :body clean-body))
                  (catch Exception ex
                    (log/debug "Exception " ex)
                    (throw (api-error ex))))]

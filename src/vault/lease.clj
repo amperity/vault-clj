@@ -192,7 +192,7 @@
   (try
     (log/info "Rotating secret lease" (:lease-id secret))
     (let [response (api-util/api-request client :get (:path secret) {})
-          info (assoc (api-util/clean-body response) :path (:path secret))]
+          info (assoc (:body response) :path (:path secret))]
       (update! (:leases client) info))
     (catch Exception ex
       (log/error ex "Failed to rotate secret" (:lease-id secret)))))

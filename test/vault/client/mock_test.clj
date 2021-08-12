@@ -2,6 +2,7 @@
   (:require
     [clojure.string :as str]
     [clojure.test :refer [deftest testing is]]
+    [vault.client.mock]
     [vault.core :as vault])
   (:import
     (clojure.lang
