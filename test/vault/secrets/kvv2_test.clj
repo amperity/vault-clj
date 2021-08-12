@@ -7,10 +7,55 @@
     [vault.client.http :as http-client]
     [vault.client.mock-test :as mock-test]
     [vault.core :as vault]
+    [vault.integration :refer [with-dev-server cli]]
     [vault.secrets.kvv2 :as vault-kvv2])
   (:import
-    (clojure.lang
-      ExceptionInfo)))
+    clojure.lang.ExceptionInfo
+    java.time.Instant))
+
+
+(deftest ^:integration secret-lifecycle
+  (with-dev-server
+    (cli "secrets" "enable" "-version=2" "kv")
+    (testing "write-secret!"
+      (testing "result metadata"
+        (let [meta-abc (vault-kvv2/write-secret! client "kv" "foo/abc" {:key "xyz"})]
+          (is (string? (:created-time meta-abc)))
+          (is (= "" (:deletion-time meta-abc)))
+          (is (false? (:destroyed meta-abc)))
+          (is (= 1 (:version meta-abc)))))
+      (is (map? (vault-kvv2/write-secret! client "kv" "foo/bar/baz" {:alpha true, :beta 123})))
+      (is (map? (vault-kvv2/write-secret! client "kv" "foo/qux/def" {:one "two", :three ["four"]}))))
+    (testing "list-secrets"
+      (testing "on nonexistent path"
+        (is (nil? (vault-kvv2/list-secrets client "kv" "not-here"))))
+      (testing "on grandparent path"
+        (is (= ["abc" "bar/" "qux/"] (vault-kvv2/list-secrets client "kv" "foo"))))
+      (testing "on parent path"
+        (is (= ["baz"] (vault-kvv2/list-secrets client "kv" "foo/bar")))
+        (is (= ["def"] (vault-kvv2/list-secrets client "kv" "foo/qux")))))
+    (testing "read-secret"
+      (testing "on nonexistent path"
+        (is (thrown-with-msg? ExceptionInfo #"abc"
+              (vault-kvv2/read-secret client "kv" "not/here")))
+        (is (= ::missing (vault-kvv2/read-secret client "kv" "not/here" {:not-found ::missing}))))
+      (testing "on directory path"
+        (is (thrown-with-msg? ExceptionInfo #"abc"
+              (vault-kvv2/read-secret client "kv" "foo"))))
+      (testing "on secret path"
+        (is (= {:key "xyz"} (vault-kvv2/read-secret client "kv" "foo/abc")))
+        (is (= {:alpha true, :beta 123} (vault-kvv2/read-secret client "kv" "foo/bar/baz")))
+        (is (= {:one "two", :three ["four"]} (vault-kvv2/read-secret client "kv" "foo/qux/def")))))
+    (testing "delete-secret!"
+      (testing "on nonexistent path"
+        (is (false? (vault-kvv2/delete-secret! client "kv" "not-here"))))
+      (testing "on existing secret"
+        (is (true? (vault-kvv2/delete-secret! client "kv" "foo/abc")))
+        (is (= ::missing (vault-kvv2/read-secret client "kv" "foo/abc" {:not-found ::missing}))
+            "should be gone after delete")))))
+
+
+;; TODO: integration tests for secret versioning, metadata, config
 
 
 (deftest list-secrets-test

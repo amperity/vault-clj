@@ -53,7 +53,6 @@
                   (.redirectErrorStream true)
                   (.redirectOutput (io/file work-dir "vault.log")))]
     (.mkdirs work-dir)
-    (println "Starting vault dev server...")  ; DEBUG
     (.start builder)))
 
 
@@ -65,9 +64,9 @@
     (try
       (.connect socket socket-addr 10)
       true
-      (catch SocketTimeoutException ex
+      (catch SocketTimeoutException _
         false)
-      (catch Exception ex
+      (catch Exception _
         false)
       (finally
         (.close socket)))))
@@ -91,13 +90,15 @@
   "Stop the local development server process."
   [^Process proc]
   (when (.isAlive proc)
-    (println "Stopping vault dev server...")  ; DEBUG
     (.destroy proc)
     (when-not (.waitFor proc 5 TimeUnit/SECONDS)
       (binding [*out* *err*]
         (println "Server did not stop cleanly after 5 seconds! Terminating..."))
       (.destroyForcibly proc)))
-  (println "Server exited with code:" (.exitValue proc))  ; DEBUG
+  (let [exit (.exitValue proc)]
+    (when-not (zero? exit)
+      (binding [*out* *err*]
+        (println "Vault server exited with code:" exit))))
   nil)
 
 
@@ -110,7 +111,7 @@
     (vault/authenticate! :token root-token)))
 
 
-(defmacro with-test-client
+(defmacro with-dev-server
   "Macro which executes the provided body with a development vault server and
   initialized test client bound to `client`."
   [& body]
