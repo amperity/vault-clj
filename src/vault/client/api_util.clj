@@ -107,6 +107,20 @@
       ex)))
 
 
+(defn- handle-response-errors
+  "Throws exceptions from http-kit response mimicing clj-http."
+  [response]
+  (cond
+    (:error response)
+    (throw (ex-info "Error in api response" response (:error response)))
+
+    (<= 400 (:status response))
+    (throw (ex-info (str "status: " (:status response)) response))
+
+    :else
+    response))
+
+
 (defn ^:no-doc do-api-request
   "Performs a request against the API, following redirects at most twice. The
   `request-url` should be the full API endpoint."
@@ -125,6 +139,7 @@
                    (assoc :method method :url request-url)
                    (http/request)
                    (deref)
+                   (handle-response-errors)
                    (update :body clean-body))
                  (catch Exception ex
                    (log/debug "Exception " ex)
