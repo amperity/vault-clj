@@ -6,4 +6,4 @@
              clojure.string str}}
 
   :unresolved-symbol
-  {:exclude [(vault.integration/with-test-client [client])]}}}
+  {:exclude [(vault.integration/with-dev-server [client])]}}}

@@ -10,8 +10,7 @@
     [vault.integration :refer [with-dev-server cli]]
     [vault.secrets.kvv2 :as vault-kvv2])
   (:import
-    clojure.lang.ExceptionInfo
-    java.time.Instant))
+    clojure.lang.ExceptionInfo))
 
 
 (deftest ^:integration secret-lifecycle
