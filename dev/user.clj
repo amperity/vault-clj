@@ -10,7 +10,6 @@
     [vault.client.http]
     [vault.client.mock]
     [vault.core :as vault]
-    [vault.env :as venv]
     [vault.lease :as lease]
     [vault.secrets.kvv2 :as kvv2]))
 

@@ -13,7 +13,6 @@
   :dependencies
   [[org.clojure/clojure "1.10.1"]
    [org.clojure/tools.logging "1.1.0"]
-   [amperity/envoy "0.3.3"]
    [cheshire "5.10.1"]
    [http-kit "2.5.3"]
    [com.stuartsierra/component "1.0.0"]]
