@@ -1,9 +1,11 @@
 (ns vault.client.http
   "Vault HTTP client and core functions."
   (:require
+    [clojure.data.json :as json]
     [clojure.string :as str]
     [clojure.tools.logging :as log]
     [com.stuartsierra.component :as component]
+    [org.httpkit.client :as http]
     [vault.client :as vault]
     #_[vault.lease :as lease]))
 

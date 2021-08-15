@@ -2,8 +2,7 @@
   "Core namespace for constructing a Vault client to use with the API
   protocols."
   (:import
-    java.net.URI
-    java.time.Instant))
+    java.net.URI))
 
 
 ;; ## Core Protocol
@@ -31,13 +30,3 @@
   [uri]
   (throw (IllegalArgumentException.
            (str "Unsupported Vault client URI scheme: " (pr-str uri)))))
-
-
-;; ## Utilities
-
-(defn ^:no-doc now
-  "Implementation helper for returning the current time. Mostly useful for
-  rebinding in test contexts."
-  ^Instant
-  []
-  (Instant/now))
