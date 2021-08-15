@@ -20,8 +20,10 @@
           (Thread/sleep (* (+ period (rand-int jitter)) 1000))
           (try
             (handler)
+            (catch InterruptedException ex
+              (throw ex))
             (catch Exception ex
-              (log/error ex "Exception while running timer handler!")))
+              (log/error ex "Error while running timer handler!")))
           (recur)))
       (catch InterruptedException _
         nil))))
