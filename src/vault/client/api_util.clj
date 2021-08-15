@@ -1,6 +1,6 @@
 (ns vault.client.api-util
   (:require
-    [cheshire.core :as json]
+    [clojure.data.json :as json]
     [clojure.string :as str]
     [clojure.tools.logging :as log]
     [clojure.walk :as walk]
@@ -77,7 +77,7 @@
   response to the original result to preserve accuracy."
   [body]
   (when body
-    (let [parsed (json/parse-string body true)]
+    (let [parsed (json/read-str body :key-fn keyword)]
       (-> parsed
           (dissoc :data)
           (kebabify-keys)
@@ -93,7 +93,8 @@
         status (:status data)]
     (if (and status (<= 400 status))
       (let [body (try
-                   (json/parse-string (:body data) true)
+                   (json/read-str (:body data)
+                                  :key-fn keyword)
                    (catch Exception _
                      nil))
             errors (if (:errors body)
@@ -121,7 +122,7 @@
                    (cond->
                      (and (= :json (:content-type req))
                           (:body req))
-                     (update :body json/generate-string))
+                     (update :body json/write-str))
                    (assoc :method method :url request-url)
                    (http/request)
                    (deref)

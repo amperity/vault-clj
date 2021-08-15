@@ -1,6 +1,6 @@
 (ns vault.secrets.kvv2-test
   (:require
-    [cheshire.core :as json]
+    [clojure.data.json :as json]
     [clojure.test :refer [testing deftest is]]
     [org.httpkit.client :as http]
     [vault.client.api-util :as api-util]
@@ -62,7 +62,7 @@
         token-passed-in "fake-token"
         vault-url "https://vault.example.amperity.com"
         client (http-client/http-client vault-url)
-        response (json/generate-string
+        response (json/write-str
                    {:auth nil
                     :data {:keys ["foo" "foo/"]}
                     :lease_duration 2764800
@@ -101,7 +101,7 @@
            (is (= :post (:method req)))
            (is (= (str vault-url "/v1/" mount "/config") (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
-           (is (= (json/generate-string new-config-snake) (:body req)))
+           (is (= (json/write-str new-config-snake) (:body req)))
            (atom {:status 204}))]
         (is (true? (vault-kvv2/write-config! client mount new-config-kebab)))))))
 
@@ -110,7 +110,7 @@
   (let [config {:max-versions 5
                 :cas-required false
                 :delete-version-after "3h25m19s"}
-        body-str (json/generate-string {:data (api-util/snakeify-keys config)})
+        body-str (json/write-str {:data (api-util/snakeify-keys config)})
         mount "mount"
         token-passed-in "fake-token"
         vault-url "https://vault.example.amperity.com"
@@ -128,11 +128,11 @@
 
 
 (deftest read-test
-  (let [lookup-response-valid-path (json/generate-string {:data {:data     {:foo "bar"}
-                                                                 :metadata {:created_time  "2018-03-22T02:24:06.945319214Z"
-                                                                            :deletion_time ""
-                                                                            :destroyed     false
-                                                                            :version       1}}})
+  (let [lookup-response-valid-path (json/write-str {:data {:data     {:foo "bar"}
+                                                           :metadata {:created_time  "2018-03-22T02:24:06.945319214Z"
+                                                                      :deletion_time ""
+                                                                      :destroyed     false
+                                                                      :version       1}}})
         mount "mount"
         path-passed-in "path/passed/in"
         token-passed-in "fake-token"
@@ -203,15 +203,19 @@
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
            (is (= :post (:method req)))
            (if (= (str vault-url "/v1/" mount "/metadata/" path-passed-in) (:url req))
-             (do (is (= (json/generate-string {}) (:body req)))
+             (do (is (= (json/write-str {}) (:body req)))
                  (atom {:errors []
                         :status 200}))
              (do (is (= (str vault-url "/v1/" mount "/data/" path-passed-in) (:url req)))
-                 (is (= (json/generate-string {:data write-data})
+                 (is (= (json/write-str {:data write-data})
                         (:body req)))
-                 (atom {:body (json/generate-string create-success)
+                 (atom {:body (json/write-str create-success)
                         :status 200}))))]
-        (is (= (:data create-success) (vault-kvv2/write-secret! client mount path-passed-in write-data)))))
+        (is (= {:created-time  "2018-03-22T02:24:06.945319214Z"
+                :deletion-time ""
+                :destroyed     false
+                :version       1}
+               (vault-kvv2/write-secret! client mount path-passed-in write-data)))))
     (testing "Write secrets sends correct request and returns false upon failure"
       (with-redefs
         [http/request
@@ -219,11 +223,11 @@
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
            (is (= :post (:method req)))
            (if (= (str vault-url "/v1/" mount "/metadata/other-path") (:url req))
-             (do (is (= (json/generate-string {}) (:body req)))
+             (do (is (= (json/write-str {}) (:body req)))
                  (atom {:errors []
                         :status 200}))
              (do (is (= (str vault-url "/v1/" mount "/data/other-path") (:url req)))
-                 (is (= (json/generate-string {:data write-data})
+                 (is (= (json/write-str {:data write-data})
                         (:body req)))
                  (atom {:errors []
                         :status 500}))))]
@@ -263,7 +267,7 @@
                (is (= :post (:method req)))
                (is (= (str vault-url "/v1/" mount "/delete/" path-passed-in) (:url req)))
                (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
-               (is (= (json/generate-string {:versions [12 14 147]}) (:body req)))
+               (is (= (json/write-str {:versions [12 14 147]}) (:body req)))
                (atom {:status 204}))]
             (is (true? (vault-kvv2/delete-secret! client mount path-passed-in [12 14 147])))))
         (testing "delete secrets send correct request and returns false upon failure when multiple versions passed in"
@@ -273,27 +277,27 @@
                (is (= :post (:method req)))
                (is (= (str vault-url "/v1/" mount "/delete/" path-passed-in) (:url req)))
                (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
-               (is (= (json/generate-string {:versions [123]}) (:body req)))
+               (is (= (json/write-str {:versions [123]}) (:body req)))
                (atom {:status 404}))]
             (is (false? (vault-kvv2/delete-secret! client mount path-passed-in [123])))))))))
 
 
 (deftest read-metadata-test
-  (let [data (json/generate-string {:data
-                                    {:created_time    "2018-03-22T02:24:06.945319214Z"
-                                     :current_version 3
-                                     :max_versions    0
-                                     :oldest_version  0
-                                     :updated_time    "2018-03-22T02:36:43.986212308Z"
-                                     :versions        {:1 {:created_time  "2018-03-22T02:24:06.945319214Z"
-                                                           :deletion_time ""
-                                                           :destroyed     false}
-                                                       :2 {:created_time  "2018-03-22T02:36:33.954880664Z"
-                                                           :deletion_time ""
-                                                           :destroyed     false}
-                                                       :3 {:created_time  "2018-03-22T02:36:43.986212308Z"
-                                                           :deletion_time ""
-                                                           :destroyed     false}}}})
+  (let [data (json/write-str {:data
+                              {:created_time    "2018-03-22T02:24:06.945319214Z"
+                               :current_version 3
+                               :max_versions    0
+                               :oldest_version  0
+                               :updated_time    "2018-03-22T02:36:43.986212308Z"
+                               :versions        {:1 {:created_time  "2018-03-22T02:24:06.945319214Z"
+                                                     :deletion_time ""
+                                                     :destroyed     false}
+                                                 :2 {:created_time  "2018-03-22T02:36:33.954880664Z"
+                                                     :deletion_time ""
+                                                     :destroyed     false}
+                                                 :3 {:created_time  "2018-03-22T02:36:43.986212308Z"
+                                                     :deletion_time ""
+                                                     :destroyed     false}}}})
         kebab-metadata {:created-time    "2018-03-22T02:24:06.945319214Z"
                         :current-version 3
                         :max-versions    0
@@ -354,7 +358,7 @@
            (is (= :post (:method req)))
            (is (= (str vault-url "/v1/" mount "/metadata/" path-passed-in) (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
-           (is (= (json/generate-string (api-util/snakeify-keys payload)) (:body req)))
+           (is (= (json/write-str (api-util/snakeify-keys payload)) (:body req)))
            (atom {:status 204}))]
         (is (true? (vault-kvv2/write-metadata! client mount path-passed-in payload)))))
     (testing "Write metadata sends correct request and responds with false upon failure"
@@ -364,7 +368,7 @@
            (is (= :post (:method req)))
            (is (= (str vault-url "/v1/" mount "/metadata/" path-passed-in) (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
-           (is (= (json/generate-string (api-util/snakeify-keys payload)) (:body req)))
+           (is (= (json/write-str (api-util/snakeify-keys payload)) (:body req)))
            (atom {:status 500}))]
         (is (false? (vault-kvv2/write-metadata! client mount path-passed-in payload)))))))
 
@@ -411,7 +415,7 @@
            (is (= :post (:method req)))
            (is (= (str vault-url "/v1/" mount "/destroy/" path-passed-in) (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
-           (is (= (json/generate-string {:versions versions})
+           (is (= (json/write-str {:versions versions})
                   (:body req)))
            (atom {:status 204}))]
         (is (true? (vault-kvv2/destroy-secret! client mount path-passed-in versions)))))
@@ -422,7 +426,7 @@
            (is (= :post (:method req)))
            (is (= (str vault-url "/v1/" mount "/destroy/" path-passed-in) (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
-           (is (= (json/generate-string {:versions [1]})
+           (is (= (json/write-str {:versions [1]})
                   (:body req)))
            (atom {:status 500}))]
         (is (false? (vault-kvv2/destroy-secret! client mount path-passed-in [1])))))))
@@ -443,7 +447,7 @@
            (is (= :post (:method req)))
            (is (= (str vault-url "/v1/" mount "/undelete/" path-passed-in) (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
-           (is (= (json/generate-string {:versions versions})
+           (is (= (json/write-str {:versions versions})
                   (:body req)))
            (atom {:status 204}))]
         (is (true? (vault-kvv2/undelete-secret! client mount path-passed-in versions)))))
@@ -454,7 +458,7 @@
            (is (= :post (:method req)))
            (is (= (str vault-url "/v1/" mount "/undelete/" path-passed-in) (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
-           (is (= (json/generate-string {:versions [1]})
+           (is (= (json/write-str {:versions [1]})
                   (:body req)))
            (atom {:status 500}))]
         (is (false? (vault-kvv2/undelete-secret! client mount path-passed-in [1])))))))

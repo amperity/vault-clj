@@ -12,10 +12,10 @@
 
   :dependencies
   [[org.clojure/clojure "1.10.1"]
+   [org.clojure/data.json "2.4.0"]
    [org.clojure/tools.logging "1.1.0"]
-   [cheshire "5.10.1"]
-   [http-kit "2.5.3"]
-   [com.stuartsierra/component "1.0.0"]]
+   [com.stuartsierra/component "1.0.0"]
+   [http-kit "2.5.3"]]
 
   :test-selectors
   {:default (complement :integration)

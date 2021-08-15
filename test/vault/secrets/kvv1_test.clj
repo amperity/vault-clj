@@ -1,6 +1,6 @@
 (ns vault.secrets.kvv1-test
   (:require
-    [cheshire.core :as json]
+    [clojure.data.json :as json]
     [clojure.test :refer [is testing deftest]]
     [org.httpkit.client :as http]
     [vault.client.http :as http-client]
@@ -55,7 +55,7 @@
         token-passed-in "fake-token"
         vault-url "https://vault.example.amperity.com"
         client (http-client/http-client vault-url)
-        response (json/generate-string
+        response (json/write-str
                    {:auth nil
                     :data {:keys ["foo" "foo/"]}
                     :lease_duration 2764800
@@ -76,12 +76,12 @@
 
 
 (deftest read-secret-test
-  (let [lookup-response-valid-path (json/generate-string {:auth           nil
-                                                          :data           {:foo "bar"
-                                                                           :ttl "1h"}
-                                                          :lease_duration 3600
-                                                          :lease_id       ""
-                                                          :renewable      false})
+  (let [lookup-response-valid-path (json/write-str {:auth           nil
+                                                    :data           {:foo "bar"
+                                                                     :ttl "1h"}
+                                                    :lease_duration 3600
+                                                    :lease_id       ""
+                                                    :renewable      false})
         path-passed-in "path/passed/in"
         path-passed-in2 "path/passed/in2"
         token-passed-in "fake-token"
@@ -114,10 +114,10 @@
 
 
 (deftest write-secret-test
-  (let [create-success (json/generate-string {:data {:created_time  "2018-03-22T02:24:06.945319214Z"
-                                                     :deletion_time ""
-                                                     :destroyed     false
-                                                     :version       1}})
+  (let [create-success (json/write-str {:data {:created_time  "2018-03-22T02:24:06.945319214Z"
+                                               :deletion_time ""
+                                               :destroyed     false
+                                               :version       1}})
         write-data {:foo "bar"
                     :zip "zap"}
         path-passed-in "path/passed/in"
