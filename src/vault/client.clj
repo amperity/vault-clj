@@ -19,14 +19,14 @@
 ;; ## Client Construction
 
 (defmulti new-client
-  "Constructs a new Vault client from a URI by dispatching on the scheme. The
-  client will be returned in an initialized but not started state."
+  "Constructs a new Vault client from a URI address by dispatching on the
+  scheme. The client will be returned in an initialized but not started state."
   (fn dispatch
-    [uri]
-    (.getScheme (URI. uri))))
+    [address]
+    (.getScheme (URI. address))))
 
 
 (defmethod new-client :default
-  [uri]
+  [address]
   (throw (IllegalArgumentException.
-           (str "Unsupported Vault client URI scheme: " (pr-str uri)))))
+           (str "Unsupported Vault address scheme: " (pr-str address)))))

@@ -57,7 +57,7 @@
 ;; ## HTTP Client
 
 
-;; - `api-url`
+;; - `address`
 ;;   The base URL for the Vault API endpoint.
 ;; - `http-opts`
 ;;   Extra options to pass to `clj-http` requests.
@@ -69,7 +69,7 @@
 ;; - `lease-timer`
 ;;   Thread which periodically checks and renews leased secrets.
 (defrecord HTTPClient
-  [api-url http-opts auth leases lease-timer]
+  [address http-opts auth leases lease-timer]
 
   component/Lifecycle
 
@@ -139,23 +139,23 @@
     Maximum amount in seconds to jitter the check period by.
   - `:revoke-on-stop?`
     Whether to revoke all outstanding leases when the client stops."
-  [api-url & {:as opts}]
-  (when-not (and (string? api-url) (str/starts-with? api-url "http"))
+  [address & {:as opts}]
+  (when-not (and (string? address) (str/starts-with? address "http"))
     (throw (IllegalArgumentException.
-             (str "Vault api-url must be a string starting with 'http', got: "
-                  (pr-str api-url)))))
+             (str "Vault API address must be a string starting with 'http', got: "
+                  (pr-str address)))))
   (map->HTTPClient
     (assoc opts
-           :api-url api-url
+           :address address
            :auth (atom nil)
            #_#_:leases (lease/new-store))))
 
 
 (defmethod vault/new-client "http"
-  [location]
-  (http-client location))
+  [address]
+  (http-client address))
 
 
 (defmethod vault/new-client "https"
-  [location]
-  (http-client location))
+  [address]
+  (http-client address))

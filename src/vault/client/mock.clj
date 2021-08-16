@@ -40,11 +40,11 @@
   "Helper method to load fixture data from a path. The path may resolve to a
   resource on the classpath, a file on the filesystem, or be `-` to specify no
   data."
-  [location]
-  (when (not= location "-")
+  [path]
+  (when (not= path "-")
     (some->
-      (or (io/resource location)
-          (let [file (io/file location)]
+      (or (io/resource path)
+          (let [file (io/file path)]
             (when (.exists file)
               file)))
       (slurp)
@@ -52,8 +52,8 @@
 
 
 (defmethod vault/new-client "mock"
-  [location]
-  (let [uri (URI. location)
-        location (.getSchemeSpecificPart uri)
-        data (load-fixtures location)]
+  [address]
+  (let [uri (URI. address)
+        path (.getSchemeSpecificPart uri)
+        data (load-fixtures path)]
     (mock-client (or data {}))))
