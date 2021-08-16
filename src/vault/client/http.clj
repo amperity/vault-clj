@@ -10,6 +10,20 @@
     #_[vault.lease :as lease]))
 
 
+;; ## API Functions
+
+;; TODO: is there a way to make it easy to convert this to an asynchronous
+;;
+;; - (create-response)
+;;   construct a new stateful response container value
+;; - (on-success response data)
+;;   callback indicating a successful response - updates response state
+;; - (on-error response ex)
+;;   callback indicating a failed response - updates response state
+;; - (return response)
+;;   prepares to return the response to the caller (may block in the simple implementation)
+
+
 ;; ## Lease Timer
 
 (defn- timer-loop
