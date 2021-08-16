@@ -103,14 +103,11 @@
          (fn [req]
            (is (= (str vault-url "/v1/" path-passed-in2) (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
-           (throw (ex-info "not found" {:error [] :status 404})))]
-        (try
-          (vault-kvv1/read-secret client path-passed-in2)
-          (catch ExceptionInfo e
-            (is (= {:errors nil
-                    :status 404
-                    :type   :vault.client.api-util/api-error}
-                   (ex-data e)))))))))
+           (atom {:status 404}))]
+        (is (thrown-with-msg?
+              ExceptionInfo
+              #"Vault API server error"
+              (vault-kvv1/read-secret client path-passed-in2)))))))
 
 
 (deftest write-secret-test
@@ -136,7 +133,7 @@
            (atom {:body create-success
                   :status 204}))]
         (is (true? (vault-kvv1/write-secret! client path-passed-in write-data)))))
-    (testing "Write secrets sends correct request and returns false upon failure"
+    (testing "Write secrets sends correct request and throws an exception upon failure"
       (with-redefs
         [http/request
          (fn [req]
@@ -146,7 +143,11 @@
            (is (= "{\"foo\":\"bar\",\"zip\":\"zap\"}" (:body req)))
            (atom {:errors []
                   :status 400}))]
-        (is (false? (vault-kvv1/write-secret! client path-passed-in write-data)))))))
+        (is (false? (vault-kvv1/write-secret! client path-passed-in write-data)))
+        (is (thrown-with-msg?
+              ExceptionInfo
+              #"Vault API server error"
+              (vault-kvv1/write-secret! client path-passed-in write-data)))))))
 
 
 (deftest delete-secret-test
@@ -172,7 +173,10 @@
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
            (is (= (str vault-url "/v1/" path-passed-in) (:url req)))
            (atom {:status 404}))]
-        (is (false? (vault/delete-secret! client path-passed-in)))))))
+        (is (thrown-with-msg?
+              ExceptionInfo
+              #"Vault API server error"
+              (vault/delete-secret! client path-passed-in)))))))
 
 
 ;; -------- Mock Client -------------------------------------------------------
