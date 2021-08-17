@@ -71,15 +71,30 @@
     (encode-hex-string (.digest hasher))))
 
 
-(defn ^:no-doc clean-body
+(defn- ^:no-doc clean-body
   "Cleans up a response from the Vault API by rewriting some keywords and
   dropping extraneous information. Note that this changes the `:data` in the
   response to the original result to preserve accuracy."
-  [response]
-  (->
-    (:body response)
-    (json/parse-string true)
-    (kebabify-keys)))
+  [body]
+  (when body
+    (let [parsed (json/parse-string body true)]
+      (-> parsed
+          (dissoc :data)
+          (kebabify-keys)
+          (assoc :data (:data parsed))
+          (->> (into {} (filter (comp some? val))))))))
+
+
+(defn- body-errors
+  "Return string representation of errors found in body of response or nil."
+  [data]
+  (try
+    (when-let [body (json/parse-string (:body data) true)]
+      (if (:errors body)
+        (str/join ", " (:errors body))
+        (pr-str body)))
+    (catch Exception _
+      nil)))
 
 
 (defn ^:no-doc api-error
@@ -87,21 +102,30 @@
   understood. Otherwise returns the original error."
   [ex]
   (let [data (ex-data ex)
+        error (:error data)
         status (:status data)]
-    (if (and status (<= 400 status))
-      (let [body (try
-                   (json/parse-string (:body data) true)
-                   (catch Exception _
-                     nil))
-            errors (if (:errors body)
-                     (str/join ", " (:errors body))
-                     (pr-str body))]
-        (ex-info (str "Vault API errors: " errors)
+    (if (or error (and status (<= 400 status)))
+      (let [errors (if error (ex-message error) (body-errors data))]
+        (ex-info (str "Vault API server errors: " errors)
                  {:type ::api-error
                   :status status
-                  :errors (:errors body)}
+                  :errors errors}
                  ex))
       ex)))
+
+
+(defn- handle-response-errors
+  "Throws exceptions from http-kit response mimicing clj-http."
+  [response]
+  (cond
+    (:error response)
+    (throw (ex-info "Error in api response" response (:error response)))
+
+    (<= 400 (:status response 0))
+    (throw (ex-info (str "status: " (:status response)) response))
+
+    :else
+    response))
 
 
 (defn ^:no-doc do-api-request
@@ -113,8 +137,17 @@
       (throw (ex-info (str "Aborting Vault API request after " redirects " redirects")
                       {:method method, :url request-url})))
     (let [resp (try
-                 (let [response (http/request (assoc req :method method :url request-url))]
-                   @response)
+                 (->
+                   req
+                   (cond->
+                     (and (= :json (:content-type req))
+                          (:body req))
+                     (update :body json/generate-string))
+                   (assoc :method method :url request-url)
+                   (http/request)
+                   (deref)
+                   (handle-response-errors)
+                   (update :body clean-body))
                  (catch Exception ex
                    (log/debug "Exception " ex)
                    (throw (api-error ex))))]

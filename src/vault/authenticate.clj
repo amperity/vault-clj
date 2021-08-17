@@ -11,7 +11,7 @@
   "Validate the response from a vault auth call, update auth-ref with additional
   tracking state like lease metadata."
   [claim auth-ref response]
-  (let [auth-info (lease/auth-lease (:auth (api-util/clean-body response)))]
+  (let [auth-info (lease/auth-lease (:auth (:body response)))]
     (when-not (:client-token auth-info)
       (throw (ex-info (str "No client token returned from non-error API response: "
                            (:status response) " " (:reason-phrase response))

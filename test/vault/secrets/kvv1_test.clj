@@ -19,11 +19,12 @@
         token-passed-in "fake-token"
         vault-url "https://vault.example.amperity.com"
         client (http-client/http-client vault-url)
-        response {:auth nil
-                  :data {:keys ["foo" "foo/"]}
-                  :lease_duration 2764800
-                  :lease-id ""
-                  :renewable false}]
+        response (json/generate-string
+                   {:auth nil
+                    :data {:keys ["foo" "foo/"]}
+                    :lease-duration 2764800
+                    :lease-id ""
+                    :renewable false})]
     (vault/authenticate! client :token token-passed-in)
     (testing "List secrets has correct response and sends correct request"
       (with-redefs
@@ -66,14 +67,11 @@
          (fn [req]
            (is (= (str vault-url "/v1/" path-passed-in2) (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
-           (throw (ex-info "not found" {:error [] :status 404})))]
-        (try
-          (vault-kvv1/read-secret client path-passed-in2)
-          (catch ExceptionInfo e
-            (is (= {:errors nil
-                    :status 404
-                    :type   :vault.client.api-util/api-error}
-                   (ex-data e)))))))))
+           (atom {:status 404}))]
+        (is (thrown-with-msg?
+              ExceptionInfo
+              #"Vault API server error"
+              (vault-kvv1/read-secret client path-passed-in2)))))))
 
 
 (deftest write-secret-test
@@ -95,22 +93,23 @@
            (is (= :post (:method req)))
            (is (= (str vault-url "/v1/" path-passed-in) (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
-           (is (= write-data (:form-params req)))
+           (is (= (json/generate-string write-data) (:body req)))
            (atom {:body create-success
                   :status 204}))]
         (is (true? (vault-kvv1/write-secret! client path-passed-in write-data)))))
-    (testing "Write secrets sends correct request and returns false upon failure"
+    (testing "Write secrets sends correct request and throws an exception upon failure"
       (with-redefs
         [http/request
          (fn [req]
            (is (= :post (:method req)))
            (is (= (str vault-url "/v1/" path-passed-in) (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
-           (is (= write-data
-                  (:form-params req)))
-           (atom {:errors []
-                  :status 400}))]
-        (is (false? (vault-kvv1/write-secret! client path-passed-in write-data)))))))
+           (is (= (json/generate-string write-data) (:body req)))
+           (atom {:status 400}))]
+        (is (thrown-with-msg?
+              ExceptionInfo
+              #"Vault API server error"
+              (vault-kvv1/write-secret! client path-passed-in write-data)))))))
 
 
 (deftest delete-secret-test
@@ -136,7 +135,10 @@
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
            (is (= (str vault-url "/v1/" path-passed-in) (:url req)))
            (atom {:status 404}))]
-        (is (false? (vault/delete-secret! client path-passed-in)))))))
+        (is (thrown-with-msg?
+              ExceptionInfo
+              #"Vault API server error"
+              (vault/delete-secret! client path-passed-in)))))))
 
 
 ;; -------- Mock Client -------------------------------------------------------
