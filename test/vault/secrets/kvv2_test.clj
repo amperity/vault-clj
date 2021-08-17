@@ -27,7 +27,8 @@
       (is (map? (vault-kvv2/write-secret! client "kv" "foo/qux/def" {:one "two", :three ["four"]}))))
     (testing "list-secrets"
       (testing "on nonexistent path"
-        (is (nil? (vault-kvv2/list-secrets client "kv" "not-here"))))
+        (is (thrown-with-msg? ExceptionInfo #"Vault API server errors"
+              (vault-kvv2/list-secrets client "kv" "not-here"))))
       (testing "on grandparent path"
         (is (= ["abc" "bar/" "qux/"] (vault-kvv2/list-secrets client "kv" "foo"))))
       (testing "on parent path"
@@ -35,11 +36,11 @@
         (is (= ["def"] (vault-kvv2/list-secrets client "kv" "foo/qux")))))
     (testing "read-secret"
       (testing "on nonexistent path"
-        (is (thrown-with-msg? ExceptionInfo #"abc"
+        (is (thrown-with-msg? ExceptionInfo #"Vault API server errors"
               (vault-kvv2/read-secret client "kv" "not/here")))
         (is (= ::missing (vault-kvv2/read-secret client "kv" "not/here" {:not-found ::missing}))))
       (testing "on directory path"
-        (is (thrown-with-msg? ExceptionInfo #"abc"
+        (is (thrown-with-msg? ExceptionInfo #"Vault API server errors"
               (vault-kvv2/read-secret client "kv" "foo"))))
       (testing "on secret path"
         (is (= {:key "xyz"} (vault-kvv2/read-secret client "kv" "foo/abc")))
@@ -47,7 +48,7 @@
         (is (= {:one "two", :three ["four"]} (vault-kvv2/read-secret client "kv" "foo/qux/def")))))
     (testing "delete-secret!"
       (testing "on nonexistent path"
-        (is (false? (vault-kvv2/delete-secret! client "kv" "not-here"))))
+        (is (true? (vault-kvv2/delete-secret! client "kv" "not-here"))))
       (testing "on existing secret"
         (is (true? (vault-kvv2/delete-secret! client "kv" "foo/abc")))
         (is (= ::missing (vault-kvv2/read-secret client "kv" "foo/abc" {:not-found ::missing}))
@@ -206,7 +207,11 @@
                         (:body req)))
                  (atom {:body (json/generate-string create-success)
                         :status 200}))))]
-        (is (= (:data create-success) (vault-kvv2/write-secret! client mount path-passed-in write-data)))))
+        (is (= {:created-time  "2018-03-22T02:24:06.945319214Z"
+                :deletion-time ""
+                :destroyed     false
+                :version       1}
+               (vault-kvv2/write-secret! client mount path-passed-in write-data)))))
     (testing "Write secrets sends correct request and returns an exception upon failure"
       (with-redefs
         [http/request
