@@ -20,7 +20,7 @@ commands:
           command: |
             wget https://releases.hashicorp.com/vault/${VAULT_VERSION}/vault_${VAULT_VERSION}_linux_amd64.zip
             unzip vault_${VAULT_VERSION}_linux_amd64.zip
-            mv vault /usr/local/bin/vault
+            sudo mv vault /usr/local/bin/vault
 
 
 # Job definitions
@@ -115,9 +115,8 @@ workflows:
       - style
       - lint
       - test
-      - integration:
-          requires:
-            - test
+      - integration
       - coverage:
           requires:
+            - test
             - integration
