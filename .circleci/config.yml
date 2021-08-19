@@ -18,10 +18,9 @@ commands:
           environment:
             VAULT_VERSION: 1.8.1
           command: |
-            mkdir -p target/vault
-            cd target/vault
             wget https://releases.hashicorp.com/vault/${VAULT_VERSION}/vault_${VAULT_VERSION}_linux_amd64.zip
             unzip vault_${VAULT_VERSION}_linux_amd64.zip
+            mv vault /usr/local/bin/vault
 
 
 # Job definitions
