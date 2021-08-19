@@ -8,6 +8,14 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 
 ...
 
+## [1.0.5] - 2021-08-19
+
+### Changed
+- Added integration tests to avoid stale mock test details, cover end-to-end.
+  [#57](https://github.com/amperity/vault-clj/pull/57)
+- Fixed broken functionality in [1.0.4] mainly around json parsing.
+  [#55](https://github.com/amperity/vault-clj/pull/55)
+
 ## [1.0.4] - 2021-07-19
 
 ### Changed
