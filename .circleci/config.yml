@@ -8,6 +8,21 @@ executors:
     working_directory: ~/repo
 
 
+# Reusable job steps
+commands:
+  install-vault:
+    description: "Install the Vault CLI"
+    steps:
+      - run:
+          name: Install vault
+          environment:
+            VAULT_VERSION: 1.8.1
+          command: |
+            wget https://releases.hashicorp.com/vault/${VAULT_VERSION}/vault_${VAULT_VERSION}_linux_amd64.zip
+            unzip vault_${VAULT_VERSION}_linux_amd64.zip
+            sudo mv vault /usr/local/bin/vault
+
+
 # Job definitions
 jobs:
   style:
@@ -17,10 +32,10 @@ jobs:
       - run:
           name: Install cljstyle
           environment:
-            CLJSTYLE_VERSION: 0.14.0
+            CLJSTYLE_VERSION: 0.15.0
           command: |
-            wget https://github.com/greglook/cljstyle/releases/download/${CLJSTYLE_VERSION}/cljstyle_${CLJSTYLE_VERSION}_linux.tar.gz
-            tar -xzf cljstyle_${CLJSTYLE_VERSION}_linux.tar.gz
+            wget https://github.com/greglook/cljstyle/releases/download/${CLJSTYLE_VERSION}/cljstyle_${CLJSTYLE_VERSION}_linux.zip
+            unzip cljstyle_${CLJSTYLE_VERSION}_linux.zip
       - run:
           name: Check source formatting
           command: "./cljstyle check --report"
@@ -32,7 +47,7 @@ jobs:
       - run:
           name: Install clj-kondo
           environment:
-            CLJ_KONDO_VERSION: 2020.12.12
+            CLJ_KONDO_VERSION: 2021.08.06
           command: |
             wget https://github.com/borkdude/clj-kondo/releases/download/v${CLJ_KONDO_VERSION}/clj-kondo-${CLJ_KONDO_VERSION}-linux-amd64.zip
             unzip clj-kondo-${CLJ_KONDO_VERSION}-linux-amd64.zip
@@ -56,10 +71,22 @@ jobs:
           paths:
             - ~/.m2
 
+  integration:
+    executor: clojure
+    steps:
+      - checkout
+      - install-vault
+      - restore_cache:
+          keys:
+            - v1-test-{{ checksum "project.clj" }}
+            - v1-test-
+      - run: lein test :integration
+
   coverage:
     executor: clojure
     steps:
       - checkout
+      - install-vault
       - restore_cache:
           keys:
             - v1-coverage-{{ checksum "project.clj" }}
@@ -88,6 +115,8 @@ workflows:
       - style
       - lint
       - test
+      - integration
       - coverage:
           requires:
             - test
+            - integration

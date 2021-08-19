@@ -1,0 +1,9 @@
+{:linters
+ {:consistent-alias
+  {:level :warning
+   :aliases {clojure.java.io io
+             clojure.set set
+             clojure.string str}}
+
+  :unresolved-symbol
+  {:exclude [(vault.integration/with-dev-server [client])]}}}

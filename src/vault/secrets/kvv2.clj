@@ -102,7 +102,10 @@
   ;; this gets the mock client to also write metadata, and shouldn't meaningfully affect the http client
   (write-metadata! client mount path {})
   (let [result (vault/write-secret! client (str mount "/data/" path) {:data data})]
-    (or (:data result) result)))
+    ;; TODO: coerce created_time and deletion_time to Instants
+    (if-let [data (:data result)]
+      (api-util/kebabify-keys data)
+      result)))
 
 
 (defn write-config!
