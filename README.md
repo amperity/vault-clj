@@ -67,6 +67,21 @@ secret fixture data.
 {:user "foo", :pass "abc123"}
 ```
 
+### Usage via babashka
+
+vault-clj is compatible with [babashka](https://babashka.org/)
+
+See `bb.edn` file to get you started. It implements a task that reads a secret from Vault and prints it.
+
+The example uses a token obtained via vault login (see source for github personal token or other auth methods).
+```sh
+export VAULT_ADDR=your-vault-server-path
+export VAULT_AUTH=token
+export VAULT_TOKEN=token-value
+
+bb vault-get
+```
+
 ## Secret Engines
 Vault supports many different [secret engines](https://www.vaultproject.io/docs/secrets/), each with very different
 capabilities. For the most part, secret engines behave similar to virtual filesystems, supporting CRUD operations.
@@ -129,7 +144,7 @@ client and resolve a map of config variables to their secret values.
 ## Auth Mount Points
 
 The auth mount point configuration can be used to address any of the
- auth methods under a custom mount point. 
+ auth methods under a custom mount point.
 
 ```clojure
 => (def client (vault-client (assoc (vault/new-client vault-addr)
@@ -138,7 +153,7 @@ The auth mount point configuration can be used to address any of the
                                     :lease-check-period   00
                                     :lease-check-jitter   00)))
 ```
- 
+
 
 ## License
 
