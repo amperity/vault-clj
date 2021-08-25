@@ -59,7 +59,7 @@
         :post (str (:api-url client) "/v1/auth/userpass/" (:auth-mount-point client) "login/" username)
         (merge
           (:http-opts client)
-          {:body {:password password}
+          {:form-params {:password password}
            :content-type :json
            :accept :json})))))
 
@@ -74,7 +74,7 @@
         :post (str (:api-url client) "/v1/auth/app-id/" (:auth-mount-point client) "login")
         (merge
           (:http-opts client)
-          {:body {:app_id app, :user_id user}
+          {:form-params {:app_id app, :user_id user}
            :content-type :json
            :accept :json})))))
 
@@ -89,7 +89,7 @@
         :post (str (:api-url client) "/v1/auth/approle/" (:auth-mount-point client) "login")
         (merge
           (:http-opts client)
-          {:body {:role_id role-id, :secret_id secret-id}
+          {:form-params {:role_id role-id, :secret_id secret-id}
            :content-type :json
            :accept :json})))))
 
@@ -104,7 +104,7 @@
         :post (str (:api-url client) "/v1/auth/ldap/" (:auth-mount-point client) "login/" username)
         (merge
           (:http-opts client)
-          {:body {:password password}
+          {:form-params {:password password}
            :content-type :json
            :accept :json})))))
 
@@ -122,7 +122,7 @@
         :post (str (:api-url client) api-path)
         (merge
           (:http-opts client)
-          {:body {:token token}
+          {:form-params {:token token}
            :content-type :json
            :accept :json})))))
 
@@ -142,7 +142,7 @@
         :post (str (:api-url client) api-path)
         (merge
           (:http-opts client)
-          {:body {:jwt jwt :role role}
+          {:form-params {:jwt jwt :role role}
            :content-type :json
            :accept :json})))))
 
@@ -169,10 +169,10 @@
         :post (str (:api-url client) api-path)
         (merge
           (:http-opts client)
-          {:body {:iam_http_request_method http-request-method
-                  :iam_request_url request-url
-                  :iam_request_body request-body
-                  :iam_request_headers request-headers
-                  :role role}
+          {:form-params {:iam_http_request_method http-request-method
+                         :iam_request_url request-url
+                         :iam_request_body request-body
+                         :iam_request_headers request-headers
+                         :role role}
            :content-type :json
            :accept :json})))))
