@@ -27,7 +27,8 @@
       (is (map? (vault-kvv2/write-secret! client "kv" "foo/qux/def" {:one "two", :three ["four"]}))))
     (testing "list-secrets"
       (testing "on nonexistent path"
-        (is (nil? (vault-kvv2/list-secrets client "kv" "not-here"))))
+        (is (thrown-with-msg? ExceptionInfo #"Vault API server errors"
+              (vault-kvv2/list-secrets client "kv" "not-here"))))
       (testing "on grandparent path"
         (is (= ["abc" "bar/" "qux/"] (vault-kvv2/list-secrets client "kv" "foo"))))
       (testing "on parent path"
@@ -35,11 +36,11 @@
         (is (= ["def"] (vault-kvv2/list-secrets client "kv" "foo/qux")))))
     (testing "read-secret"
       (testing "on nonexistent path"
-        (is (thrown-with-msg? ExceptionInfo #"abc"
+        (is (thrown-with-msg? ExceptionInfo #"Vault API server errors"
               (vault-kvv2/read-secret client "kv" "not/here")))
         (is (= ::missing (vault-kvv2/read-secret client "kv" "not/here" {:not-found ::missing}))))
       (testing "on directory path"
-        (is (thrown-with-msg? ExceptionInfo #"abc"
+        (is (thrown-with-msg? ExceptionInfo #"Vault API server errors"
               (vault-kvv2/read-secret client "kv" "foo"))))
       (testing "on secret path"
         (is (= {:key "xyz"} (vault-kvv2/read-secret client "kv" "foo/abc")))
@@ -47,7 +48,7 @@
         (is (= {:one "two", :three ["four"]} (vault-kvv2/read-secret client "kv" "foo/qux/def")))))
     (testing "delete-secret!"
       (testing "on nonexistent path"
-        (is (false? (vault-kvv2/delete-secret! client "kv" "not-here"))))
+        (is (true? (vault-kvv2/delete-secret! client "kv" "not-here"))))
       (testing "on existing secret"
         (is (true? (vault-kvv2/delete-secret! client "kv" "foo/abc")))
         (is (= ::missing (vault-kvv2/read-secret client "kv" "foo/abc" {:not-found ::missing}))
@@ -165,22 +166,17 @@
            (is (= :get (:method req)))
            (is (= (str vault-url "/v1/" mount "/data/different/path") (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
-           (throw (ex-info "not found" {:errors [] :status 404 :type :vault.client.api-util/api-error})))]
-        (try
-          (is (= {:default-val :is-here}
-                 (vault-kvv2/read-secret
-                   client
-                   mount
-                   "different/path"
-                   {:not-found {:default-val :is-here}})))
-
-          (vault-kvv2/read-secret client mount "different/path")
-          (is false)
-          (catch ExceptionInfo e
-            (is (= {:errors nil
-                    :status 404
-                    :type   ::api-util/api-error}
-                   (ex-data e)))))))))
+           (atom {:status 404}))]
+        (is (= {:default-val :is-here}
+               (vault-kvv2/read-secret
+                 client
+                 mount
+                 "different/path"
+                 {:not-found {:default-val :is-here}})))
+        (is (thrown-with-msg?
+              ExceptionInfo
+              #"Vault API server error"
+              (vault-kvv2/read-secret client mount "different/path")))))))
 
 
 (deftest write!-test
@@ -216,7 +212,7 @@
                 :destroyed     false
                 :version       1}
                (vault-kvv2/write-secret! client mount path-passed-in write-data)))))
-    (testing "Write secrets sends correct request and returns false upon failure"
+    (testing "Write secrets sends correct request and returns an exception upon failure"
       (with-redefs
         [http/request
          (fn [req]
@@ -229,9 +225,11 @@
              (do (is (= (str vault-url "/v1/" mount "/data/other-path") (:url req)))
                  (is (= (json/write-str {:data write-data})
                         (:body req)))
-                 (atom {:errors []
-                        :status 500}))))]
-        (is (false? (vault-kvv2/write-secret! client mount "other-path" write-data)))))))
+                 (atom {:status 500}))))]
+        (is (thrown-with-msg?
+              ExceptionInfo
+              #"Vault API server error"
+              (vault-kvv2/write-secret! client mount "other-path" write-data)))))))
 
 
 (deftest delete-test
@@ -251,7 +249,7 @@
            (atom {:status 204}))]
         (is (true? (vault-kvv2/delete-secret! client mount path-passed-in))
             (is (true? (vault-kvv2/delete-secret! client mount path-passed-in []))))
-        (testing "delete secrets send correct request and returns false upon failure when no versions passed in"
+        (testing "delete secrets send correct request and throws an exception upon failure when no versions passed in"
           (with-redefs
             [http/request
              (fn [req]
@@ -259,7 +257,10 @@
                (is (= (str vault-url "/v1/" mount "/data/" path-passed-in) (:url req)))
                (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
                (atom {:status 404}))]
-            (is (false? (vault-kvv2/delete-secret! client mount path-passed-in)))))
+            (is (thrown-with-msg?
+                  ExceptionInfo
+                  #"Vault API server error"
+                  (vault-kvv2/delete-secret! client mount path-passed-in)))))
         (testing "delete secrets send correct request and returns true upon success when multiple versions passed in"
           (with-redefs
             [http/request
@@ -279,7 +280,10 @@
                (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
                (is (= (json/write-str {:versions [123]}) (:body req)))
                (atom {:status 404}))]
-            (is (false? (vault-kvv2/delete-secret! client mount path-passed-in [123])))))))))
+            (is (thrown-with-msg?
+                  ExceptionInfo
+                  #"Vault API server error"
+                  (vault-kvv2/delete-secret! client mount path-passed-in [123])))))))))
 
 
 (deftest read-metadata-test
@@ -335,7 +339,7 @@
            (is (= :get (:method req)))
            (is (= (str vault-url "/v1/" mount "/metadata/" path-passed-in) (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
-           (throw (ex-info "not found" {:errors [] :status 404 :type :vault.client.api-util/api-error})))]
+           (atom {:status 404}))]
         (is (thrown? ExceptionInfo (vault-kvv2/read-metadata client mount path-passed-in {:force-read true})))
         (is (= 3 (vault-kvv2/read-metadata client mount path-passed-in {:not-found  3
                                                                         :force-read true})))))))
@@ -370,7 +374,10 @@
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
            (is (= (json/write-str (api-util/snakeify-keys payload)) (:body req)))
            (atom {:status 500}))]
-        (is (false? (vault-kvv2/write-metadata! client mount path-passed-in payload)))))))
+        (is (thrown-with-msg?
+              ExceptionInfo
+              #"Vault API server error"
+              (vault-kvv2/write-metadata! client mount path-passed-in payload)))))))
 
 
 (deftest delete-metadata-test
@@ -397,7 +404,10 @@
            (is (= (str vault-url "/v1/" mount "/metadata/" path-passed-in) (:url req)))
            (is (= token-passed-in (get (:headers req) "X-Vault-Token")))
            (atom {:status 500}))]
-        (is (false? (vault-kvv2/delete-metadata! client mount path-passed-in)))))))
+        (is (thrown-with-msg?
+              ExceptionInfo
+              #"Vault API server error"
+              (vault-kvv2/delete-metadata! client mount path-passed-in)))))))
 
 
 (deftest destroy!-test
@@ -429,7 +439,10 @@
            (is (= (json/write-str {:versions [1]})
                   (:body req)))
            (atom {:status 500}))]
-        (is (false? (vault-kvv2/destroy-secret! client mount path-passed-in [1])))))))
+        (is (thrown-with-msg?
+              ExceptionInfo
+              #"Vault API server error"
+              (vault-kvv2/destroy-secret! client mount path-passed-in [1])))))))
 
 
 (deftest undelete-secret!-test
@@ -461,7 +474,10 @@
            (is (= (json/write-str {:versions [1]})
                   (:body req)))
            (atom {:status 500}))]
-        (is (false? (vault-kvv2/undelete-secret! client mount path-passed-in [1])))))))
+        (is (thrown-with-msg?
+              ExceptionInfo
+              #"Vault API server error"
+              (vault-kvv2/undelete-secret! client mount path-passed-in [1])))))))
 
 
 ;; -------- Mock Client -------------------------------------------------------

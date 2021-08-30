@@ -17,6 +17,7 @@
     - `:token \"...\"`
     - `:wrap-token \"...\"`
     - `:userpass {:username \"user\", :password \"hunter2\"}`
+    - `:github {:token \"github-personal-token\" :api-path \"optional-alternate-github-api-path\"}`
     - `:ldap {:username \"LDAP username\", :password \"hunter2\"}`
     - `:k8s {:jwt \"...\", :role \"...\"}`
     - `:app-id {:app \"foo-service-dev\", :user \"...\"}`

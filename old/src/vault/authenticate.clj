@@ -109,6 +109,24 @@
            :accept :json})))))
 
 
+(defmethod authenticate* :github
+  [client _ credentials]
+  (let [{:keys [api-path token]} credentials
+        api-path (or api-path "/v1/auth/github/login")]
+    (when-not token
+      (throw (IllegalArgumentException. "Github auth credentials must include :token")))
+    (api-auth!
+      (str "Github token sha256-10chars=" (subs (api-util/sha-256 token) 0 10))
+      (:auth client)
+      (api-util/do-api-request
+        :post (str (:api-url client) api-path)
+        (merge
+          (:http-opts client)
+          {:form-params {:token token}
+           :content-type :json
+           :accept :json})))))
+
+
 (defmethod authenticate* :k8s
   [client _ credentials]
   (let [{:keys [api-path jwt role]} credentials

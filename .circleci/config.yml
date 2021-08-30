@@ -8,6 +8,21 @@ executors:
     working_directory: ~/repo
 
 
+# Reusable job steps
+commands:
+  install-vault:
+    description: "Install the Vault CLI"
+    steps:
+      - run:
+          name: Install vault
+          environment:
+            VAULT_VERSION: 1.8.1
+          command: |
+            wget https://releases.hashicorp.com/vault/${VAULT_VERSION}/vault_${VAULT_VERSION}_linux_amd64.zip
+            unzip vault_${VAULT_VERSION}_linux_amd64.zip
+            sudo mv vault /usr/local/bin/vault
+
+
 # Job definitions
 jobs:
   style:
@@ -60,23 +75,18 @@ jobs:
     executor: clojure
     steps:
       - checkout
+      - install-vault
       - restore_cache:
           keys:
             - v1-test-{{ checksum "project.clj" }}
             - v1-test-
-      - run:
-          name: Install vault
-          environment:
-            VAULT_VERSION: 1.8.1
-          command: |
-            wget https://releases.hashicorp.com/vault/${VAULT_VERSION}/vault_${VAULT_VERSION}_linux_amd64.zip
-            unzip vault_${VAULT_VERSION}_linux_amd64.zip
       - run: lein test :integration
 
   coverage:
     executor: clojure
     steps:
       - checkout
+      - install-vault
       - restore_cache:
           keys:
             - v1-coverage-{{ checksum "project.clj" }}
@@ -105,9 +115,8 @@ workflows:
       - style
       - lint
       - test
-      - integration:
-          requires:
-            - test
+      - integration
       - coverage:
           requires:
             - test
+            - integration
