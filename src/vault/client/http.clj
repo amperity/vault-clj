@@ -7,21 +7,50 @@
     [com.stuartsierra.component :as component]
     [org.httpkit.client :as http]
     [vault.client :as vault]
+    [vault.client.response :as resp]
     #_[vault.lease :as lease]))
 
 
 ;; ## API Functions
 
-;; TODO: is there a way to make it easy to convert this to an asynchronous
-;;
-;; - (create-response)
-;;   construct a new stateful response container value
-;; - (on-success response data)
-;;   callback indicating a successful response - updates response state
-;; - (on-error response ex)
-;;   callback indicating a failed response - updates response state
-;; - (return response)
-;;   prepares to return the response to the caller (may block in the simple implementation)
+(defn- prepare-request
+  "Produce a map of options to pass to the HTTP client from the provided
+  method, API path, and other request parameters."
+  [client method path params]
+  (let [token (:client-token @(:auth client))]
+    (->
+      (:http-opts client)
+      (assoc :accept :json)
+      (merge params)
+      (assoc :method method
+             :url (str (:address client) "/v1/" path))
+      (cond->
+        token
+        (assoc-in [:headers "X-Vault-Token"] token)
+
+        (and (= :json (:content-type params))
+             (:body params))
+        (update :body json/write-str)))))
+
+
+(defn ^:no-doc call-api
+  "Make an HTTP call to the Vault API, using the client's response handler to
+  prepare and return the response state."
+  [client method path params]
+  (let [handler (:response-handler client)
+        request (prepare-request client method path params)
+        response (resp/create handler)]
+    ;; TODO: handle redirects
+    (http/request
+      request
+      (fn callback
+        [{:keys [status headers body error]}]
+        (if error
+          ;; TODO: shape exception
+          (resp/on-error! handler response error)
+          ;; TODO: parse data, attach header meta?
+          (resp/on-success! handler response body))))
+    (resp/return handler response)))
 
 
 ;; ## Lease Timer
@@ -70,9 +99,10 @@
 
 ;; ## HTTP Client
 
-
 ;; - `address`
 ;;   The base URL for the Vault API endpoint.
+;; - `response-handler`
+;;   Handler type to use for API responses.
 ;; - `http-opts`
 ;;   Extra options to pass to `clj-http` requests.
 ;; - `auth`
@@ -83,7 +113,7 @@
 ;; - `lease-timer`
 ;;   Thread which periodically checks and renews leased secrets.
 (defrecord HTTPClient
-  [address http-opts auth leases lease-timer]
+  [address response-handler http-opts auth leases lease-timer]
 
   component/Lifecycle
 
@@ -143,6 +173,9 @@
 
   Client behavior may be controlled with the options:
 
+  - `:response-handler`
+    A custom handler to control how responses are returned to clients. Defaults
+    to the `sync-handler`.
   - `:http-opts`
     Additional options to pass to `clj-http` requests.
   - `:lease-renewal-window`
@@ -159,10 +192,11 @@
              (str "Vault API address must be a string starting with 'http', got: "
                   (pr-str address)))))
   (map->HTTPClient
-    (assoc opts
-           :address address
-           :auth (atom nil)
-           #_#_:leases (lease/new-store))))
+    (merge {:response-handler resp/sync-handler}
+           opts
+           {:address address
+            :auth (atom nil)
+            #_#_:leases (lease/new-store)})))
 
 
 (defmethod vault/new-client "http"

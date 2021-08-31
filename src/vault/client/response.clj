@@ -106,23 +106,3 @@
   (on success) or an exception (on error). Note that dereferencing the promise
   will _return_ the error, not throw it."
   (->PromiseHandler))
-
-
-;; ## Utilities
-
-(defn mock-success
-  "Helper which uses the response protocol to generate a successful response."
-  [client data]
-  (let [handler (:response-handler client)
-        resp (create handler)]
-    (on-success! handler resp data)
-    (return handler resp)))
-
-
-(defn mock-error
-  "Helper which uses the response protocol to generate an error response."
-  [client ex]
-  (let [handler (:response-handler client)
-        resp (create handler)]
-    (on-error! handler resp ex)
-    (return handler resp)))

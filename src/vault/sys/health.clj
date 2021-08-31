@@ -16,7 +16,9 @@
 
   (read-health
     [client params]
-    "This endpoint returns the health status of Vault."))
+    "This endpoint returns the health status of Vault.
+
+    https://www.vaultproject.io/api-docs/system/health#read-health-information"))
 
 
 ;; ## HTTP Client
@@ -26,9 +28,10 @@
   HealthAPI
 
   (read-health
-    [client _params]
-    ;; TODO: call /sys/health
-    ,,,))
+    [client params]
+    (http/call-api
+      client :get "sys/health"
+      {:query-params params})))
 
 
 ;; ## Mock Client
@@ -39,7 +42,7 @@
 
   (read-health
     [client _params]
-    (resp/mock-success
+    (mock/success-response
       client
       {:cluster-id "01234567-89ab-cdef-0123-456789abcdef"
        :cluster-name "vault-cluster-mock"
