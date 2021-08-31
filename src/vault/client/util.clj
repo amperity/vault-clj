@@ -11,10 +11,17 @@
 ;; ## Time
 
 (defn now
-  "Returns the current time. Mostly useful for rebinding in tests."
+  "Returns the current time as an `Instant`. Mostly useful for rebinding in
+  tests."
   ^Instant
   []
   (Instant/now))
+
+
+(defn now-milli
+  "Return the current time in epoch milliseconds."
+  []
+  (.toEpochMilli (now)))
 
 
 ;; ## Keywords

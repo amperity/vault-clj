@@ -3,7 +3,8 @@
   (:require
     [clojure.edn :as edn]
     [clojure.java.io :as io]
-    [vault.client :as vault])
+    [vault.client :as vault]
+    [vault.client.response :as resp])
   (:import
     java.net.URI))
 
@@ -11,7 +12,7 @@
 ;; ## Mock Client
 
 (defrecord MockClient
-  [memory]
+  [memory response-handler]
 
   vault/Client
 
@@ -30,10 +31,12 @@
   populate the in-memory state."
   ([]
    (mock-client {}))
-  ([initial-memory]
+  ([initial-memory & {:as opts}]
    (map->MockClient
-     {:memory (atom initial-memory
-                    :validator map?)})))
+     (merge {:response-handler resp/sync-handler}
+            opts
+            {:memory (atom initial-memory
+                           :validator map?)}))))
 
 
 (defn- load-fixtures

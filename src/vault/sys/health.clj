@@ -2,6 +2,7 @@
   (:require
     [vault.client.http :as http]
     [vault.client.mock :as mock]
+    [vault.client.response :as resp]
     [vault.client.util :as u])
   (:import
     vault.client.http.HTTPClient
@@ -37,15 +38,16 @@
   HealthAPI
 
   (read-health
-    [_ _params]
-    (deliver (promise)
-             {:cluster-id "01234567-89ab-cdef-0123-456789abcdef"
-              :cluster-name "vault-cluster-mock"
-              :version "0.0.0"
-              :initialized true
-              :sealed false
-              :standby false
-              :performance-standby false
-              :replication-perf-mode "disabled"
-              :replication-dr-mode "disabled"
-              :server-time-utc (.toEpochMilli (u/now))})))
+    [client _params]
+    (resp/mock-success
+      client
+      {:cluster-id "01234567-89ab-cdef-0123-456789abcdef"
+       :cluster-name "vault-cluster-mock"
+       :version "0.0.0"
+       :initialized true
+       :sealed false
+       :standby false
+       :performance-standby false
+       :replication-perf-mode "disabled"
+       :replication-dr-mode "disabled"
+       :server-time-utc (u/now-milli)})))
