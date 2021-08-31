@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+
+# Run this script to start and configure a local Vault instance to test out the
+# vault-clj client. The REPL is already set up to talk to this server.
+
+set -eo pipefail
+trap cleanup SIGINT SIGTERM ERR EXIT
+
+usage() {
+  cat <<EOF
+Usage: $(basename "${BASH_SOURCE[0]}") [-h] [port]
+
+Run a development vault server for testing storage-service.
+EOF
+  exit
+}
+
+setup_colors() {
+  if [[ -t 2 ]] && [[ -z "${NO_COLOR-}" ]] && [[ "${TERM-}" != "dumb" ]]; then
+    NOFORMAT='\033[0m' RED='\033[0;31m' GREEN='\033[0;32m' ORANGE='\033[0;33m' BLUE='\033[0;34m' PURPLE='\033[0;35m' CYAN='\033[0;36m' YELLOW='\033[1;33m'
+  else
+    NOFORMAT='' RED='' GREEN='' ORANGE='' BLUE='' PURPLE='' CYAN='' YELLOW=''
+  fi
+}
+
+log() {
+  echo >&2 -e "\n${CYAN}${1-}${NOFORMAT}"
+}
+
+cleanup() {
+    trap - SIGINT SIGTERM ERR EXIT
+    if [[ -n $VAULT_PID ]]; then
+        kill -s INT "$VAULT_PID"
+        sleep 1
+    fi
+    exit
+}
+
+setup_colors
+
+if [[ $1 = "-h" ]]; then
+    usage
+fi
+
+VAULT_HOST="127.0.0.1"
+VAULT_PORT="${1:-8200}"
+
+# Make sure the port isn't already taken.
+if nc -z 127.0.0.1 $VAULT_PORT 2> /dev/null; then
+    log "${RED}Vault port $VAULT_PORT is already taken - shut down any other local dev servers you are running or choose another port."
+    exit 1
+fi
+
+export VAULT_ADDR="http://${VAULT_HOST}:${VAULT_PORT}"
+export VAULT_TOKEN="t0p-53cr3t"
+
+# Launch and background the server.
+vault server \
+    -dev \
+    -dev-listen-address="${VAULT_HOST}:${VAULT_PORT}" \
+    -dev-root-token-id="${VAULT_TOKEN}" \
+    -dev-no-store-token \
+    &
+
+VAULT_PID="$!"
+
+# Wait for server to be ready.
+attempts=10
+while ! nc -z "${VAULT_HOST}" "${VAULT_PORT}" 2> /dev/null; do
+    if [[ $attempts -gt 0 ]]; then
+        # keep waiting
+        attempts=$(($attempts - 1))
+        sleep 1
+    else
+        # out of attempts - is the process still alive?
+        if ! kill -0 "$VAULT_PID"; then
+            log "${RED}Vault server process appears to be dead, uh-oh..."
+            exit 2
+        else
+            log "${RED}Vault server not ready after initialization wait, killing..."
+            kill "$VAULT_PID"
+            exit 3
+        fi
+    fi
+done
+
+# TODO: enable various engines?
+
+log "${YELLOW}Server ready - interrupt to shut down."
+wait

@@ -11,7 +11,7 @@
   [[lein-cloverage "1.2.1"]]
 
   :dependencies
-  [[org.clojure/clojure "1.10.1"]
+  [[org.clojure/clojure "1.10.3"]
    [org.clojure/data.json "2.4.0"]
    [org.clojure/tools.logging "1.1.0"]
    [com.stuartsierra/component "1.0.0"]
@@ -30,5 +30,7 @@
 
    :repl
    {:source-paths ["dev"]
+    :repl-options {:init-ns vault.repl}
     :dependencies [[org.clojure/tools.namespace "1.1.0"]]
-    :jvm-opts ["-Dvault.log.appender=repl"]}})
+    :jvm-opts ["-XX:-OmitStackTraceInFastThrow"
+               "-Dvault.log.appender=repl"]}})
