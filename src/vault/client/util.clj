@@ -1,7 +1,8 @@
 (ns ^:no-doc vault.client.util
   "Vault implementation utilities."
   (:require
-    [clojure.string :as str])
+    [clojure.string :as str]
+    [clojure.walk :as walk])
   (:import
     java.security.MessageDigest
     java.time.Instant
@@ -38,6 +39,20 @@
   snake-case keyword."
   [k]
   (-> k name (str/replace "-" "_") keyword))
+
+
+(defn walk-keys
+  "Update the provided data structure by calling `f` on each map key."
+  [data f]
+  (walk/postwalk
+    (fn xform
+      [x]
+      (if (map? x)
+        (into (empty x)
+              (map (juxt (comp f key) val))
+              x)
+        x))
+    data))
 
 
 ;; ## Encoding

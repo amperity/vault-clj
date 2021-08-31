@@ -8,6 +8,7 @@
     [org.httpkit.client :as http]
     [vault.client :as vault]
     [vault.client.response :as resp]
+    [vault.client.util :as u]
     #_[vault.lease :as lease]))
 
 
@@ -33,6 +34,21 @@
         (update :body json/write-str)))))
 
 
+(defn- parse-body
+  "Parse a response body, rewriting the keywords from snake_case to kebab-case. The
+  `:data` key (if any) is preserved as-is."
+  [body]
+  (when body
+    (let [parsed (json/read-str body :key-fn keyword)
+          data (:data parsed)]
+      (-> parsed
+          (dissoc :data)
+          (u/walk-keys u/kebab-keyword)
+          (cond->
+            data
+            (assoc :data data))))))
+
+
 (defn ^:no-doc call-api
   "Make an HTTP call to the Vault API, using the client's response handler to
   prepare and return the response state."
@@ -48,8 +64,12 @@
         (if error
           ;; TODO: shape exception
           (resp/on-error! handler response error)
-          ;; TODO: parse data, attach header meta?
-          (resp/on-success! handler response body))))
+          ;; Parse body data and attach response metadata.
+          (let [data (vary-meta (parse-body body)
+                                assoc
+                                ::status status
+                                ::headers headers)]
+            (resp/on-success! handler response data)))))
     (resp/return handler response)))
 
 

@@ -3,7 +3,7 @@
     [clojure.java.io :as io]
     [clojure.repl :refer :all]
     [clojure.string :as str]
-    [clojure.tools.namespace.repl :as ctnr]
+    [clojure.tools.namespace.repl :refer [refresh]]
     [clojure.tools.trace :as trace]
     [com.stuartsierra.component :as component]
     [vault.client :as vault]
@@ -39,8 +39,8 @@
     (alter-var-root #'client (constantly (component/start vault-client)))))
 
 
-(defn refresh
+(defn reset
   "Reload any changed code, and initialize a new client."
   []
   (stop-client)
-  (ctnr/refresh :after 'vault.repl/init-client))
+  (refresh :after 'vault.repl/init-client))
