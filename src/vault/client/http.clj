@@ -100,34 +100,64 @@
   (let [handler (:response-handler client)
         request (prepare-request client method path params)
         response (resp/create handler)]
-    (http/request
-      request
-      (fn callback
-        [{:keys [status headers body error]}]
-        (try
-          (if error
-            ;; TODO: shape exception?
-            (resp/on-error! handler response error)
-            ;; Handle response from the API based on status code.
-            (cond
-              ;; Successful response, parse body and return result.
-              (<= 200 status 299)
-              (let [shape-response (:shape-response params default-shape-response)
-                    data (form-success status headers body shape-response)]
-                (resp/on-success! handler response data))
+    ;; Kick off HTTP request.
+    (letfn [(make-request
+              [extra]
+              (http/request
+                (merge request extra)
+                callback))
 
-              ;; We were redirected by the server, which could mean we called a
-              ;; standby node on accident.
-              (or (= 303 status) (= 307 status))
-              ;; TODO: handle redirects
-              (resp/on-error! handler response (RuntimeException. "NYI: redirect handling"))
+            (callback
+              [{:keys [status headers body error]
+                ::keys [redirects]}]
+              (try
+                (if error
+                  ;; TODO: shape exception?
+                  (resp/on-error! handler response error)
+                  ;; Handle response from the API based on status code.
+                  (cond
+                    ;; Successful response, parse body and return result.
+                    (<= 200 status 299)
+                    (let [shape-response (:shape-response params default-shape-response)
+                          data (form-success status headers body shape-response)]
+                      (resp/on-success! handler response data))
 
-              ;; Otherwise, this was a failure response.
-              :else
-              (resp/on-error! handler response (form-failure status headers body))))
-          (catch Exception ex
-            ;; Unhandled exception while processing response.
-            (resp/on-error! handler response ex)))))
+                    ;; Request was redirected by the server, which could mean
+                    ;; we called a standby node on accident.
+                    (and (or (= 303 status) (= 307 status)))
+                    (let [location (get headers "Location")]
+                      (cond
+                        (nil? location)
+                        (resp/on-error!
+                          handler
+                          response
+                          (ex-info (str "Vault API responded with " status
+                                        " redirect without Location header")
+                                   {::vault/status status
+                                    ::vault/headers headers}))
+
+                        (< 2 redirects)
+                        (resp/on-error!
+                          handler
+                          response
+                          (ex-info (str "Aborting Vault API request after " redirects
+                                        " redirects")
+                                   {::vault/status status
+                                    ::vault/headers headers}))
+
+                        :else
+                        (make-request
+                          {::redirects (inc redirects)
+                           :url location})))
+
+                    ;; Otherwise, this was a failure response.
+                    :else
+                    (resp/on-error! handler response (form-failure status headers body))))
+                (catch Exception ex
+                  ;; Unhandled exception while processing response.
+                  (resp/on-error! handler response ex))))]
+      (make-request {::redirects 0}))
+    ;; Return response to client.
     (resp/return handler response)))
 
 
