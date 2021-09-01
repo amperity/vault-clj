@@ -32,6 +32,16 @@
 
 ;; ## Synchronous Handler
 
+(defn throwing-deref
+  "A variant of `deref` which will throw if the pending value yields an
+  exception."
+  [pending]
+  (let [x @pending]
+    (if (instance? Throwable x)
+      (throw x)
+      x)))
+
+
 (deftype SyncHandler
   []
 
@@ -54,10 +64,7 @@
 
   (return
     [_ response]
-    (let [result @response]
-      (if (instance? Throwable result)
-        (throw result)
-        result))))
+    (throwing-deref response)))
 
 
 (alter-meta! #'->SyncHandler assoc :private true)
