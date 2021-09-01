@@ -10,10 +10,11 @@
 (defprotocol Client
   "Marker protocol that indicates an object is a valid Vault client interface."
 
-  ;; TODO: are there common methods that makes sense here?
-  ;; - status?
-  ;; - authentication?
-  ,,,)
+  (authenticate!
+    [client auth-info]
+    "Manually authenticate the client by providing a map of auth information
+    containing a `:client-id`. As a shorthand, a Vault token string may be
+    provided directly."))
 
 
 ;; ## Client Construction
