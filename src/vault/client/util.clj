@@ -12,8 +12,7 @@
 ;; ## Time
 
 (defn now
-  "Returns the current time as an `Instant`. Mostly useful for rebinding in
-  tests."
+  "Returns the current time as an `Instant`."
   ^Instant
   []
   (Instant/now))
@@ -23,6 +22,14 @@
   "Return the current time in epoch milliseconds."
   []
   (.toEpochMilli (now)))
+
+
+(defmacro with-now
+  "Evaluate the body of expressions with `now` bound to the provided
+  instant. Mostly useful for rebinding in tests."
+  [inst & body]
+  `(with-redefs [now (constantly ~inst)]
+     ~@body))
 
 
 ;; ## Keywords
@@ -38,7 +45,7 @@
   "Converts hyphens to underscores in a string or keyword. Returns a snake-case
   string."
   [k]
-  (-> k name (str/replace "-" "_") keyword))
+  (-> k name (str/replace "-" "_")))
 
 
 (defn walk-keys

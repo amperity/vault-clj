@@ -126,7 +126,6 @@
               :else
               (resp/on-error! handler response (form-failure status headers body))))
           (catch Exception ex
-            (println "Failed to parse body:" body)
             ;; Unhandled exception while processing response.
             (resp/on-error! handler response ex)))))
     (resp/return handler response)))

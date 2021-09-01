@@ -21,6 +21,10 @@
   {:default (complement :integration)
    :integration :integration}
 
+  :hiera
+  {:cluster-depth 2
+   :vertical false}
+
   :profiles
   {:dev
    {:dependencies
