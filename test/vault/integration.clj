@@ -6,7 +6,7 @@
     [clojure.java.shell :as shell]
     [clojure.string :as str]
     [vault.client.http]
-    [vault.core :as vault])
+    [vault.client :as vault])
   (:import
     (java.net
       InetSocketAddress
@@ -108,7 +108,7 @@
   "Construct a new test client pointed at the local development server."
   []
   (doto (vault/new-client address)
-    (vault/authenticate! :token root-token)))
+    (vault/authenticate! root-token)))
 
 
 (defmacro with-dev-server
