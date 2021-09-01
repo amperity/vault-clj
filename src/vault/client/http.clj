@@ -8,8 +8,7 @@
     [org.httpkit.client :as http]
     [vault.client :as vault]
     [vault.client.response :as resp]
-    [vault.client.util :as u]
-    #_[vault.lease :as lease]))
+    [vault.client.util :as u]))
 
 
 ;; ## API Functions
@@ -243,9 +242,9 @@
     (let [auth-info (if (string? auth-info)
                       {:client-token auth-info}
                       auth-info)]
-      (when-not (and (map? auth-info) (:client-id auth-info))
+      (when-not (and (map? auth-info) (:client-token auth-info))
         (throw (IllegalArgumentException.
-                 "Client authentication must be a map of information containing a client-id.")))
+                 "Client authentication must be a map of information containing a client-token.")))
       (reset! auth auth-info))))
 
 
