@@ -34,7 +34,7 @@
         (update :body json/write-str)))))
 
 
-(defn- default-coerce-body
+(defn- default-shape-response
   "Coerce the keys in a response from snake_case strings to kebab-case
   keywords. The `:data` key (if any) is keywordized but the case is preserved."
   [body]
@@ -50,13 +50,13 @@
 (defn- form-success
   "Handle a successful response from the API. Returns the data which should be
   yielded by the response."
-  [status headers body coerce-body]
-  (let [parsed (when body
+  [status headers body shape-response]
+  (let [parsed (when-not (str/blank? body)
                  (json/read-str body))
         request-id (get parsed "request_id")]
     (some->
       parsed
-      (coerce-body)
+      (shape-response)
       (vary-meta assoc
                  ::vault/status status
                  ::vault/headers headers)
@@ -69,7 +69,7 @@
   "Handle a failure response from the API. Returns the exception which should
   be yielded by the response."
   [status headers body]
-  (let [parsed (when body
+  (let [parsed (when-not (str/blank? body)
                  (json/read-str body))
         request-id (get parsed "request_id")
         errors (get parsed "errors")]
@@ -105,26 +105,31 @@
       request
       (fn callback
         [{:keys [status headers body error]}]
-        (if error
-          ;; TODO: shape exception?
-          (resp/on-error! handler response error)
-          ;; Handle response from the API based on status code.
-          (cond
-            ;; Successful response, parse body and return result.
-            (<= 200 status 299)
-            (let [coerce-body (:coerce-body params default-coerce-body)
-                  data (form-success status headers body coerce-body)]
-              (resp/on-success! handler response data))
+        (try
+          (if error
+            ;; TODO: shape exception?
+            (resp/on-error! handler response error)
+            ;; Handle response from the API based on status code.
+            (cond
+              ;; Successful response, parse body and return result.
+              (<= 200 status 299)
+              (let [shape-response (:shape-response params default-shape-response)
+                    data (form-success status headers body shape-response)]
+                (resp/on-success! handler response data))
 
-            ;; We were redirected by the server, which could mean we called a
-            ;; standby node on accident.
-            (or (= 303 status) (= 307 status))
-            ;; TODO: handle redirects
-            (resp/on-error! handler response (RuntimeException. "NYI: redirect handling"))
+              ;; We were redirected by the server, which could mean we called a
+              ;; standby node on accident.
+              (or (= 303 status) (= 307 status))
+              ;; TODO: handle redirects
+              (resp/on-error! handler response (RuntimeException. "NYI: redirect handling"))
 
-            ;; Otherwise, this was a failure response.
-            :else
-            (resp/on-error! handler response (form-failure status headers body))))))
+              ;; Otherwise, this was a failure response.
+              :else
+              (resp/on-error! handler response (form-failure status headers body))))
+          (catch Exception ex
+            (println "Failed to parse body:" body)
+            ;; Unhandled exception while processing response.
+            (resp/on-error! handler response ex)))))
     (resp/return handler response)))
 
 

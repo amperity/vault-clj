@@ -34,9 +34,9 @@
   (-> k name (str/replace "_" "-") keyword))
 
 
-(defn snake-keyword
-  "Converts hyphens to underscores in a string or keyword. Returns a simple
-  snake-case keyword."
+(defn snake-str
+  "Converts hyphens to underscores in a string or keyword. Returns a snake-case
+  string."
   [k]
   (-> k name (str/replace "-" "_") keyword))
 
@@ -60,6 +60,13 @@
   keywords."
   [data]
   (walk-keys data kebab-keyword))
+
+
+(defn snakify-keys
+  "Walk the provided data structure by transforming map keys to snake_case
+  strings."
+  [data]
+  (walk-keys data snake-str))
 
 
 ;; ## Encoding
