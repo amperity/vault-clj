@@ -10,6 +10,7 @@
     [vault.client.http :as http]
     [vault.client.mock :as mock]
     [vault.client.response :as resp]
+    [vault.client.util :as u]
     [vault.sys.health :as sys.health]))
 
 

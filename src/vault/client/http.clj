@@ -34,42 +34,97 @@
         (update :body json/write-str)))))
 
 
-(defn- parse-body
-  "Parse a response body, rewriting the keywords from snake_case to kebab-case. The
-  `:data` key (if any) is preserved as-is."
+(defn- default-coerce-body
+  "Coerce the keys in a response from snake_case strings to kebab-case
+  keywords. The `:data` key (if any) is keywordized but the case is preserved."
   [body]
-  (when body
-    (let [parsed (json/read-str body :key-fn keyword)
-          data (:data parsed)]
-      (-> parsed
-          (dissoc :data)
-          (u/walk-keys u/kebab-keyword)
-          (cond->
-            data
-            (assoc :data data))))))
+  (let [raw-body (get body "data")]
+    (-> body
+        (dissoc "data")
+        (u/kebabify-keys)
+        (cond->
+          raw-body
+          (assoc :data (u/walk-keys raw-body keyword))))))
+
+
+(defn- form-success
+  "Handle a successful response from the API. Returns the data which should be
+  yielded by the response."
+  [status headers body coerce-body]
+  (let [parsed (when body
+                 (json/read-str body))
+        request-id (get parsed "request_id")]
+    (some->
+      parsed
+      (coerce-body)
+      (vary-meta assoc
+                 ::vault/status status
+                 ::vault/headers headers)
+      (cond->
+        request-id
+        (vary-meta assoc ::vault/request-id request-id)))))
+
+
+(defn- form-failure
+  "Handle a failure response from the API. Returns the exception which should
+  be yielded by the response."
+  [status headers body]
+  (let [parsed (when body
+                 (json/read-str body))
+        request-id (get parsed "request_id")
+        errors (get parsed "errors")]
+    (->
+      {::vault/status status
+       ::vault/headers headers}
+      (cond->
+        (seq errors)
+        (assoc ::vault/errors errors)
+
+        request-id
+        (assoc ::vault/request-id request-id))
+      (as-> data
+        (ex-info (str "Vault API errors: "
+                      (str/join ", " errors))
+                 data)))))
 
 
 (defn ^:no-doc call-api
   "Make an HTTP call to the Vault API, using the client's response handler to
   prepare and return the response state."
   [client method path params]
+  (when-not client
+    (throw (IllegalArgumentException. "Cannot make API call on nil client")))
+  (when-not (keyword? method)
+    (throw (IllegalArgumentException. "Cannot make API call without keyword method")))
+  (when (str/blank? path)
+    (throw (IllegalArgumentException. "Cannot make API call on blank path")))
   (let [handler (:response-handler client)
         request (prepare-request client method path params)
         response (resp/create handler)]
-    ;; TODO: handle redirects
     (http/request
       request
       (fn callback
         [{:keys [status headers body error]}]
         (if error
-          ;; TODO: shape exception
+          ;; TODO: shape exception?
           (resp/on-error! handler response error)
-          ;; Parse body data and attach response metadata.
-          (let [data (vary-meta (parse-body body)
-                                assoc
-                                ::status status
-                                ::headers headers)]
-            (resp/on-success! handler response data)))))
+          ;; Handle response from the API based on status code.
+          (cond
+            ;; Successful response, parse body and return result.
+            (<= 200 status 299)
+            (let [coerce-body (:coerce-body params default-coerce-body)
+                  data (form-success status headers body coerce-body)]
+              (resp/on-success! handler response data))
+
+            ;; We were redirected by the server, which could mean we called a
+            ;; standby node on accident.
+            (or (= 303 status) (= 307 status))
+            ;; TODO: handle redirects
+            (resp/on-error! handler response (RuntimeException. "NYI: redirect handling"))
+
+            ;; Otherwise, this was a failure response.
+            :else
+            (resp/on-error! handler response (form-failure status headers body))))))
     (resp/return handler response)))
 
 

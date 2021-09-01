@@ -55,6 +55,13 @@
     data))
 
 
+(defn kebabify-keys
+  "Walk the provided data structure by transforming map keys to kebab-case
+  keywords."
+  [data]
+  (walk-keys data kebab-keyword))
+
+
 ;; ## Encoding
 
 (defn hex-encode

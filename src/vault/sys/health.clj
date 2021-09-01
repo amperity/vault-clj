@@ -1,8 +1,10 @@
 (ns vault.sys.health
+  "The /sys/health endpoint is used to check the health status of Vault.
+
+  Reference: https://www.vaultproject.io/api-docs/system/health"
   (:require
     [vault.client.http :as http]
     [vault.client.mock :as mock]
-    [vault.client.response :as resp]
     [vault.client.util :as u])
   (:import
     vault.client.http.HTTPClient
@@ -12,13 +14,11 @@
 ;; ## API Protocol
 
 (defprotocol HealthAPI
-  "The health endpoint is used to check the health status of Vault."
+  "Methods for checking the health of Vault."
 
   (read-health
     [client params]
-    "This endpoint returns the health status of Vault.
-
-    https://www.vaultproject.io/api-docs/system/health#read-health-information"))
+    "Returns the health status of Vault."))
 
 
 ;; ## HTTP Client
