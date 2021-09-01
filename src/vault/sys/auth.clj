@@ -28,11 +28,11 @@
     [client path params]
     "Enables a new auth method. After enabling, the auth method can be accessed
     and configured via the auth path specified as part of the URL. This auth
-    path will be nested under the `auth/` prefix.")
+    path will be nested under the `auth/` prefix. Returns nil.")
 
   (disable-method!
     [client path]
-    "Disables the auth method at the given auth path.")
+    "Disables the auth method at the given auth path. Returns nil.")
 
   (read-method-tuning
     [client path]
@@ -66,12 +66,7 @@
     (http/call-api
       client :post (str "sys/auth/" path)
       {:content-type :json
-       :body (u/snakify-keys params)
-       :shape-response
-       identity #_
-       (fn shape-response
-         [body]
-         (u/kebabify-keys (get body "data")))}))
+       :body (u/snakify-keys params)}))
 
 
   (disable-method!
