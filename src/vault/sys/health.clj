@@ -13,7 +13,7 @@
 
 ;; ## API Protocol
 
-(defprotocol HealthAPI
+(defprotocol API
   "Methods for checking the health of Vault."
 
   (read-health
@@ -21,24 +21,11 @@
     "Returns the health status of Vault."))
 
 
-;; ## HTTP Client
-
-(extend-type HTTPClient
-
-  HealthAPI
-
-  (read-health
-    [client params]
-    (http/call-api
-      client :get "sys/health"
-      {:query-params params})))
-
-
 ;; ## Mock Client
 
 (extend-type MockClient
 
-  HealthAPI
+  API
 
   (read-health
     [client _params]
@@ -54,3 +41,16 @@
        :replication-perf-mode "disabled"
        :replication-dr-mode "disabled"
        :server-time-utc (u/now-milli)})))
+
+
+;; ## HTTP Client
+
+(extend-type HTTPClient
+
+  API
+
+  (read-health
+    [client params]
+    (http/call-api
+      client :get "sys/health"
+      {:query-params params})))

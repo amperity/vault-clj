@@ -16,7 +16,7 @@
 
 ;; ## API Protocol
 
-(defprotocol AuthAPI
+(defprotocol API
   "The health endpoint is used to check the health status of Vault."
 
   (list-methods
@@ -43,11 +43,54 @@
     "Tune configuration parameters for a given auth path."))
 
 
+;; ## Mock Client
+
+(extend-type MockClient
+
+  API
+
+  (list-methods
+    [client]
+    (mock/success-response
+      client
+      {"token/" {:accessor "auth_token_96109b84"
+                 :config {:default-lease-ttl 0
+                          :force-no-cache false
+                          :max-lease-ttl 0
+                          :token-type "default-service"}
+                 :description "token based credentials"
+                 :external-entropy-access false
+                 :local false
+                 :options nil
+                 :seal-wrap false
+                 :type "token"
+                 :uuid "fcd3aea9-d682-3143-72d3-938c3f666d62"}}))
+
+
+  (read-method-tuning
+    [client path]
+    (if (= "token/" path)
+      (mock/success-response
+        client
+        {:default-lease-ttl 2764800,
+         :description "token based credentials",
+         :force-no-cache false,
+         :max-lease-ttl 2764800,
+         :token-type "default-service"})
+      (mock/error-response
+        client
+        (let [error (str "cannot fetch sysview for path \"" path \")]
+          (ex-data
+            (str "Vault API errors: " error)
+            {:vault.client/errors [error]
+             :vault.client/status 400}))))))
+
+
 ;; ## HTTP Client
 
 (extend-type HTTPClient
 
-  AuthAPI
+  API
 
   (list-methods
     [client]
@@ -94,46 +137,3 @@
         client :post (str "sys/auth/" path "/tune")
         {:content-type :json
          :body (u/snakify-keys params)}))))
-
-
-;; ## Mock Client
-
-(extend-type MockClient
-
-  AuthAPI
-
-  (list-methods
-    [client]
-    (mock/success-response
-      client
-      {"token/" {:accessor "auth_token_96109b84"
-                 :config {:default-lease-ttl 0
-                          :force-no-cache false
-                          :max-lease-ttl 0
-                          :token-type "default-service"}
-                 :description "token based credentials"
-                 :external-entropy-access false
-                 :local false
-                 :options nil
-                 :seal-wrap false
-                 :type "token"
-                 :uuid "fcd3aea9-d682-3143-72d3-938c3f666d62"}}))
-
-
-  (read-method-tuning
-    [client path]
-    (if (= "token/" path)
-      (mock/success-response
-        client
-        {:default-lease-ttl 2764800,
-         :description "token based credentials",
-         :force-no-cache false,
-         :max-lease-ttl 2764800,
-         :token-type "default-service"})
-      (mock/error-response
-        client
-        (let [error (str "cannot fetch sysview for path \"" path \")]
-          (ex-data
-            (str "Vault API errors: " error)
-            {:vault.client/errors [error]
-             :vault.client/status 400}))))))
