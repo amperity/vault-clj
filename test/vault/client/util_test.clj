@@ -58,3 +58,15 @@
            (u/sha-256 "foo bar baz")))
     (is (= "64989ccbf3efa9c84e2afe7cee9bc5828bf0fcb91e44f8c1e591638a2c2e90e3"
            (u/sha-256 "alpha beta gamma")))))
+
+
+(deftest misc
+  (testing "trim-path"
+    (is (= "foo" (u/trim-path "foo")))
+    (is (= "foo" (u/trim-path "/foo")))
+    (is (= "foo" (u/trim-path "foo/")))
+    (is (= "foo" (u/trim-path "/foo/")))
+    (is (= "foo/bar/baz" (u/trim-path "/foo/bar/baz/"))))
+  (testing "join-path"
+    (is (= "foo/bar" (u/join-path "foo" "bar")))
+    (is (= "foo/bar/baz/qux" (u/join-path "foo/bar/" "/baz" "qux/")))))
