@@ -38,24 +38,6 @@
   "t0p-53cr3t")
 
 
-(defn start-server!
-  "Start a local Vault development server process. Returns the child process
-  object."
-  ^Process
-  []
-  (let [command ["vault" "server" "-dev"
-                 (str "-dev-listen-address=" (str interface ":" port))
-                 (str "-dev-root-token-id=" root-token)
-                 "-dev-no-store-token"]
-        work-dir (io/file "target/vault")
-        builder (doto (ProcessBuilder. ^List command)
-                  (.directory work-dir)
-                  (.redirectErrorStream true)
-                  (.redirectOutput (io/file work-dir "vault.log")))]
-    (.mkdirs work-dir)
-    (.start builder)))
-
-
 (defn- port-open?
   "Returns true if the given port is open, false otherwise."
   [host port]
@@ -70,6 +52,30 @@
         false)
       (finally
         (.close socket)))))
+
+
+(defn start-server!
+  "Start a local Vault development server process. Returns the child process
+  object."
+  ^Process
+  []
+  ;; TODO: automatically find an available port?
+  (when (port-open? interface port)
+    (throw (IllegalStateException.
+             (str "Cannot start vault dev server, port " port " is already "
+                  "bound on " interface " - check `lsof -i TCP:" port
+                  "` and kill the offending process."))))
+  (let [command ["vault" "server" "-dev"
+                 (str "-dev-listen-address=" (str interface ":" port))
+                 (str "-dev-root-token-id=" root-token)
+                 "-dev-no-store-token"]
+        work-dir (io/file "target/vault")
+        builder (doto (ProcessBuilder. ^List command)
+                  (.directory work-dir)
+                  (.redirectErrorStream true)
+                  (.redirectOutput (io/file work-dir "vault.log")))]
+    (.mkdirs work-dir)
+    (.start builder)))
 
 
 (defn await-server
