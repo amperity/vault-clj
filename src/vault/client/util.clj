@@ -112,3 +112,17 @@
         str-bytes (.getBytes (str s) "UTF-8")]
     (.update hasher str-bytes)
     (hex-encode (.digest hasher))))
+
+
+;; ## Miscellaneous
+
+(defn trim-path
+  "Remove any leading and trailing slashes from a path string."
+  [path]
+  (str/replace path #"^/+|/+$" ""))
+
+
+(defn join-path
+  "Join a number of path segments together with slashes, after trimming them."
+  [& parts]
+  (str/join "/" (map trim-path parts)))

@@ -33,7 +33,7 @@
         (update :body json/write-str)))))
 
 
-(defn- default-shape-response
+(defn- default-handle-response
   "Coerce the keys in a response from snake_case strings to kebab-case
   keywords. The `:data` key (if any) is keywordized but the case is preserved."
   [body]
@@ -49,13 +49,13 @@
 (defn- form-success
   "Handle a successful response from the API. Returns the data which should be
   yielded by the response."
-  [status headers body shape-response]
+  [status headers body handle-response]
   (let [parsed (when-not (str/blank? body)
                  (json/read-str body))
         request-id (get parsed "request_id")]
     (some->
       parsed
-      (shape-response)
+      (handle-response)
       (vary-meta assoc
                  ::vault/status status
                  ::vault/headers headers)
@@ -118,8 +118,8 @@
                   (cond
                     ;; Successful response, parse body and return result.
                     (<= 200 status 299)
-                    (let [shape-response (:shape-response params default-shape-response)
-                          data (form-success status headers body shape-response)]
+                    (let [handle-response (:handle-response params default-handle-response)
+                          data (form-success status headers body handle-response)]
                       (resp/on-success! handler response data))
 
                     ;; Request was redirected by the server, which could mean

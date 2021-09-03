@@ -96,8 +96,8 @@
     [client]
     (http/call-api
       client :get "sys/auth"
-      {:shape-response
-       (fn shape-response
+      {:handle-response
+       (fn handle-response
          [body]
          (into {}
                (map (juxt key (comp u/kebabify-keys val)))
@@ -115,25 +115,23 @@
   (disable-method!
     [client path]
     (http/call-api
-      client :delete (str "sys/auth/" path)
+      client :delete (u/join-path "sys/auth" path)
       {}))
 
 
   (read-method-tuning
     [client path]
-    (let [path (str/replace path #"^/+|/+$" "")]
-      (http/call-api
-        client :get (str "sys/auth/" path "/tune")
-        {:shape-response
-         (fn shape-response
-           [body]
-           (u/kebabify-keys (get body "data")))})))
+    (http/call-api
+      client :get (u/join-path "sys/auth" path "tune")
+      {:handle-response
+       (fn handle-response
+         [body]
+         (u/kebabify-keys (get body "data")))}))
 
 
   (tune-method!
     [client path params]
-    (let [path (str/replace path #"^/+|/+$" "")]
-      (http/call-api
-        client :post (str "sys/auth/" path "/tune")
-        {:content-type :json
-         :body (u/snakify-keys params)}))))
+    (http/call-api
+      client :post (u/join-path "sys/auth" path "tune")
+      {:content-type :json
+       :body (u/snakify-keys params)})))
