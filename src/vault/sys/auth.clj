@@ -107,7 +107,7 @@
   (enable-method!
     [client path params]
     (http/call-api
-      client :post (str "sys/auth/" path)
+      client :post (u/join-path "sys/auth" path)
       {:content-type :json
        :body (u/snakify-keys params)}))
 

@@ -82,8 +82,13 @@
         request-id
         (assoc ::vault/request-id request-id))
       (as-> data
-        (ex-info (str "Vault API errors: "
-                      (str/join ", " errors))
+        (ex-info (if (seq errors)
+                   (str "Vault API errors: " (str/join ", " errors))
+                   (str "Vault HTTP error: "
+                        (case status
+                          400 "bad request"
+                          404 "not found"
+                          status)))
                  data)))))
 
 
