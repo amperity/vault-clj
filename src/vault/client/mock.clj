@@ -76,7 +76,7 @@
   "Helper which uses the response protocol to generate a successful response."
   [client data]
   (let [handler (:response-handler client)
-        resp (resp/create handler)]
+        resp (resp/create handler nil)]
     (resp/on-success! handler resp data)
     (resp/return handler resp)))
 
@@ -85,6 +85,6 @@
   "Helper which uses the response protocol to generate an error response."
   [client ex]
   (let [handler (:response-handler client)
-        resp (resp/create handler)]
+        resp (resp/create handler nil)]
     (resp/on-error! handler resp ex)
     (resp/return handler resp)))

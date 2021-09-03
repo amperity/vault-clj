@@ -10,9 +10,9 @@
   should be exposed to the consumer of the Vault APIs."
 
   (create
-    [handler]
-    "Construct a new stateful response container. This will be (generally) be
-    returned to the API caller.")
+    [handler request]
+    "Construct a new stateful response container. The request map may contain
+    information which is useful for client observability.")
 
   (on-success!
     [handler response data]
@@ -48,7 +48,7 @@
   Handler
 
   (create
-    [_]
+    [_ _]
     (promise))
 
 
@@ -85,7 +85,7 @@
   Handler
 
   (create
-    [_]
+    [_ _]
     (promise))
 
 

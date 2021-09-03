@@ -104,7 +104,11 @@
     (throw (IllegalArgumentException. "Cannot make API call on blank path")))
   (let [handler (:response-handler client)
         request (prepare-request client method path params)
-        response (resp/create handler)]
+        response (resp/create handler
+                              (merge {::vault/method method
+                                      ::vault/path path}
+                                     (when-let [query (:query-params params)]
+                                       {::vault/query query})))]
     ;; Kick off HTTP request.
     (letfn [(make-request
               [extra]
