@@ -69,7 +69,7 @@
 
   (read-method-tuning
     [client path]
-    (if (= "token/" path)
+    (if (= "token" (u/trim-path path))
       (mock/success-response
         client
         {:default-lease-ttl 2764800,
@@ -80,10 +80,9 @@
       (mock/error-response
         client
         (let [error (str "cannot fetch sysview for path \"" path \")]
-          (ex-data
-            (str "Vault API errors: " error)
-            {:vault.client/errors [error]
-             :vault.client/status 400}))))))
+          (ex-info (str "Vault API errors: " error)
+                   {:vault.client/errors [error]
+                    :vault.client/status 400}))))))
 
 
 ;; ## HTTP Client

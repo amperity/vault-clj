@@ -4,6 +4,6 @@
  {:ignore #{"checkouts" "target"}}
 
  :rules
- {:blank-lines
-  {:padding-lines 2
-   :max-consecutive 3}}}
+ {:indentation
+  {:indents
+   {with-now [[:block 1]]}}}}

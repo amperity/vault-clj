@@ -5,8 +5,8 @@
     [clojure.java.io :as io]
     [clojure.java.shell :as shell]
     [clojure.string :as str]
-    [vault.client.http]
-    [vault.client :as vault])
+    [vault.client :as vault]
+    [vault.client.http])
   (:import
     (java.net
       InetSocketAddress
@@ -25,7 +25,7 @@
 
 (def port
   "Local port to bind the server to."
-  8201)
+  8205)
 
 
 (def address
