@@ -5,6 +5,7 @@
 
   Reference: https://www.vaultproject.io/api-docs/secret/kv/kv-v1"
   (:require
+    [clojure.data.json :as json]
     [clojure.string :as str]
     [vault.client.http :as http]
     [vault.client.mock :as mock]
@@ -41,19 +42,19 @@
   ;; - on nonexistent path, throws not-found
   ;; - on folder, throws not-found with a kv2 warning
   ;; TODO: lease controls/metadata?
-  ;; TODO: note about JSON coercion
   (read-secret
     [client path]
     [client path opts]
     "Read the secret at the provided path. Returns the secret data, if
-    present.")
+    present. Note that Vault internally stores data as JSON, so not all
+    Clojure types will round-trip successfully!")
 
   ;; TODO: note about special :ttl key
-  ;; TODO: note about JSON coercion
   (write-secret!
     [client path data]
     "Store secret data at the provided path, overwriting any secret that was
-    previously stored there. Returns nil.")
+    previously stored there. Returns nil. Note that Vault internally stores
+    data as JSON, so not all Clojure types will round-trip successfully!")
 
   (delete-secret!
     [client path]
@@ -69,34 +70,51 @@
   (list-secrets
     [client path]
     (let [[mount path] (u/resolve-path default-mount path)
-          data (get-in @(:memory client) [:secrets mount])]
-      ;; TODO: proper error responses
-      ;; TODO: synthesize folder structure
+          data (get-in @(:memory client) [:secrets mount])
+          depth (if (str/blank? path)
+                  1
+                  (inc (count (str/split path #"/"))))]
       (mock/success-response
         client
-        (into []
-              (filter #(str/starts-with? % (str path)))
-              (keys data)))))
+        (->> (keys data)
+             (filter #(or (= "" path) (str/starts-with? % (str path "/"))))
+             (map #(let [parts (str/split % #"/")]
+                     (if (< depth (count parts))
+                       (str (nth parts (dec depth)) "/")
+                       (last parts))))
+             (distinct)
+             (sort)
+             (vec)
+             (not-empty)))))
 
 
   (read-secret
     ([client path]
      (read-secret client path nil))
-    ([client path _opts]
+    ([client path opts]
      (let [[mount path] (u/resolve-path default-mount path)]
        (if-let [secret (get-in @(:memory client) [:secrets mount path])]
-         (mock/success-response client secret)
-         (mock/error-response
+         (mock/success-response
            client
-           (ex-info (str "No kv.v1 secret found in " mount " at " path)
-                    {:vault.secrets/mount mount
-                     :vault.secrets/path path}))))))
+           (-> secret
+               (json/read-str)
+               (u/walk-keys keyword)))
+         (if (contains? opts :not-found)
+           (mock/success-response client (:not-found opts))
+           (mock/error-response
+             client
+             (ex-info (str "No kv-v1 secret found at " mount ":" path)
+                      {:vault.secrets/mount mount
+                       :vault.secrets/path path})))))))
 
 
   (write-secret!
     [client path data]
     (let [[mount path] (u/resolve-path default-mount path)]
-      (swap! (:memory client) assoc-in [:secrets mount path data])
+      (swap! (:memory client)
+             assoc-in
+             [:secrets mount path]
+             (json/write-str data))
       (mock/success-response client nil)))
 
 
