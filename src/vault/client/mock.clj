@@ -19,12 +19,13 @@
   (authenticate!
     [_ auth-info]
     (let [auth-info (if (string? auth-info)
-                 {:client-token auth-info}
-                 auth-info)]
+                      {:client-token auth-info}
+                      auth-info)]
       (when-not (and (map? auth-info) (:client-token auth-info))
         (throw (IllegalArgumentException.
                  "Client authentication must be a map of information containing a client-token.")))
-      (swap! memory assoc :auth auth-info))))
+      (swap! memory assoc :auth auth-info)
+      nil)))
 
 
 ;; ## Constructors
@@ -72,7 +73,7 @@
 
 ;; ## Request Functions
 
-(defn success-response
+(defn ^:no-doc success-response
   "Helper which uses the response protocol to generate a successful response."
   [client data]
   (let [handler (:response-handler client)
@@ -81,7 +82,7 @@
     (resp/return handler resp)))
 
 
-(defn error-response
+(defn ^:no-doc error-response
   "Helper which uses the response protocol to generate an error response."
   [client ex]
   (let [handler (:response-handler client)

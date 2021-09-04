@@ -283,7 +283,8 @@
       (when-not (and (map? auth-info) (:client-token auth-info))
         (throw (IllegalArgumentException.
                  "Client authentication must be a map of information containing a client-token.")))
-      (reset! auth auth-info))))
+      (reset! auth auth-info)
+      nil)))
 
 
 ;; ## Constructors
