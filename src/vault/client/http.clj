@@ -174,9 +174,9 @@
 
 (defn- timer-loop
   "Constructs a new runnable looping function which performs the timer logic
-  every `period` seconds. If the `jitter` property is set, the sleep cycle will
-  vary randomly by up to `jitter` seconds in length (meaning in the range
-  `[p, p+j)`).
+  every `period` milliseconds. If the `jitter` property is set, the sleep cycle
+  will vary randomly by up to `jitter` milliseconds in length (meaning in the
+  range `[p, p+j)`).
 
   The loop can be terminated by interrupting the thread."
   ^Runnable
@@ -184,7 +184,7 @@
   (fn []
     (try
       (while (not (Thread/interrupted))
-        (Thread/sleep (* (+ period (rand-int jitter)) 1000))
+        (Thread/sleep (+ period (rand-int jitter)))
         (try
           (handler)
           (catch InterruptedException ex
@@ -199,7 +199,7 @@
   "Constructs and starts a new timer thread to call the given handler function.
   The returned thread will be in daemon mode."
   [label handler period jitter]
-  (log/infof "Starting timer thread %s with period of %d seconds (~%d jitter)"
+  (log/infof "Starting timer thread %s with period of %d ms (~%d jitter)"
              label period jitter)
   (doto (Thread. (timer-loop handler period jitter) (str label))
     (.setDaemon true)
@@ -247,8 +247,8 @@
                      "vault-lease-timer"
                      (constantly true) #_
                      #(lease/maintain-leases! this window)
-                     period
-                     jitter)]
+                     (* period 1000)
+                     (* jitter 1000))]
         (assoc this :lease-timer thread))))
 
 
