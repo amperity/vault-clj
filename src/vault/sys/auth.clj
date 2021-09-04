@@ -5,7 +5,6 @@
 
   Reference: https://www.vaultproject.io/api-docs/system/auth"
   (:require
-    [clojure.string :as str]
     [vault.client.http :as http]
     [vault.client.mock :as mock]
     [vault.client.util :as u])

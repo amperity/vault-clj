@@ -1,15 +1,12 @@
 (ns vault.sys.auth-test
   (:require
-    [clojure.string :as str]
     [clojure.test :refer [is testing deftest]]
     [vault.client.mock :refer [mock-client]]
     [vault.integration :refer [with-dev-server]]
     [vault.sys.auth :as sys.auth]))
 
 
-;; ## Mock Tests
-
-(deftest mock-read-auth
+(deftest mock-api
   (let [client (mock-client)]
     (testing "list-methods"
       (let [result (sys.auth/list-methods client)]
@@ -28,9 +25,7 @@
               (sys.auth/read-method-tuning client "foo/")))))))
 
 
-;; ## HTTP Tests
-
-(deftest ^:integration api-integration
+(deftest ^:integration http-api
   (with-dev-server
     (testing "list-methods"
       (let [result (sys.auth/list-methods client)

@@ -10,7 +10,6 @@
     [vault.client.mock :as mock]
     [vault.client.util :as u])
   (:import
-    java.time.Instant
     vault.client.http.HTTPClient
     vault.client.mock.MockClient))
 

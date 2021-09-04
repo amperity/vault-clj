@@ -7,9 +7,7 @@
     [vault.sys.health :as sys.health]))
 
 
-;; ## Mock Tests
-
-(deftest mock-read-health
+(deftest mock-api
   (let [client (mock-client)
         status (sys.health/read-health client {})]
     (is (str/starts-with? (:cluster-name status) "vault-cluster-"))
@@ -20,9 +18,7 @@
     (is (string? (:version status)))))
 
 
-;; ## HTTP Tests
-
-(deftest ^:integration api-integration
+(deftest ^:integration http-api
   (with-dev-server
     (testing "read-health"
       (let [status (sys.health/read-health client {})]

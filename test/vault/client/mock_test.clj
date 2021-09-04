@@ -3,7 +3,7 @@
     [clojure.java.io :as io]
     [clojure.test :refer [deftest testing is]]
     [vault.client :as vault]
-    [vault.client.mock :as mock]))
+    [vault.client.mock]))
 
 
 (deftest authentication

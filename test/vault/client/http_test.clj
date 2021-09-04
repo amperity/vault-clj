@@ -1,6 +1,7 @@
 (ns vault.client.http-test
   (:require
     [clojure.test :refer [deftest testing is]]
+    [org.httpkit.client :as http-client]
     [vault.client :as vault]
     [vault.client.http :as http]
     [vault.client.response :as resp]))
@@ -11,8 +12,8 @@
                 :response-handler resp/sync-handler
                 :auth (atom {:client-token "t0p-53cr5t"})}]
     (testing "with bad arguments"
-      (with-redefs [org.httpkit.client/request (fn [req callback]
-                                                 (is false "should not be called"))]
+      (with-redefs [http-client/request (fn [_ _]
+                                          (is false "should not be called"))]
         (is (thrown-with-msg? IllegalArgumentException #"call on nil client"
               (http/call-api nil :get "sys/health" {})))
         (is (thrown-with-msg? IllegalArgumentException #"call without keyword method"
@@ -20,77 +21,77 @@
         (is (thrown-with-msg? IllegalArgumentException #"call on blank path"
               (http/call-api client :get "" {})))))
     (testing "with http call error"
-      (with-redefs [org.httpkit.client/request (fn [req callback]
-                                                 (callback {:error (RuntimeException. "HTTP BOOM")}))]
+      (with-redefs [http-client/request (fn [_ callback]
+                                          (callback {:error (RuntimeException. "HTTP BOOM")}))]
         (is (thrown-with-msg? RuntimeException #"HTTP BOOM"
               (http/call-api client :get "foo/bar" {})))))
     (testing "with unhandled error"
-      (with-redefs [org.httpkit.client/request (fn [req callback]
-                                                 (callback {:status 200
-                                                            :body "{uh oh]"}))]
+      (with-redefs [http-client/request (fn [_ callback]
+                                          (callback {:status 200
+                                                     :body "{uh oh]"}))]
         (is (thrown-with-msg? Exception #"JSON error"
               (http/call-api client :get "foo/bar" {})))))
     (testing "with error response"
       (testing "and default handling"
-        (with-redefs [org.httpkit.client/request (fn [req callback]
-                                                   (callback {:status 400
-                                                              :body "{\"errors\": []}"}))]
+        (with-redefs [http-client/request (fn [_ callback]
+                                            (callback {:status 400
+                                                       :body "{\"errors\": []}"}))]
           (is (thrown-with-msg? Exception #"Vault HTTP error: bad request"
                 (http/call-api client :get "foo/bar" {})))))
       (testing "and custom handling"
-        (with-redefs [org.httpkit.client/request (fn [req callback]
-                                                   (callback {:status 400
-                                                              :body "{\"errors\": []}"}))]
+        (with-redefs [http-client/request (fn [_ callback]
+                                            (callback {:status 400
+                                                       :body "{\"errors\": []}"}))]
           (is (= :ok (http/call-api
                        client :get "foo/bar"
                        {:handle-error (constantly :ok)}))))))
     (testing "with redirect"
       (testing "and no location header"
         (let [calls (atom 0)]
-          (with-redefs [org.httpkit.client/request (fn [req callback]
-                                                     (if (= 1 (swap! calls inc))
-                                                       (callback {:status 303
-                                                                  :headers {}
-                                                                  ::http/redirects (::http/redirects req)})
-                                                       (throw (IllegalStateException.
-                                                                "should not reach here"))))]
+          (with-redefs [http-client/request (fn [req callback]
+                                              (if (= 1 (swap! calls inc))
+                                                (callback {:status 303
+                                                           :headers {}
+                                                           ::http/redirects (::http/redirects req)})
+                                                (throw (IllegalStateException.
+                                                         "should not reach here"))))]
             (is (thrown-with-msg? Exception #"redirect without Location header"
                   (http/call-api client :get "foo/bar" {}))))))
       (testing "too many times"
         (let [calls (atom 0)]
-          (with-redefs [org.httpkit.client/request (fn [req callback]
-                                                     (when (= 1 @calls)
-                                                       (is (= "https://vault.test:8200/foo/baz" (:url req))))
-                                                     (if (< (swap! calls inc) 5)
-                                                       (callback {:status 307
-                                                                  :headers {"Location" "https://vault.test:8200/foo/baz"}
-                                                                  ::http/redirects (::http/redirects req)})
-                                                       (throw (IllegalStateException. "should not reach here"))))]
+          (with-redefs [http-client/request (fn [req callback]
+                                              (when (= 1 @calls)
+                                                (is (= "https://vault.test:8200/foo/baz" (:url req))))
+                                              (if (< (swap! calls inc) 5)
+                                                (callback {:status 307
+                                                           :headers {"Location" "https://vault.test:8200/foo/baz"}
+                                                           ::http/redirects (::http/redirects req)})
+                                                (throw (IllegalStateException. "should not reach here"))))]
             (is (thrown-with-msg? Exception #"Aborting Vault API request after 3 redirects"
                   (http/call-api client :get "foo/bar" {}))))))
       (testing "successfully"
         (let [calls (atom 0)]
-          (with-redefs [org.httpkit.client/request (fn [req callback]
-                                                     (when (= 1 @calls)
-                                                       (is (= "https://vault.test:8200/foo/baz" (:url req))))
-                                                     (if (< (swap! calls inc) 2)
-                                                       (callback {:status 307
-                                                                  :headers {"Location" "https://vault.test:8200/foo/baz"}
-                                                                  ::http/redirects (::http/redirects req)})
-                                                       (callback {:status 204
-                                                                  :headers {}
-                                                                  ::http/redirects (::http/redirects req)})))]
+          (with-redefs [http-client/request (fn [req callback]
+                                              (when (= 1 @calls)
+                                                (is (= "https://vault.test:8200/foo/baz" (:url req))))
+                                              (if (< (swap! calls inc) 2)
+                                                (callback {:status 307
+                                                           :headers {"Location" "https://vault.test:8200/foo/baz"}
+                                                           ::http/redirects (::http/redirects req)})
+                                                (callback {:status 204
+                                                           :headers {}
+                                                           ::http/redirects (::http/redirects req)})))]
             (is (nil? (http/call-api client :get "foo/bar" {})))))))
     (testing "with successful response"
       (testing "with default handling"
-        (with-redefs [org.httpkit.client/request (fn [req callback]
-                                                   (callback {:status 200
-                                                              :body ""}))]
+        (with-redefs [http-client/request (fn [_ callback]
+                                            (callback {:status 200
+                                                       :body ""}))]
           (is (nil? (http/call-api client :get "foo/bar" {})))))
       (testing "with custom handling"
-        (with-redefs [org.httpkit.client/request (fn [req callback]
-                                                   (callback {:status 200
-                                                              :body "{}"}))]
+        (with-redefs [http-client/request (fn [_ callback]
+                                            (callback {:status 200
+                                                       :body "{}"}))]
           (is (= {:result true}
                  (http/call-api
                    client :get "foo/bar"

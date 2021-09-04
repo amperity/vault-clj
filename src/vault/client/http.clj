@@ -252,7 +252,7 @@
       ;; Already running
       this
       ;; Start lease heartbeat thread.
-      (let [window (:lease-renewal-window this 300)
+      (let [_window (:lease-renewal-window this 300)
             period (:lease-check-period   this  60)
             jitter (:lease-check-jitter   this  10)
             thread (start-timer!
