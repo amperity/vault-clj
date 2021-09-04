@@ -20,15 +20,6 @@
   "secret")
 
 
-(defn- resolve-path
-  "Resolve the provided path into a mount and a relative path component. Uses
-  the default mount if none is specified."
-  [path]
-  (if (str/includes? path ":")
-    (mapv u/trim-path (str/split path #":" 2))
-    [default-mount (u/trim-path path)]))
-
-
 ;; ## API Protocol
 
 (defprotocol API
@@ -78,8 +69,10 @@
 
   (list-secrets
     [client path]
-    (let [[mount path] (resolve-path path)
-          data (get-in @(:memory client) [:secrets ::data mount])]
+    (let [[mount path] (u/resolve-path default-mount path)
+          data (get-in @(:memory client) [:secrets mount])]
+      ;; TODO: proper error responses
+      ;; TODO: synthesize folder structure
       (mock/success-response
         client
         (into []
@@ -91,8 +84,8 @@
     ([client path]
      (read-secret client path nil))
     ([client path _opts]
-     (let [[mount path] (resolve-path path)]
-       (if-let [secret (get-in @(:memory client) [:secrets ::data mount path])]
+     (let [[mount path] (u/resolve-path default-mount path)]
+       (if-let [secret (get-in @(:memory client) [:secrets mount path])]
          (mock/success-response client secret)
          (mock/error-response
            client
@@ -103,15 +96,15 @@
 
   (write-secret!
     [client path data]
-    (let [[mount path] (resolve-path path)]
-      (swap! (:memory client) assoc-in [:secrets ::data mount path data])
+    (let [[mount path] (u/resolve-path default-mount path)]
+      (swap! (:memory client) assoc-in [:secrets mount path data])
       (mock/success-response client nil)))
 
 
   (delete-secret!
     [client path]
-    (let [[mount path] (resolve-path path)]
-      (swap! (:memory client) update-in [:secrets ::data mount] dissoc path)
+    (let [[mount path] (u/resolve-path default-mount path)]
+      (swap! (:memory client) update-in [:secrets mount] dissoc path)
       (mock/success-response client nil))))
 
 
@@ -123,7 +116,7 @@
 
   (list-secrets
     [client path]
-    (let [[mount path] (resolve-path path)]
+    (let [[mount path] (u/resolve-path default-mount path)]
       (http/call-api
         client :get (u/join-path mount path)
         {:query-params {:list true}
@@ -144,7 +137,7 @@
     ([client path]
      (read-secret client path nil))
     ([client path opts]
-     (let [[mount path] (resolve-path path)]
+     (let [[mount path] (u/resolve-path default-mount path)]
        ;; TODO: check for a cached secret and re-use it
        ;; TODO: update lease cache if appropriate (note: no lease_id, substitute request_id)
        (http/call-api
@@ -171,7 +164,7 @@
 
   (write-secret!
     [client path data]
-    (let [[mount path] (resolve-path path)]
+    (let [[mount path] (u/resolve-path default-mount path)]
       ;; TODO: invalidate lease cache
       (http/call-api
         client :post (u/join-path mount path)
@@ -181,7 +174,7 @@
 
   (delete-secret!
     [client path]
-    (let [[mount path] (resolve-path path)]
+    (let [[mount path] (u/resolve-path default-mount path)]
       ;; TODO: invalidate lease cache
       (http/call-api
         client :delete (u/join-path mount path)

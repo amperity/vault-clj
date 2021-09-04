@@ -103,12 +103,12 @@
           thread (#'http/start-timer!
                   "test-timer"
                   #(swap! calls inc)
-                  10 2)]
+                  10 1)]
       (is (true? (.isAlive thread)))
       (Thread/sleep 50)
       (#'http/stop-timer! thread)
       (is (false? (.isAlive thread)))
-      (is (<= 4 @calls 6))))
+      (is (<= 3 @calls 6))))
   (testing "with sleepy handler"
     (let [calls (atom 0)
           thread (#'http/start-timer!
@@ -133,7 +133,7 @@
       (is (true? (.isAlive thread)))
       (#'http/stop-timer! thread)
       (is (false? (.isAlive thread)))
-      (is (<= 4 @calls 6)))))
+      (is (<= 3 @calls 6)))))
 
 
 (deftest authentication

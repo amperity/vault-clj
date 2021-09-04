@@ -60,7 +60,7 @@
            (u/sha-256 "alpha beta gamma")))))
 
 
-(deftest misc
+(deftest paths
   (testing "trim-path"
     (is (= "foo" (u/trim-path "foo")))
     (is (= "foo" (u/trim-path "/foo")))
@@ -69,4 +69,13 @@
     (is (= "foo/bar/baz" (u/trim-path "/foo/bar/baz/"))))
   (testing "join-path"
     (is (= "foo/bar" (u/join-path "foo" "bar")))
-    (is (= "foo/bar/baz/qux" (u/join-path "foo/bar/" "/baz" "qux/")))))
+    (is (= "foo/bar/baz/qux" (u/join-path "foo/bar/" "/baz" "qux/"))))
+  (testing "resolve-path"
+    (testing "with default mount"
+      (is (= ["secret" "foo"] (u/resolve-path "secret" "foo")))
+      (is (= ["kv" "foo/bar/baz"] (u/resolve-path "kv" "foo/bar/baz"))))
+    (testing "with explicit mount"
+      (is (= ["kv2" "foo"] (u/resolve-path "secret" "kv2:foo")))
+      (is (= ["stack/secret" "foo/bar/baz"] (u/resolve-path "kv" "stack/secret:foo/bar/baz"))))
+    (testing "with funky path"
+      (is (= ["mount" "foo/bar:baz"] (u/resolve-path "kv" "mount:foo/bar:baz"))))))
