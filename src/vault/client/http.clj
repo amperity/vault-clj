@@ -52,7 +52,8 @@
   [status headers body handle-response]
   (let [parsed (when-not (str/blank? body)
                  (json/read-str body))
-        request-id (get parsed "request_id")]
+        request-id (get parsed "request_id")
+        warnings (get parsed "warnings")]
     (some->
       parsed
       (handle-response)
@@ -61,7 +62,10 @@
                  ::vault/headers headers)
       (cond->
         request-id
-        (vary-meta assoc ::vault/request-id request-id)))))
+        (vary-meta assoc ::vault/request-id request-id)
+
+        (seq warnings)
+        (vary-meta assoc ::vault/warnings warnings)))))
 
 
 (defn- form-failure
@@ -165,7 +169,11 @@
 
                     ;; Otherwise, this was a failure response.
                     :else
-                    (resp/on-error! handler response (form-failure status headers body))))
+                    (let [handle-error (:handle-error params identity)
+                          result (handle-error (form-failure status headers body))]
+                      (if (instance? Throwable result)
+                        (resp/on-error! handler response result)
+                        (resp/on-success! handler response result)))))
                 (catch Exception ex
                   ;; Unhandled exception while processing response.
                   (resp/on-error! handler response ex))))]

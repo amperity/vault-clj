@@ -40,14 +40,12 @@
   different mount, prefix the path with the mount location and a colon, like
   `kv1:foo/bar`."
 
-  ;; TODO: document behaviors:
-  ;; - on nonexistent path, throws not-found
-  ;; - on file, throws not-found
   (list-secrets
     [client path]
-    "List the secret names located under a path prefix location. Folders are
-    suffixed with `/`. The path must be a folder; calling this method on a file
-    will not return a value.")
+    "List the secret names located under a path prefix location. Returns a
+    vector of name strings, where further folders are suffixed with `/`. The
+    path must be a folder; calling this method on a file or a prefix which does
+    not exist will return nil.")
 
   ;; TODO: document behaviors:
   ;; - on nonexistent path, throws not-found
@@ -60,18 +58,16 @@
     "Read the secret at the provided path. Returns the secret data, if
     present.")
 
-  ;; TODO: what does this return?
   ;; TODO: note about special :ttl key
   ;; TODO: note about JSON coercion
   (write-secret!
     [client path data]
-    "Store secret data at the provided path. This will overwrite any secret
-    that was previously stored there.")
+    "Store secret data at the provided path, overwriting any secret that was
+    previously stored there. Returns nil.")
 
-  ;; TODO: what does this return?
   (delete-secret!
     [client path]
-    "Delete the secret at the provided path."))
+    "Delete the secret at the provided path, if any. Returns nil."))
 
 
 ;; ## Mock Client
@@ -134,7 +130,14 @@
          :handle-response
          (fn handle-response
            [body]
-           (get-in body ["data" "keys"]))})))
+           (get-in body ["data" "keys"]))
+         :handle-error
+         (fn handle-error
+           [ex]
+           (let [data (ex-data ex)]
+             (when-not (and (empty? (:vault.client/errors data))
+                            (= 404 (:vault.client/status data)))
+               ex)))})))
 
 
   (read-secret
@@ -149,17 +152,21 @@
          {:handle-response
           (fn handle-response
             [body]
-            (let [data (u/walk-keys (get body "data") keyword)
-                  lease-duration (get body "lease_duration")
+            (let [lease-duration (get body "lease_duration")
                   renewable? (get body "renewable")]
-              (cond-> data
-                (pos-int? lease-duration)
-                (vary-meta data assoc
-                           :vault.lease/duration lease-duration
-                           :vault.lease/expires-at (.plusSeconds (u/now) lease-duration))
+              (-> (get body "data")
+                  (u/walk-keys keyword)
+                  (vary-meta assoc
+                             :vault.secrets/mount mount
+                             :vault.secrets/path path)
+                  (cond->
+                    (pos-int? lease-duration)
+                    (vary-meta assoc
+                               :vault.lease/duration lease-duration
+                               :vault.lease/expires-at (.plusSeconds (u/now) lease-duration))
 
-                (some? renewable?)
-                (vary-meta assoc :vault.lease/renewable? renewable?))))}))))
+                    (some? renewable?)
+                    (vary-meta assoc :vault.lease/renewable? renewable?)))))}))))
 
 
   (write-secret!
