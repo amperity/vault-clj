@@ -71,21 +71,25 @@
   (let [parsed (when-not (str/blank? body)
                  (json/read-str body))
         request-id (get parsed "request_id")
+        warnings (get parsed "warnings")
         errors (get parsed "errors")]
     (->
       {::vault/status status
        ::vault/headers headers}
       (cond->
-        (seq errors)
-        (assoc ::vault/errors errors)
-
         request-id
-        (assoc ::vault/request-id request-id))
+        (assoc ::vault/request-id request-id)
+
+        (seq warnings)
+        (assoc ::vault/warnings warnings)
+
+        (seq errors)
+        (assoc ::vault/errors errors))
       (as-> data
         (ex-info (if (seq errors)
                    (str "Vault API errors: " (str/join ", " errors))
                    (str "Vault HTTP error: "
-                        (case status
+                        (case (int status)
                           400 "bad request"
                           404 "not found"
                           status)))

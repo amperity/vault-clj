@@ -12,6 +12,8 @@
     [vault.client.mock :as mock]
     [vault.client.response :as resp]
     [vault.client.util :as u]
+    [vault.secrets.kv.v1 :as kv1]
+    [vault.sys.auth :as sys.auth]
     [vault.sys.health :as sys.health]))
 
 
@@ -38,7 +40,8 @@
     (when (and vault-token (:auth vault-client))
       #_(vault/authenticate! vault-client :token vault-token)
       (swap! (:auth vault-client) assoc :client-token vault-token))
-    (alter-var-root #'client (constantly (component/start vault-client)))))
+    (alter-var-root #'client (constantly (component/start vault-client))))
+  :ok)
 
 
 (defn reset
