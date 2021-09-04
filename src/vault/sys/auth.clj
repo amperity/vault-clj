@@ -21,26 +21,40 @@
 
   (list-methods
     [client]
-    "Lists all enabled auth methods. Returns a map of endpoints to their
-    configuration data.")
+    "List all enabled auth methods. Returns a map of endpoints to their
+    configurations.")
 
   (enable-method!
     [client path params]
-    "Enables a new auth method. After enabling, the auth method can be accessed
-    and configured via the auth path specified as part of the URL. This auth
-    path will be nested under the `auth/` prefix. Returns nil.")
+    "Enable a new auth method at the given path under the `auth/` prefix. After
+    enabling, the method can be accessed and configured via the specified path.
+    Returns nil.
+
+    Parameters:
+    - `:type`
+      Name of the authentication method type, such as \"github\" or \"token\".
+    - `:description` (optional)
+      Human-friendly description of the auth method.
+    - `:config` (optional)
+      Configuration options for this auth method.
+
+    See the Vault API docs for details.")
 
   (disable-method!
     [client path]
-    "Disables the auth method at the given auth path. Returns nil.")
+    "Disable the auth method at the given path. Returns nil.")
 
   (read-method-tuning
     [client path]
-    "Reads the given auth path's configuration.")
+    "Read the tuning configuration for the auth method at the path. Returns a
+    map of config.")
 
   (tune-method!
     [client path params]
-    "Tune configuration parameters for a given auth path."))
+    "Tune the configuration parameters for the auth method at the path. Returns
+    nil.
+
+    See the Vault API docs for available parameters."))
 
 
 ;; ## Mock Client
