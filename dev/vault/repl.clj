@@ -41,7 +41,7 @@
       #_(vault/authenticate! vault-client :token vault-token)
       (swap! (:auth vault-client) assoc :client-token vault-token))
     (alter-var-root #'client (constantly (component/start vault-client))))
-  :ok)
+  :init)
 
 
 (defn reset
