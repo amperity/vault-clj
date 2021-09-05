@@ -135,10 +135,7 @@
     [client path]
     (http/call-api
       client :get (u/join-path "sys/auth" path "tune")
-      {:handle-response
-       (fn handle-response
-         [body]
-         (u/kebabify-keys (get body "data")))}))
+      {:handle-response u/kebabify-body-data}))
 
 
   (tune-method!

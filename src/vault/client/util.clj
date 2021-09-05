@@ -34,20 +34,6 @@
 
 ;; ## Keywords
 
-(defn kebab-keyword
-  "Converts underscores to hyphens in a string or unqualified keyword. Returns
-  a simple kebab-case keyword."
-  [k]
-  (-> k name (str/replace "_" "-") keyword))
-
-
-(defn snake-str
-  "Converts hyphens to underscores in a string or keyword. Returns a snake-case
-  string."
-  [k]
-  (-> k name (str/replace "-" "_")))
-
-
 (defn walk-keys
   "Update the provided data structure by calling `f` on each map key."
   [data f]
@@ -62,11 +48,32 @@
     data))
 
 
+(defn kebab-keyword
+  "Converts underscores to hyphens in a string or unqualified keyword. Returns
+  a simple kebab-case keyword."
+  [k]
+  (-> k name (str/replace "_" "-") keyword))
+
+
 (defn kebabify-keys
   "Walk the provided data structure by transforming map keys to kebab-case
   keywords."
   [data]
   (walk-keys data kebab-keyword))
+
+
+(defn kebabify-body-data
+  "Look up a map in the provided body under the `\"data\"` key and kebabify
+  it."
+  [body]
+  (kebabify-keys (get body "data")))
+
+
+(defn snake-str
+  "Converts hyphens to underscores in a string or keyword. Returns a snake-case
+  string."
+  [k]
+  (-> k name (str/replace "-" "_")))
 
 
 (defn snakify-keys

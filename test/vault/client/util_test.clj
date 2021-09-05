@@ -25,7 +25,15 @@
            (u/kebabify-keys
              {"one_two" [{"x" 123
                           "y_z" true}]
-              "three" "456"})))))
+              "three" "456"}))))
+  (testing "kebabify-body-data"
+    (is (= {:foo-bar 123
+            :baz true}
+           (u/kebabify-body-data
+             {"abc" "def"
+              "data" {"foo_bar" 123
+                      "baz" true}
+              "xyz" 890})))))
 
 
 (deftest snake-casing
