@@ -38,23 +38,28 @@
     path must be a folder; calling this method on a file or a prefix which does
     not exist will return nil.")
 
-  ;; TODO: document behaviors:
-  ;; - on nonexistent path, throws not-found
-  ;; - on folder, throws not-found with a kv2 warning
   ;; TODO: lease controls/metadata?
   (read-secret
     [client path]
     [client path opts]
     "Read the secret at the provided path. Returns the secret data, if
     present. Note that Vault internally stores data as JSON, so not all
-    Clojure types will round-trip successfully!")
+    Clojure types will round-trip successfully!
 
-  ;; TODO: note about special :ttl key
+    Options:
+    - `:not-found`
+      If no secret exists at the given path, return this value instead of
+      throwing an exception.")
+
   (write-secret!
     [client path data]
     "Store secret data at the provided path, overwriting any secret that was
-    previously stored there. Returns nil. Note that Vault internally stores
-    data as JSON, so not all Clojure types will round-trip successfully!")
+    previously stored there. Returns nil.
+
+    Writing a `:ttl` key as part of the secret will control the pseudo lease
+    duration returned when the secret is read. Note that Vault internally
+    stores data as JSON, so not all Clojure types will round-trip
+    successfully!")
 
   (delete-secret!
     [client path]
@@ -176,7 +181,18 @@
                                :vault.lease/expires-at (.plusSeconds (u/now) lease-duration))
 
                     (some? renewable?)
-                    (vary-meta assoc :vault.lease/renewable? renewable?)))))}))))
+                    (vary-meta assoc :vault.lease/renewable? renewable?)))))
+          :handle-error
+          (fn handle-error
+            [ex]
+            (let [data (ex-data ex)]
+              (if (and (empty? (:vault.client/errors data))
+                       (= 404 (:vault.client/status data)))
+                (if (contains? opts :not-found)
+                  (:not-found opts)
+                  (ex-info (str "No kv-v1 secret found at " mount ":" path)
+                           data))
+                ex)))}))))
 
 
   (write-secret!
