@@ -108,7 +108,7 @@
       (is (= ["foo/"] (kv1/list-secrets client "test")))
       (is (= :deleted (kv1/read-secret client "test/gamma" {:not-found :deleted}))))
     (testing "invalid mounts"
-      (is (thrown? Exception #"no handler"
+      (is (thrown-with-msg? Exception #"no handler"
             (kv1/list-secrets client "wat:foo/bar")))
-      (is (thrown? Exception #"no handler"
+      (is (thrown-with-msg? Exception #"no handler"
             (kv1/read-secret client "wat:foo/bar/baz"))))))
