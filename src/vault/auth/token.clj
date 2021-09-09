@@ -12,12 +12,75 @@
     vault.client.mock.MockClient))
 
 
+(def default-mount
+  "Default mount point to use if one is not provided."
+  "auth/token")
+
+
 ;; ## API Protocol
 
 (defprotocol API
   "The token auth endpoints manage token authentication functionality."
 
-  ,,,)
+  (with-mount
+    [client mount]
+    "Bind a custom mount location for the token auth methods for all subsequent
+    calls. Returns an updated version of the client with the mount binding in
+    place.")
+
+  (create-token!
+    [client params]
+    "Create a new auth token. The token will be a child of the current one
+    unless the `:no-parent` option is true. This method uses the
+    `/auth/token/create` endpoint.
+
+    For parameter options, see:
+    https://www.vaultproject.io/api-docs/auth/token#create-token")
+
+  (create-orphan-token!
+    [client params]
+    "Create a new auth token with no parent. This method uses the
+    `/auth/token/create-orphan` endpoint.
+
+    Parameters are the same as for the `create-token!` call.")
+
+  (create-role-token!
+    [client role-name params]
+    "Create a new auth token in the named role. This method uses the
+    `/auth/token/create/:role-name` endpoint.
+
+    Parameters are the same as for the `create-token!` call.")
+
+  (lookup-token
+    [client params]
+    "Look up auth information about a token.
+
+    Depending on the parameters, this method operates on:
+    - a directly-provided `:token`
+    - a token `:accessor`
+    - otherwise, the currently-authenticated token")
+
+  (renew-token!
+    [client params]
+    "Renew a lease associated with a token. Token renewal is possible only if
+    there is a lease associated with it.
+
+    Depending on the parameters, this method operates on:
+    - a directly-provided `:token`
+    - a token `:accessor`
+    - otherwise, the currently-authenticated token
+
+    The parameters may also include a requested `:increment` value.")
+
+  (revoke-token!
+    [client params]
+    "Revoke a token and all child tokens. When the token is revoked, all
+    dynamic secrets generated with it are also revoked. Returns nil.
+
+    Depending on the parameters, this method operates on:
+    - a directly-provided `:token`
+    - a token `:accessor`
+    - otherwise, the currently-authenticated token"))
 
 
 ;; ## Mock Client
@@ -26,13 +89,165 @@
 
   API
 
+  (with-mount
+    [client mount]
+    (assoc client ::mount mount))
+
+
+  (lookup-token
+    [client params]
+    (let [mount (::mount client default-mount)
+          root-token "r00t"
+          root-accessor "TbmQ9IWujYqaUCuQQ2vm3uUY"]
+      (if (or (= root-token (:token params))
+              (= root-accessor (:accessor params))
+              (and (nil? (:token params))
+                   (nil? (:accessor params))))
+        (mock/success-response
+          client
+          {:id root-token
+           :accessor root-accessor
+           :creation-time 1630768626
+           :creation-ttl 0
+           :display-name "token"
+           :entity-id ""
+           :expire-time nil
+           :explicit-max-ttl 0
+           :issue-time "2021-09-04T08:17:06-07:00"
+           :meta nil
+           :num-uses 0
+           :orphan true
+           :path (u/join-path mount "create")
+           :policies ["root"]
+           :renewable false
+           :ttl 0
+           :type "service"})
+        (mock/error-response
+          client
+          (ex-data "Vault API errors: bad token"
+                   {:vault.client/errors ["bad token"]
+                    :vault.client/status 403})))))
+
   ,,,)
 
 
 ;; ## HTTP Client
 
+(defn- kebabify-body-auth
+  "Look up a map in the provided body under the `\"auth\"` key and kebabify
+  it."
+  [body]
+  (u/kebabify-keys (get body "auth")))
+
+
 (extend-type HTTPClient
 
   API
 
-  ,,,)
+  (with-mount
+    [client mount]
+    (assoc client ::mount mount))
+
+
+  (create-token!
+    [client params]
+    (let [mount (::mount client default-mount)]
+      (http/call-api
+        client :post (u/join-path mount "create")
+        {:content-type :json
+         :body (u/snakify-keys params)
+         :handle-response kebabify-body-auth})))
+
+
+  (create-orphan-token!
+    [client params]
+    (let [mount (::mount client default-mount)]
+      (http/call-api
+        client :post (u/join-path mount "create-orphan")
+        {:content-type :json
+         :body (u/snakify-keys params)
+         :handle-response kebabify-body-auth})))
+
+
+  (create-role-token!
+    [client role-name params]
+    (let [mount (::mount client default-mount)]
+      (http/call-api
+        client :post (u/join-path mount "create" role-name)
+        {:content-type :json
+         :body (u/snakify-keys params)
+         :handle-response kebabify-body-auth})))
+
+
+  (lookup-token
+    [client params]
+    (let [mount (::mount client default-mount)]
+      (cond
+        (:token params)
+        (http/call-api
+          client :post (u/join-path mount "lookup")
+          {:content-type :json
+           :body {:token (:token params)}
+           :handle-response u/kebabify-body-data})
+
+        (:accessor params)
+        (http/call-api
+          client :post (u/join-path mount "lookup-accessor")
+          {:content-type :json
+           :body {:accessor (:accessor params)}
+           :handle-response u/kebabify-body-data})
+
+        :else
+        (http/call-api
+          client :get (u/join-path mount "lookup-self")
+          {:handle-response u/kebabify-body-data}))))
+
+
+  (renew-token!
+    [client params]
+    (let [mount (::mount client default-mount)]
+      (cond
+        (:token params)
+        (http/call-api
+          client :post (u/join-path mount "renew")
+          {:content-type :json
+           :body (select-keys params [:token :increment])
+           :handle-response kebabify-body-auth})
+
+        (:accessor params)
+        (http/call-api
+          client :post (u/join-path mount "renew-accessor")
+          {:content-type :json
+           :body (select-keys params [:accessor :increment])
+           :handle-response kebabify-body-auth})
+
+        :else
+        ;; TODO: update current auth info?
+        (http/call-api
+          client :post (u/join-path mount "renew-self")
+          {:content-type :json
+           :body (select-keys params [:increment])
+           :handle-response kebabify-body-auth}))))
+
+
+  (revoke-token!
+    [client params]
+    (let [mount (::mount client default-mount)]
+      (cond
+        (:token params)
+        (http/call-api
+          client :post (u/join-path mount "revoke")
+          {:content-type :json
+           :body {:token (:token params)}})
+
+        (:accessor params)
+        (http/call-api
+          client :post (u/join-path mount "revoke-accessor")
+          {:content-type :json
+           :body {:accessor (:accessor params)}})
+
+        :else
+        ;; TODO: update current auth info?
+        (http/call-api
+          client :post (u/join-path mount "revoke-self")
+          {})))))
