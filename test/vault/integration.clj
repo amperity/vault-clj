@@ -112,9 +112,11 @@
 
 (defn test-client
   "Construct a new test client pointed at the local development server."
-  []
-  (doto (vault/new-client address)
-    (vault/authenticate! root-token)))
+  ([]
+   (test-client root-token))
+  ([token]
+   (doto (vault/new-client address)
+     (vault/authenticate! token))))
 
 
 (defmacro with-dev-server
