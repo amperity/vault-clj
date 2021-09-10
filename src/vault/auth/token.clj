@@ -14,7 +14,7 @@
 
 (def default-mount
   "Default mount point to use if one is not provided."
-  "auth/token")
+  "token")
 
 
 ;; ## API Protocol
@@ -105,7 +105,9 @@
                    (nil? (:accessor params))))
         (mock/success-response
           client
-          {:id root-token
+          {:id (if (:accessor params)
+                 ""
+                 root-token)
            :accessor root-accessor
            :creation-time 1630768626
            :creation-ttl 0
@@ -117,14 +119,14 @@
            :meta nil
            :num-uses 0
            :orphan true
-           :path (u/join-path mount "create")
+           :path (u/join-path "auth" mount "create")
            :policies ["root"]
            :renewable false
            :ttl 0
            :type "service"})
         (mock/error-response
           client
-          (ex-data "Vault API errors: bad token"
+          (ex-info "Vault API errors: bad token"
                    {:vault.client/errors ["bad token"]
                     :vault.client/status 403})))))
 
@@ -153,7 +155,7 @@
     [client params]
     (let [mount (::mount client default-mount)]
       (http/call-api
-        client :post (u/join-path mount "create")
+        client :post (u/join-path "auth" mount "create")
         {:content-type :json
          :body (u/snakify-keys params)
          :handle-response kebabify-body-auth})))
@@ -163,7 +165,7 @@
     [client params]
     (let [mount (::mount client default-mount)]
       (http/call-api
-        client :post (u/join-path mount "create-orphan")
+        client :post (u/join-path "auth" mount "create-orphan")
         {:content-type :json
          :body (u/snakify-keys params)
          :handle-response kebabify-body-auth})))
@@ -173,7 +175,7 @@
     [client role-name params]
     (let [mount (::mount client default-mount)]
       (http/call-api
-        client :post (u/join-path mount "create" role-name)
+        client :post (u/join-path "auth" mount "create" role-name)
         {:content-type :json
          :body (u/snakify-keys params)
          :handle-response kebabify-body-auth})))
@@ -185,21 +187,21 @@
       (cond
         (:token params)
         (http/call-api
-          client :post (u/join-path mount "lookup")
+          client :post (u/join-path "auth" mount "lookup")
           {:content-type :json
            :body {:token (:token params)}
            :handle-response u/kebabify-body-data})
 
         (:accessor params)
         (http/call-api
-          client :post (u/join-path mount "lookup-accessor")
+          client :post (u/join-path "auth" mount "lookup-accessor")
           {:content-type :json
            :body {:accessor (:accessor params)}
            :handle-response u/kebabify-body-data})
 
         :else
         (http/call-api
-          client :get (u/join-path mount "lookup-self")
+          client :get (u/join-path "auth" mount "lookup-self")
           {:handle-response u/kebabify-body-data}))))
 
 
@@ -209,14 +211,14 @@
       (cond
         (:token params)
         (http/call-api
-          client :post (u/join-path mount "renew")
+          client :post (u/join-path "auth" mount "renew")
           {:content-type :json
            :body (select-keys params [:token :increment])
            :handle-response kebabify-body-auth})
 
         (:accessor params)
         (http/call-api
-          client :post (u/join-path mount "renew-accessor")
+          client :post (u/join-path "auth" mount "renew-accessor")
           {:content-type :json
            :body (select-keys params [:accessor :increment])
            :handle-response kebabify-body-auth})
@@ -224,7 +226,7 @@
         :else
         ;; TODO: update current auth info?
         (http/call-api
-          client :post (u/join-path mount "renew-self")
+          client :post (u/join-path "auth" mount "renew-self")
           {:content-type :json
            :body (select-keys params [:increment])
            :handle-response kebabify-body-auth}))))
@@ -236,18 +238,18 @@
       (cond
         (:token params)
         (http/call-api
-          client :post (u/join-path mount "revoke")
+          client :post (u/join-path "auth" mount "revoke")
           {:content-type :json
            :body {:token (:token params)}})
 
         (:accessor params)
         (http/call-api
-          client :post (u/join-path mount "revoke-accessor")
+          client :post (u/join-path "auth" mount "revoke-accessor")
           {:content-type :json
            :body {:accessor (:accessor params)}})
 
         :else
         ;; TODO: update current auth info?
         (http/call-api
-          client :post (u/join-path mount "revoke-self")
+          client :post (u/join-path "auth" mount "revoke-self")
           {})))))
