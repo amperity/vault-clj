@@ -141,7 +141,7 @@
 
                     ;; Request was redirected by the server, which could mean
                     ;; we called a standby node on accident.
-                    (and (or (= 303 status) (= 307 status)))
+                    (or (= 303 status) (= 307 status))
                     (let [location (get headers "Location")]
                       (cond
                         (nil? location)
