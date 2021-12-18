@@ -13,7 +13,7 @@
     [vault.client.mock :as mock]
     [vault.client.response :as resp]
     [vault.client.util :as u]
-    [vault.secrets.kv.v1 :as kv1]
+    [vault.secret.kv.v1 :as kv1]
     [vault.sys.auth :as sys.auth]
     [vault.sys.health :as sys.health]))
 

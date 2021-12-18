@@ -1,9 +1,9 @@
-(ns vault.secrets.kv.v1-test
+(ns vault.secret.kv.v1-test
   (:require
     [clojure.test :refer [is testing deftest]]
     [vault.client.mock :refer [mock-client]]
     [vault.integration :refer [with-dev-server cli]]
-    [vault.secrets.kv.v1 :as kv1]))
+    [vault.secret.kv.v1 :as kv1]))
 
 
 (deftest mock-api

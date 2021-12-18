@@ -1,4 +1,4 @@
-(ns vault.secrets.kv.v1
+(ns vault.secret.kv.v1
   "The kv secrets engine is used to store arbitrary secrets within the
   configured physical storage for Vault. Writing to a key in the kv-v1 backend
   will replace the old value; sub-fields are not merged together.
@@ -123,8 +123,8 @@
            (mock/error-response
              client
              (ex-info (str "No kv-v1 secret found at " mount ":" path)
-                      {:vault.secrets/mount mount
-                       :vault.secrets/path path})))))))
+                      {:vault.secret/mount mount
+                       :vault.secret/path path})))))))
 
 
   (write-secret!
@@ -197,8 +197,8 @@
               (-> (get body "data")
                   (u/walk-keys keyword)
                   (vary-meta assoc
-                             :vault.secrets/mount mount
-                             :vault.secrets/path path)
+                             :vault.secret/mount mount
+                             :vault.secret/path path)
                   (cond->
                     (pos-int? lease-duration)
                     (vary-meta assoc
