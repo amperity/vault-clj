@@ -14,7 +14,8 @@
         (is (nil? (kv1/write-secret! client "test/foo/beta" {:xyz #{"abc"}})))
         (is (nil? (kv1/write-secret! client "test/gamma" {:map {:a 1, :b 2}}))))
       (testing "with alternate mount"
-        (is (nil? (kv1/write-secret! client "kv:alt/test" {:some "thing"})))))
+        (let [client' (kv1/with-mount client "kv")]
+          (is (nil? (kv1/write-secret! client' "alt/test" {:some "thing"}))))))
     (testing "list-secrets"
       (testing "with default mount"
         (is (nil? (kv1/list-secrets client "foo/"))
@@ -25,7 +26,8 @@
         (is (= ["foo/" "gamma"] (kv1/list-secrets client "test")))
         (is (= ["alpha" "beta"] (kv1/list-secrets client "/test/foo/"))))
       (testing "with alternate mount"
-        (is (= ["test"] (kv1/list-secrets client "kv:alt")))))
+        (let [client' (kv1/with-mount client "kv")]
+          (is (= ["test"] (kv1/list-secrets client' "alt"))))))
     (testing "read-secret"
       (testing "with default mount"
         (is (= {:one "two", :three 456, :seven true}
@@ -41,11 +43,12 @@
                 (kv1/read-secret client "alt/test")))
           (is (= :gone (kv1/read-secret client "alt/test" {:not-found :gone})))))
       (testing "with alternate mount"
-        (is (= {:some "thing"}
-               (kv1/read-secret client "kv:alt/test")))
-        (is (thrown-with-msg? Exception #"No kv-v1 secret found at kv:foo/bar"
-              (kv1/read-secret client "kv:foo/bar")))
-        (is (= :shrug (kv1/read-secret client "kv:test/foo/alpha" {:not-found :shrug})))))
+        (let [client' (kv1/with-mount client "kv")]
+          (is (= {:some "thing"}
+                 (kv1/read-secret client' "alt/test")))
+          (is (thrown-with-msg? Exception #"No kv-v1 secret found at kv:foo/bar"
+                                (kv1/read-secret client' "foo/bar")))
+          (is (= :shrug (kv1/read-secret client' "test/foo/alpha" {:not-found :shrug}))))))
     (testing "write-secret! update"
       (is (nil? (kv1/write-secret! client "test/foo/beta" {:qrs false})))
       (is (= {:qrs false} (kv1/read-secret client "test/foo/beta"))
@@ -67,7 +70,8 @@
         (is (nil? (kv1/write-secret! client "test/foo/beta" {:xyz #{"abc"}})))
         (is (nil? (kv1/write-secret! client "test/gamma" {:map {:a 1, :b 2}}))))
       (testing "with alternate mount"
-        (is (nil? (kv1/write-secret! client "kv:alt/test" {:some "thing"})))))
+        (let [client' (kv1/with-mount client "kv")]
+          (is (nil? (kv1/write-secret! client' "alt/test" {:some "thing"}))))))
     (testing "list-secrets"
       (testing "with default mount"
         (is (nil? (kv1/list-secrets client "foo/"))
@@ -78,7 +82,8 @@
         (is (= ["foo/" "gamma"] (kv1/list-secrets client "test")))
         (is (= ["alpha" "beta"] (kv1/list-secrets client "/test/foo/"))))
       (testing "with alternate mount"
-        (is (= ["test"] (kv1/list-secrets client "kv:alt")))))
+        (let [client' (kv1/with-mount client "kv")]
+          (is (= ["test"] (kv1/list-secrets client' "alt"))))))
     (testing "read-secret"
       (testing "with default mount"
         (is (= {:one "two", :three 456, :seven true}
@@ -94,11 +99,12 @@
                 (kv1/read-secret client "alt/test")))
           (is (= :gone (kv1/read-secret client "alt/test" {:not-found :gone})))))
       (testing "with alternate mount"
-        (is (= {:some "thing"}
-               (kv1/read-secret client "kv:alt/test")))
-        (is (thrown-with-msg? Exception #"No kv-v1 secret found at kv:foo/bar"
-              (kv1/read-secret client "kv:foo/bar")))
-        (is (= :shrug (kv1/read-secret client "kv:test/foo/alpha" {:not-found :shrug})))))
+        (let [client' (kv1/with-mount client "kv")]
+          (is (= {:some "thing"}
+                 (kv1/read-secret client' "alt/test")))
+          (is (thrown-with-msg? Exception #"No kv-v1 secret found at kv:foo/bar"
+                                (kv1/read-secret client' "foo/bar")))
+          (is (= :shrug (kv1/read-secret client' "test/foo/alpha" {:not-found :shrug}))))))
     (testing "write-secret! update"
       (is (nil? (kv1/write-secret! client "test/foo/beta" {:qrs false})))
       (is (= {:qrs false} (kv1/read-secret client "test/foo/beta"))
@@ -109,6 +115,6 @@
       (is (= :deleted (kv1/read-secret client "test/gamma" {:not-found :deleted}))))
     (testing "invalid mounts"
       (is (thrown-with-msg? Exception #"no handler"
-            (kv1/list-secrets client "wat:foo/bar")))
+            (kv1/list-secrets (kv1/with-mount client "wat") "foo/bar")))
       (is (thrown-with-msg? Exception #"no handler"
-            (kv1/read-secret client "wat:foo/bar/baz"))))))
+            (kv1/read-secret (kv1/with-mount client "wat") "foo/bar/baz"))))))

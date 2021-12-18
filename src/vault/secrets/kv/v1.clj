@@ -28,8 +28,13 @@
 
   All of the methods in this protocol expect `path` to be relative to the
   secret engine mount point, which defaults to `secret/`. To specify a
-  different mount, prefix the path with the mount location and a colon, like
-  `kv1:foo/bar`."
+  different mount, use `with-mount`."
+
+  (with-mount
+    [client mount]
+    "Return an updated client which will resolve secrets against the provided
+    mount instead of the default. Passing `nil` will reset the client to the
+    default.")
 
   (list-secrets
     [client path]
@@ -72,9 +77,17 @@
 
   API
 
+  (with-mount
+    [client mount]
+    (if (some? mount)
+      (assoc client ::mount mount)
+      (dissoc client ::mount)))
+
+
   (list-secrets
     [client path]
-    (let [[mount path] (u/resolve-path default-mount path)
+    (let [mount (::mount client default-mount)
+          path (u/trim-path path)
           data (get-in @(:memory client) [:secrets mount])
           depth (if (str/blank? path)
                   1
@@ -97,7 +110,8 @@
     ([client path]
      (read-secret client path nil))
     ([client path opts]
-     (let [[mount path] (u/resolve-path default-mount path)]
+     (let [mount (::mount client default-mount)
+           path (u/trim-path path)]
        (if-let [secret (get-in @(:memory client) [:secrets mount path])]
          (mock/success-response
            client
@@ -115,7 +129,8 @@
 
   (write-secret!
     [client path data]
-    (let [[mount path] (u/resolve-path default-mount path)]
+    (let [mount (::mount client default-mount)
+          path (u/trim-path path)]
       (swap! (:memory client)
              assoc-in
              [:secrets mount path]
@@ -125,7 +140,8 @@
 
   (delete-secret!
     [client path]
-    (let [[mount path] (u/resolve-path default-mount path)]
+    (let [mount (::mount client default-mount)
+          path (u/trim-path path)]
       (swap! (:memory client) update-in [:secrets mount] dissoc path)
       (mock/success-response client nil))))
 
@@ -136,9 +152,17 @@
 
   API
 
+  (with-mount
+    [client mount]
+    (if (some? mount)
+      (assoc client ::mount mount)
+      (dissoc client ::mount)))
+
+
   (list-secrets
     [client path]
-    (let [[mount path] (u/resolve-path default-mount path)]
+    (let [mount (::mount client default-mount)
+          path (u/trim-path path)]
       (http/call-api
         client :get (u/join-path mount path)
         {:query-params {:list true}
@@ -159,7 +183,8 @@
     ([client path]
      (read-secret client path nil))
     ([client path opts]
-     (let [[mount path] (u/resolve-path default-mount path)]
+     (let [mount (::mount client default-mount)
+           path (u/trim-path path)]
        ;; TODO: check for a cached secret and re-use it
        ;; TODO: update lease cache if appropriate (note: no lease_id, substitute request_id)
        (http/call-api
@@ -197,7 +222,8 @@
 
   (write-secret!
     [client path data]
-    (let [[mount path] (u/resolve-path default-mount path)]
+    (let [mount (::mount client default-mount)
+          path (u/trim-path path)]
       ;; TODO: invalidate lease cache
       (http/call-api
         client :post (u/join-path mount path)
@@ -207,7 +233,8 @@
 
   (delete-secret!
     [client path]
-    (let [[mount path] (u/resolve-path default-mount path)]
+    (let [mount (::mount client default-mount)
+          path (u/trim-path path)]
       ;; TODO: invalidate lease cache
       (http/call-api
         client :delete (u/join-path mount path)

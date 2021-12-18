@@ -133,12 +133,3 @@
   "Join a number of path segments together with slashes, after trimming them."
   [& parts]
   (str/join "/" (map trim-path parts)))
-
-
-(defn resolve-path
-  "Resolve the provided path into a mount and a relative path component. Uses
-  the default mount if none is specified."
-  [default-mount path]
-  (if (str/includes? path ":")
-    (mapv trim-path (str/split path #":" 2))
-    [default-mount (trim-path path)]))
