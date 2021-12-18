@@ -211,7 +211,7 @@
   "Constructs and starts a new timer thread to call the given handler function.
   The returned thread will be in daemon mode."
   [label handler period jitter]
-  (log/infof "Starting timer thread %s with period of %d ms (~%d jitter)"
+  (log/infof "Starting %s thread with period of %d ms (~%d jitter)"
              label period jitter)
   (doto (Thread. (timer-loop handler period jitter) (str label))
     (.setDaemon true)

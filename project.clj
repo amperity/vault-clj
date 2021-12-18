@@ -28,8 +28,7 @@
   :profiles
   {:dev
    {:dependencies
-    [[org.clojure/tools.trace "0.7.11"]
-     [ch.qos.logback/logback-classic "1.2.5"]]
+    [[ch.qos.logback/logback-classic "1.2.5"]]
     :jvm-opts ["-Dclojure.main.report=stderr"]}
 
    :repl
