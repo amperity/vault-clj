@@ -125,7 +125,7 @@
   [& body]
   `(let [proc# (start-server!)]
      (try
-       (await-server 10 100)
+       (await-server 25 100)
        (let [~'client (test-client)]
          ~@body)
        (finally

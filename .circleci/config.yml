@@ -64,12 +64,12 @@ jobs:
             - v1-test-{{ checksum "project.clj" }}
             - v1-test-
       - run: lein deps
-      - run: lein check
-      - run: lein test
       - save_cache:
           key: v1-test-{{ checksum "project.clj" }}
           paths:
             - ~/.m2
+      - run: lein check
+      - run: lein test
 
   integration:
     executor: clojure
@@ -103,8 +103,19 @@ jobs:
           path: target/coverage
           destination: coverage
       - run:
-          name: Publish Coverage
-          command: 'bash <(curl -s https://codecov.io/bash) -f target/coverage/codecov.json'
+          name: Install codecov
+          command: |
+            sudo apt-get update && sudo apt-get install gpg
+            curl https://keybase.io/codecovsecurity/pgp_keys.asc | gpg --no-default-keyring --keyring trustedkeys.gpg --import
+            curl -Os https://uploader.codecov.io/latest/linux/codecov
+            curl -Os https://uploader.codecov.io/latest/linux/codecov.SHA256SUM
+            curl -Os https://uploader.codecov.io/latest/linux/codecov.SHA256SUM.sig
+            gpgv codecov.SHA256SUM.sig codecov.SHA256SUM
+            shasum -a 256 -c codecov.SHA256SUM
+            chmod +x codecov
+      - run:
+          name: Publish coverage report
+          command: './codecov -f target/coverage/codecov.json'
 
 
 # Workflow definitions
