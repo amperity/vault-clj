@@ -102,6 +102,24 @@
                           {:body (:body response)})))))
 
 
+  (create-orphan-token!
+    [this opts]
+    (let [params (->> (dissoc opts :wrap-ttl)
+                      (map (fn [[k v]] [(str/replace (name k) "-" "_") v]))
+                      (into {}))
+          response (api-util/api-request
+                     this :post "auth/token/create-orphan"
+                     {:headers (when-let [ttl (:wrap-ttl opts)]
+                                 {"X-Vault-Wrap-TTL" ttl})
+                      :form-params params
+                      :content-type :json})]
+      ;; Return auth info if available, or wrap info if not.
+      (or (-> response :body :auth api-util/kebabify-keys)
+          (-> response :body :wrap_info api-util/kebabify-keys)
+          (throw (ex-info "No auth or wrap-info in response body"
+                          {:body (:body response)})))))
+
+
   (lookup-token
     [this]
     (-> (api-util/api-request this :get "auth/token/lookup-self" {})

@@ -64,6 +64,12 @@
     - `:wrap-ttl` Returns a wrapped response with a wrap-token valid for the
       given number of seconds.")
 
+  (create-orphan-token!
+    [client opts]
+    "Creates a new token. Just like `create-token!`, but uses the
+    `/auth/token/create-orphan` endpoint, so `:no-parent` is always implicitly
+    true.")
+
   (lookup-token
     [client]
     [client token]
