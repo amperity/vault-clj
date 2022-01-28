@@ -101,6 +101,11 @@
            :metadata       nil}))))
 
 
+  (create-orphan-token!
+    [this opts]
+    (.create-token! this (assoc opts :no-parent true)))
+
+
   vault/LeaseManager
 
   (list-leases
