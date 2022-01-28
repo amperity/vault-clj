@@ -8,6 +8,18 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 
 ...
 
+
+## [1.1.0] - 2022-01-28
+
+### Changed
+- Updated dependency versions.
+
+### Added
+- Added `create-orphan-token!` method to support the
+  `/auth/token/create-orphan` endpoint.
+  [#61](https://github.com/amperity/vault-clj/pull/61)
+
+
 ## [1.0.6] - 2021-08-25
 
 ### Changed
@@ -297,7 +309,8 @@ With this version, the project has been forked to the Amperity organization.
 - Initial library implementation.
 
 
-[Unreleased]: https://github.com/amperity/vault-clj/compare/1.0.6...HEAD
+[Unreleased]: https://github.com/amperity/vault-clj/compare/1.1.0...HEAD
+[1.1.0]: https://github.com/amperity/vault-clj/compare/1.0.6...1.1.0
 [1.0.6]: https://github.com/amperity/vault-clj/compare/1.0.5...1.0.6
 [1.0.5]: https://github.com/amperity/vault-clj/compare/1.0.4...1.0.5
 [1.0.4]: https://github.com/amperity/vault-clj/compare/1.0.3...1.0.4
