@@ -93,7 +93,7 @@
                      this :post "auth/token/create"
                      {:headers (when-let [ttl (:wrap-ttl opts)]
                                  {"X-Vault-Wrap-TTL" ttl})
-                      :form-params params
+                      :body params
                       :content-type :json})]
       ;; Return auth info if available, or wrap info if not.
       (or (-> response :body :auth api-util/kebabify-keys)
@@ -111,7 +111,7 @@
                      this :post "auth/token/create-orphan"
                      {:headers (when-let [ttl (:wrap-ttl opts)]
                                  {"X-Vault-Wrap-TTL" ttl})
-                      :form-params params
+                      :body params
                       :content-type :json})]
       ;; Return auth info if available, or wrap info if not.
       (or (-> response :body :auth api-util/kebabify-keys)
@@ -131,7 +131,7 @@
     [this token]
     (-> (api-util/api-request
           this :post "auth/token/lookup"
-          {:form-params {:token token}
+          {:body {:token token}
            :content-type :json})
         (get-in [:body :data])
         (api-util/kebabify-keys)))
@@ -154,7 +154,7 @@
     (get-in
       (api-util/api-request
         this :post "auth/token/renew"
-        {:form-params {:token token}
+        {:body {:token token}
          :content-type :json})
       [:body :auth]))
 
@@ -169,7 +169,7 @@
     [this token]
     (let [response (api-util/api-request
                      this :post "auth/token/revoke"
-                     {:form-params {:token token}
+                     {:body {:token token}
                       :content-type :json})]
       (= 204 (:status response))))
 
@@ -178,7 +178,7 @@
     [this token-accessor]
     (-> (api-util/api-request
           this :post "auth/token/lookup-accessor"
-          {:form-params {:accessor token-accessor}
+          {:body {:accessor token-accessor}
            :content-type :json})
         (get-in [:body :data])
         (api-util/kebabify-keys)))
@@ -188,7 +188,7 @@
     [this token-accessor]
     (let [response (api-util/api-request
                      this :post "auth/token/revoke-accessor"
-                     {:form-params {:accessor token-accessor}
+                     {:body {:accessor token-accessor}
                       :content-type :json})]
       (= 204 (:status response))))
 
@@ -206,7 +206,7 @@
     (let [current (lease/lookup leases lease-id)
           response (api-util/api-request
                      this :put "sys/renew"
-                     {:form-params {:lease_id lease-id}
+                     {:body {:lease_id lease-id}
                       :content-type :json})
           info (:body response)]
       ;; If the lease looks renewable but the lease-duration is shorter than the

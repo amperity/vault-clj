@@ -57,7 +57,7 @@
                                           :role "my-role"})
         (is (= [[:post
                  (str example-url "/v1/auth/kubernetes/login")
-                 {:form-params {:jwt "fake-jwt-goes-here" :role "my-role"}
+                 {:body {:jwt "fake-jwt-goes-here" :role "my-role"}
                   :content-type :json
                   :accept :json}]]
                @api-requests))
@@ -109,11 +109,11 @@
                                               :request-headers "{'foo':'bar'}"})
         (is (= [[:post
                  (str example-url "/v1/auth/aws/login")
-                 {:form-params {:iam_http_request_method "POST"
-                                :iam_request_url "fake.sts.com"
-                                :iam_request_body "FakeAction&Version=1"
-                                :iam_request_headers "{'foo':'bar'}"
-                                :role "my-role"}
+                 {:body {:iam_http_request_method "POST"
+                         :iam_request_url "fake.sts.com"
+                         :iam_request_body "FakeAction&Version=1"
+                         :iam_request_headers "{'foo':'bar'}"
+                         :role "my-role"}
                   :content-type :json
                   :accept :json}]]
                @api-requests))
