@@ -9,6 +9,14 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 ...
 
 
+## [1.1.1] - 2022-01-31
+
+### Fixed
+- All write commands are sent with the correct JSON body encoding, instead of
+  accidentally encoding them as a form-params string.
+  [#62](https://github.com/amperity/vault-clj/pull/62)
+
+
 ## [1.1.0] - 2022-01-28
 
 ### Changed
@@ -309,7 +317,8 @@ With this version, the project has been forked to the Amperity organization.
 - Initial library implementation.
 
 
-[Unreleased]: https://github.com/amperity/vault-clj/compare/1.1.0...HEAD
+[Unreleased]: https://github.com/amperity/vault-clj/compare/1.1.1...HEAD
+[1.1.1]: https://github.com/amperity/vault-clj/compare/1.1.0...1.1.1
 [1.1.0]: https://github.com/amperity/vault-clj/compare/1.0.6...1.1.0
 [1.0.6]: https://github.com/amperity/vault-clj/compare/1.0.5...1.0.6
 [1.0.5]: https://github.com/amperity/vault-clj/compare/1.0.4...1.0.5
