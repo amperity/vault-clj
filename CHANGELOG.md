@@ -6,6 +6,11 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 
 ## [Unreleased]
 
+...
+
+
+## [1.1.2] - 2022-02-01
+
 ### Fixed
 - Correctly interpret the `:wrap-info` payload when creating tokens with a
   wrapper.
@@ -319,7 +324,8 @@ With this version, the project has been forked to the Amperity organization.
 - Initial library implementation.
 
 
-[Unreleased]: https://github.com/amperity/vault-clj/compare/1.1.1...HEAD
+[Unreleased]: https://github.com/amperity/vault-clj/compare/1.1.2...HEAD
+[1.1.2]: https://github.com/amperity/vault-clj/compare/1.1.1...1.1.2
 [1.1.1]: https://github.com/amperity/vault-clj/compare/1.1.0...1.1.1
 [1.1.0]: https://github.com/amperity/vault-clj/compare/1.0.6...1.1.0
 [1.0.6]: https://github.com/amperity/vault-clj/compare/1.0.5...1.0.6
