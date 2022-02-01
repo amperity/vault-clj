@@ -97,9 +97,9 @@
                       :content-type :json})]
       ;; Return auth info if available, or wrap info if not.
       (or (-> response :body :auth api-util/kebabify-keys)
-          (-> response :body :wrap_info api-util/kebabify-keys)
+          (-> response :body :wrap-info api-util/kebabify-keys)
           (throw (ex-info "No auth or wrap-info in response body"
-                          {:body (:body response)})))))
+                          {:body-keys (keys (:body response))})))))
 
 
   (create-orphan-token!
@@ -115,9 +115,9 @@
                       :content-type :json})]
       ;; Return auth info if available, or wrap info if not.
       (or (-> response :body :auth api-util/kebabify-keys)
-          (-> response :body :wrap_info api-util/kebabify-keys)
+          (-> response :body :wrap-info api-util/kebabify-keys)
           (throw (ex-info "No auth or wrap-info in response body"
-                          {:body (:body response)})))))
+                          {:body-keys (keys (:body response))})))))
 
 
   (lookup-token

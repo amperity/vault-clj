@@ -6,7 +6,9 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 
 ## [Unreleased]
 
-...
+### Fixed
+- Correctly interpret the `:wrap-info` payload when creating tokens with a
+  wrapper.
 
 
 ## [1.1.1] - 2022-01-31
