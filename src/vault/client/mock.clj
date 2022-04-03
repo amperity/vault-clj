@@ -16,8 +16,12 @@
 
   vault/Client
 
+  (auth-info
+    [_]
+    (:auth @memory))
+
   (authenticate!
-    [_ auth-info]
+    [this auth-info]
     (let [auth-info (if (string? auth-info)
                       {:client-token auth-info}
                       auth-info)]
@@ -25,7 +29,7 @@
         (throw (IllegalArgumentException.
                  "Client authentication must be a map of information containing a client-token.")))
       (swap! memory assoc :auth auth-info)
-      nil)))
+      this)))
 
 
 ;; ## Constructors
