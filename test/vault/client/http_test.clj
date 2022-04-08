@@ -145,14 +145,16 @@
       (is (thrown-with-msg? IllegalArgumentException #"containing a client-token"
             (vault/authenticate! client {}))))
     (testing "with token string"
-      (is (nil? (vault/authenticate! client "t0p-53cr3t")))
-      (is (= {:client-token "t0p-53cr3t"} @(:auth client))))
+      (is (identical? client (vault/authenticate! client "t0p-53cr3t")))
+      (is (= {:client-token "t0p-53cr3t"} (vault/auth-info client))))
     (testing "with auth info"
-      (is (nil? (vault/authenticate! client {:client-token "t0p-53cr3t"
-                                             :ttl 12345})))
+      (is (identical? client (vault/authenticate!
+                               client
+                               {:client-token "t0p-53cr3t"
+                                :ttl 12345})))
       (is (= {:client-token "t0p-53cr3t"
               :ttl 12345}
-             @(:auth client))))))
+             (vault/auth-info client))))))
 
 
 (deftest client-constructor
