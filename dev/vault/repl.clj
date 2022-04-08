@@ -12,10 +12,10 @@
     [vault.client.http :as http]
     [vault.client.mock :as mock]
     [vault.client.response :as resp]
-    [vault.client.util :as u]
     [vault.secret.kv.v1 :as kv1]
     [vault.sys.auth :as sys.auth]
-    [vault.sys.health :as sys.health]))
+    [vault.sys.health :as sys.health]
+    [vault.util :as u]))
 
 
 (def client nil)

@@ -8,7 +8,7 @@
     [org.httpkit.client :as http]
     [vault.client :as vault]
     [vault.client.response :as resp]
-    [vault.client.util :as u]))
+    [vault.util :as u]))
 
 
 ;; ## API Functions
@@ -290,6 +290,7 @@
   (auth-info
     [_]
     @auth)
+
 
   (authenticate!
     [this auth-info]

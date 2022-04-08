@@ -47,7 +47,7 @@
           (is (= {:some "thing"}
                  (kv1/read-secret client' "alt/test")))
           (is (thrown-with-msg? Exception #"No kv-v1 secret found at kv:foo/bar"
-                                (kv1/read-secret client' "foo/bar")))
+                (kv1/read-secret client' "foo/bar")))
           (is (= :shrug (kv1/read-secret client' "test/foo/alpha" {:not-found :shrug}))))))
     (testing "write-secret! update"
       (is (nil? (kv1/write-secret! client "test/foo/beta" {:qrs false})))
@@ -103,7 +103,7 @@
           (is (= {:some "thing"}
                  (kv1/read-secret client' "alt/test")))
           (is (thrown-with-msg? Exception #"No kv-v1 secret found at kv:foo/bar"
-                                (kv1/read-secret client' "foo/bar")))
+                (kv1/read-secret client' "foo/bar")))
           (is (= :shrug (kv1/read-secret client' "test/foo/alpha" {:not-found :shrug}))))))
     (testing "write-secret! update"
       (is (nil? (kv1/write-secret! client "test/foo/beta" {:qrs false})))

@@ -20,6 +20,7 @@
     [_]
     (:auth @memory))
 
+
   (authenticate!
     [this auth-info]
     (let [auth-info (if (string? auth-info)

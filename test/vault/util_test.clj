@@ -1,7 +1,7 @@
-(ns vault.client.util-test
+(ns vault.util-test
   (:require
     [clojure.test :refer [deftest testing is]]
-    [vault.client.util :as u])
+    [vault.util :as u])
   (:import
     java.time.Instant))
 

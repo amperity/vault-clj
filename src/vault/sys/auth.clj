@@ -7,7 +7,7 @@
   (:require
     [vault.client.http :as http]
     [vault.client.mock :as mock]
-    [vault.client.util :as u])
+    [vault.util :as u])
   (:import
     vault.client.http.HTTPClient
     vault.client.mock.MockClient))

@@ -1,4 +1,4 @@
-(ns ^:no-doc vault.client.util
+(ns ^:no-doc vault.util
   "Vault implementation utilities."
   (:require
     [clojure.string :as str]
