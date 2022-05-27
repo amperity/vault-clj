@@ -11,12 +11,12 @@
   [[lein-cloverage "1.2.2"]]
 
   :dependencies
-  [[org.clojure/clojure "1.10.3"]
-   [org.clojure/tools.logging "1.2.3"]
+  [[org.clojure/clojure "1.11.1"]
+   [org.clojure/tools.logging "1.2.4"]
    [amperity/envoy "1.0.0"]
-   [cheshire "5.10.1"]
+   [cheshire "5.11.0"]
    [http-kit "2.5.3"]
-   [com.stuartsierra/component "1.0.0"]]
+   [com.stuartsierra/component "1.1.0"]]
 
   :test-selectors
   {:default (complement :integration)
@@ -26,10 +26,10 @@
   {:dev
    {:dependencies
     [[org.clojure/tools.trace "0.7.11"]
-     [ch.qos.logback/logback-classic "1.2.10"]]
+     [ch.qos.logback/logback-classic "1.2.11"]]
     :jvm-opts ["-Dclojure.main.report=stderr"]}
 
    :repl
    {:source-paths ["dev"]
-    :dependencies [[org.clojure/tools.namespace "1.2.0"]]
+    :dependencies [[org.clojure/tools.namespace "1.3.0"]]
     :jvm-opts ["-Dvault.log.appender=repl"]}})
