@@ -11,11 +11,11 @@
   [[lein-cloverage "1.2.1"]]
 
   :dependencies
-  [[org.clojure/clojure "1.10.3"]
+  [[org.clojure/clojure "1.11.1"]
    [org.clojure/data.json "2.4.0"]
-   [org.clojure/tools.logging "1.1.0"]
-   [com.stuartsierra/component "1.0.0"]
-   [http-kit "2.5.3"]]
+   [org.clojure/tools.logging "1.2.4"]
+   [com.stuartsierra/component "1.1.0"]
+   [http-kit "2.6.0"]]
 
   :test-selectors
   {:default (complement :integration)
@@ -27,13 +27,14 @@
 
   :profiles
   {:dev
-   {:dependencies
-    [[ch.qos.logback/logback-classic "1.2.5"]]
-    :jvm-opts ["-Dclojure.main.report=stderr"]}
+   {:dependencies [[com.amperity/dialog "1.0.1"]]}
+
+   :test
+   {:jvm-opts ["-Ddialog.profile=test"]}
 
    :repl
    {:source-paths ["dev"]
     :repl-options {:init-ns vault.repl}
-    :dependencies [[org.clojure/tools.namespace "1.1.0"]]
+    :dependencies [[org.clojure/tools.namespace "1.3.0"]]
     :jvm-opts ["-XX:-OmitStackTraceInFastThrow"
-               "-Dvault.log.appender=repl"]}})
+               "-Ddialog.profile=repl"]}})

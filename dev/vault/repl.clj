@@ -5,7 +5,6 @@
     [clojure.stacktrace :refer [print-cause-trace]]
     [clojure.string :as str]
     [clojure.tools.namespace.repl :refer [refresh]]
-    [clojure.tools.trace :as trace]
     [com.stuartsierra.component :as component]
     [vault.auth.token :as auth.token]
     [vault.client :as vault]

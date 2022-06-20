@@ -1,0 +1,15 @@
+{:level :warn
+
+ :levels
+ {"vault" #profile {:repl :debug
+                    :test :trace
+                    :default :info}}
+
+ :outputs
+ #profile {:test {:nop :null}
+           :repl {:console {:type :print
+                            :format :pretty
+                            :timestamp :short}}
+           :default {:stdout {:type :print
+                              :stream :stdout
+                              :format :simple}}}}

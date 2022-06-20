@@ -35,7 +35,7 @@ starts a `vault` development server with a fixed root token. You can source the
 
 ## License
 
-Copyright © 2016-2021 Amperity, Inc
+Copyright © 2016-2022 Amperity, Inc
 
 Distributed under the Apache License, Version 2.0. See the LICENSE file
 for more information.
