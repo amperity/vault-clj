@@ -180,6 +180,16 @@
     (resp/return handler response)))
 
 
+(defn ^:no-doc cached-response
+  "Return a response without calling the API. Uses the client's response
+  handler to prepare and return the cached secret data."
+  [client path data]
+  (let [handler (:response-handler client)
+        response (resp/create handler {::vault/path path})]
+     (resp/on-success! handler response data)
+     (resp/return handler response)))
+
+
 ;; ## HTTP Client
 
 ;; - `address`
