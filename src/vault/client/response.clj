@@ -27,20 +27,35 @@
   (return
     [handler response]
     "Perform any additional transformation on the response before returning it
-    to the API caller. The result is returned by clients."))
+    to the API caller. The result is returned by clients.")
 
+  (wait
+    [handler response]
+    [handler response timeout-ms timeout-val]
+    "Wait for the given response to complete, blocking the current thread if
+    necessary. Returns the response value on success, throws an exception on
+    failure, or returns `timeout-val` if supplied and `timeout-ms` milliseconds
+    pass while waiting.
 
-;; ## Synchronous Handler
+    Remember, this will be called on the value given to the caller by the
+    `return` method."))
+
 
 (defn throwing-deref
   "A variant of `deref` which will throw if the pending value yields an
   exception."
-  [pending]
-  (let [x @pending]
-    (if (instance? Throwable x)
-      (throw x)
-      x)))
+  ([pending]
+   (throwing-deref pending nil nil))
+  ([pending timeout-ms timeout-val]
+   (let [x (if timeout-ms
+             (deref pending timeout-ms timeout-val)
+             @pending)]
+     (if (instance? Throwable x)
+       (throw x)
+       x))))
 
+
+;; ## Synchronous Handler
 
 (deftype SyncHandler
   []
@@ -64,7 +79,17 @@
 
   (return
     [_ response]
-    (throwing-deref response)))
+    (throwing-deref response))
+
+
+  (wait
+    [_ response]
+    response)
+
+
+  (wait
+    [_ response _ _]
+    response))
 
 
 (alter-meta! #'->SyncHandler assoc :private true)
@@ -101,7 +126,17 @@
 
   (return
     [_ response]
-    response))
+    response)
+
+
+  (wait
+    [_ response]
+    (throwing-deref response))
+
+
+  (wait
+    [_ response timeout-ms timeout-val]
+    (throwing-deref response timeout-ms timeout-val)))
 
 
 (alter-meta! #'->PromiseHandler assoc :private true)
