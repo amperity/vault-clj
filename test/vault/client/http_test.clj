@@ -98,45 +98,6 @@
                    {:handle-response (constantly {:result true})}))))))))
 
 
-(deftest timer-logic
-  (testing "with normal looping"
-    (let [calls (atom 0)
-          thread (#'http/start-timer!
-                  "test-timer"
-                  #(swap! calls inc)
-                  10 1)]
-      (is (true? (.isAlive thread)))
-      (Thread/sleep 50)
-      (#'http/stop-timer! thread)
-      (is (false? (.isAlive thread)))
-      (is (<= 3 @calls 6))))
-  (testing "with sleepy handler"
-    (let [calls (atom 0)
-          thread (#'http/start-timer!
-                  "test-timer"
-                  #(do (Thread/sleep 100)
-                       (swap! calls inc))
-                  1 0)]
-      (is (true? (.isAlive thread)))
-      (Thread/sleep 10)
-      (#'http/stop-timer! thread)
-      (is (false? (.isAlive thread)))
-      (is (zero? @calls))))
-  (testing "with handler error"
-    (let [calls (atom 0)
-          thread (#'http/start-timer!
-                  "test-timer"
-                  #(do (swap! calls inc)
-                       (throw (RuntimeException. "BOOM")))
-                  10 0)]
-      (is (true? (.isAlive thread)))
-      (Thread/sleep 50)
-      (is (true? (.isAlive thread)))
-      (#'http/stop-timer! thread)
-      (is (false? (.isAlive thread)))
-      (is (<= 3 @calls 6)))))
-
-
 (deftest authentication
   (let [client (vault/new-client "https://vault.test:8200")]
     (testing "with bad input"

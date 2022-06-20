@@ -3,8 +3,6 @@
   (:require
     [clojure.data.json :as json]
     [clojure.string :as str]
-    [clojure.tools.logging :as log]
-    [com.stuartsierra.component :as component]
     [org.httpkit.client :as http]
     [vault.client :as vault]
     [vault.client.response :as resp]
@@ -182,50 +180,6 @@
     (resp/return handler response)))
 
 
-;; ## Lease Timer
-
-(defn- timer-loop
-  "Constructs a new runnable looping function which performs the timer logic
-  every `period` milliseconds. If the `jitter` property is set, the sleep cycle
-  will vary randomly by up to `jitter` milliseconds in length (meaning in the
-  range `[p, p+j)`).
-
-  The loop can be terminated by interrupting the thread."
-  ^Runnable
-  [handler period jitter]
-  (fn []
-    (try
-      (while (not (Thread/interrupted))
-        (Thread/sleep (+ period (rand-int jitter)))
-        (try
-          (handler)
-          (catch InterruptedException ex
-            (throw ex))
-          (catch Exception ex
-            (log/error ex "Error while running timer handler!"))))
-      (catch InterruptedException _
-        nil))))
-
-
-(defn- start-timer!
-  "Constructs and starts a new timer thread to call the given handler function.
-  The returned thread will be in daemon mode."
-  [label handler period jitter]
-  (log/infof "Starting %s thread with period of %d ms (~%d jitter)"
-             label period jitter)
-  (doto (Thread. (timer-loop handler period jitter) (str label))
-    (.setDaemon true)
-    (.start)))
-
-
-(defn- stop-timer!
-  "Stops a running timer thread cleanly if possible."
-  [^Thread thread]
-  (log/info "Interrupting timer thread" (.getName thread))
-  (.interrupt thread)
-  (.join thread 1000))
-
-
 ;; ## HTTP Client
 
 ;; - `address`
@@ -235,55 +189,12 @@
 ;; - `http-opts`
 ;;   Extra options to pass to `clj-http` requests.
 ;; - `auth`
-;;   An atom containing the authentication lease information, including the
+;;   Atom containing the authentication lease information, including the
 ;;   client token.
 ;; - `leases`
 ;;   Local in-memory storage of secret leases.
-;; - `lease-timer`
-;;   Thread which periodically checks and renews leased secrets.
 (defrecord HTTPClient
-  [address response-handler http-opts auth leases lease-timer]
-
-  component/Lifecycle
-
-  (start
-    [this]
-    (if lease-timer
-      ;; Already running
-      this
-      ;; Start lease heartbeat thread.
-      (let [_window (:lease-renewal-window this 300)
-            period (:lease-check-period   this  60)
-            jitter (:lease-check-jitter   this  10)
-            thread (start-timer!
-                     "vault-lease-timer"
-                     (constantly true) #_
-                     #(lease/maintain-leases! this window)
-                     (* period 1000)
-                     (* jitter 1000))]
-        (assoc this :lease-timer thread))))
-
-
-  (stop
-    [this]
-    (if lease-timer
-      (do
-        ;; Stop lease timer thread.
-        (stop-timer! lease-timer)
-        ;; Revoke all outstanding leases.
-        #_
-        (when-let [outstanding (and (:revoke-on-stop? this)
-                                    (seq (filter lease/leased? (vault/list-leases this))))]
-          (log/infof "Revoking %d outstanding secret leases" (count outstanding))
-          (doseq [secret outstanding]
-            (try
-              (vault/revoke-lease! this (:lease-id secret))
-              (catch Exception ex
-                (log/error ex "Failed to revoke lease" (:lease-id secret))))))
-        (assoc this :lease-timer nil))
-      ;; Already stopped.
-      this))
-
+  [address response-handler http-opts auth leases]
 
   vault/Client
 
@@ -320,15 +231,7 @@
     A custom handler to control how responses are returned to clients. Defaults
     to the `sync-handler`.
   - `:http-opts`
-    Additional options to pass to `clj-http` requests.
-  - `:lease-renewal-window`
-    Period in seconds to renew leases before they expire.
-  - `:lease-check-period`
-    Period in seconds to check for leases to renew.
-  - `:lease-check-jitter`
-    Maximum amount in seconds to jitter the check period by.
-  - `:revoke-on-stop?`
-    Whether to revoke all outstanding leases when the client stops."
+    Additional options to pass to `http` requests."
   [address & {:as opts}]
   (when-not (and (string? address) (str/starts-with? address "http"))
     (throw (IllegalArgumentException.
@@ -339,7 +242,7 @@
            opts
            {:address address
             :auth (atom nil)
-            #_#_:leases (lease/new-store)})))
+            :leases (atom {})})))
 
 
 (defmethod vault/new-client "http"
