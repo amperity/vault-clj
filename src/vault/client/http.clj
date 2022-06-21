@@ -6,6 +6,7 @@
     [org.httpkit.client :as http]
     [vault.client :as vault]
     [vault.client.response :as resp]
+    [vault.lease :as lease]
     [vault.util :as u]))
 
 
@@ -183,11 +184,24 @@
 (defn ^:no-doc cached-response
   "Return a response without calling the API. Uses the client's response
   handler to prepare and return the cached secret data."
-  [client path data]
+  [client data]
   (let [handler (:response-handler client)
-        response (resp/create handler {::vault/path path})]
-     (resp/on-success! handler response data)
-     (resp/return handler response)))
+        response (resp/create handler nil)]
+    (resp/on-success! handler response data)
+    (resp/return handler response)))
+
+
+(defn ^:no-doc lease-info
+  "Parse lease information out of an HTTP response body."
+  [body]
+  (merge
+    (when-let [lease-id (get body "lease_id")]
+      {::lease/id lease-id})
+    (when-let [lease-duration (get body "lease_duration")]
+      {::lease/duration lease-duration
+       ::lease/expires-at (.plusSeconds (u/now) lease-duration)})
+    (when-some [renewable (get body "renewable")]
+      {::lease/renewable? renewable})))
 
 
 ;; ## HTTP Client
