@@ -7,8 +7,10 @@
   (:require
     [clojure.data.json :as json]
     [clojure.string :as str]
+    [vault.client :as vault]
     [vault.client.http :as http]
     [vault.client.mock :as mock]
+    [vault.lease :as lease]
     [vault.util :as u])
   (:import
     vault.client.http.HTTPClient
@@ -43,7 +45,6 @@
     path must be a folder; calling this method on a file or a prefix which does
     not exist will return nil.")
 
-  ;; TODO: lease controls/metadata?
   (read-secret
     [client path]
     [client path opts]
@@ -54,7 +55,10 @@
     Options:
     - `:not-found`
       If no secret exists at the given path, return this value instead of
-      throwing an exception.")
+      throwing an exception.
+    - `:force-read`
+      If true, always read the secret from the server, even if a cached value
+      is available.")
 
   (write-secret!
     [client path data]
@@ -123,8 +127,8 @@
            (mock/error-response
              client
              (ex-info (str "No kv-v1 secret found at " mount ":" path)
-                      {:vault.secret/mount mount
-                       :vault.secret/path path})))))))
+                      {::mount mount
+                       ::path path})))))))
 
 
   (write-secret!
@@ -174,8 +178,8 @@
          (fn handle-error
            [ex]
            (let [data (ex-data ex)]
-             (when-not (and (empty? (:vault.client/errors data))
-                            (= 404 (:vault.client/status data)))
+             (when-not (and (empty? (::vault/errors data))
+                            (= 404 (::vault/status data)))
                ex)))})))
 
 
@@ -184,47 +188,47 @@
      (read-secret client path nil))
     ([client path opts]
      (let [mount (::mount client default-mount)
-           path (u/trim-path path)]
-       ;; TODO: check for a cached secret and re-use it
-       ;; TODO: update lease cache if appropriate (note: no lease_id, substitute request_id)
-       (http/call-api
-         client :get (u/join-path mount path)
-         {:handle-response
-          (fn handle-response
-            [body]
-            (let [lease-duration (get body "lease_duration")
-                  renewable? (get body "renewable")]
-              (-> (get body "data")
-                  (u/walk-keys keyword)
-                  (vary-meta assoc
-                             :vault.secret/mount mount
-                             :vault.secret/path path)
-                  (cond->
-                    (pos-int? lease-duration)
-                    (vary-meta assoc
-                               :vault.lease/duration lease-duration
-                               :vault.lease/expires-at (.plusSeconds (u/now) lease-duration))
-
-                    (some? renewable?)
-                    (vary-meta assoc :vault.lease/renewable? renewable?)))))
-          :handle-error
-          (fn handle-error
-            [ex]
-            (let [data (ex-data ex)]
-              (if (and (empty? (:vault.client/errors data))
-                       (= 404 (:vault.client/status data)))
-                (if (contains? opts :not-found)
-                  (:not-found opts)
-                  (ex-info (str "No kv-v1 secret found at " mount ":" path)
-                           data))
-                ex)))}))))
+           path (u/trim-path path)
+           api-path (u/join-path mount path)
+           cache-key [::secret mount path]]
+       (if-let [data (and (not (:force-read opts))
+                          (lease/get-data (:leases client) cache-key))]
+         ;; Re-use cached secret.
+         (http/cached-response client api-path data)
+         ;; No cached value available, call API.
+         (http/call-api
+           client :get api-path
+           {:handle-response
+            (fn handle-response
+              [body]
+              (let [lease (http/lease-info body)
+                    data (-> (get body "data")
+                             (u/walk-keys keyword)
+                             (vary-meta assoc
+                                        ::mount mount
+                                        ::path path))]
+                (when lease
+                  (lease/put! (:leases client) cache-key lease data))
+                (vary-meta data merge lease)))
+            :handle-error
+            (fn handle-error
+              [ex]
+              (let [data (ex-data ex)]
+                (if (and (empty? (::vault/errors data))
+                         (= 404 (::vault/status data)))
+                  (if (contains? opts :not-found)
+                    (:not-found opts)
+                    (ex-info (str "No kv-v1 secret found at " mount ":" path)
+                             data))
+                  ex)))})))))
 
 
   (write-secret!
     [client path data]
     (let [mount (::mount client default-mount)
-          path (u/trim-path path)]
-      ;; TODO: invalidate lease cache
+          path (u/trim-path path)
+          cache-key [::secret mount path]]
+      (lease/invalidate! (:leases client) cache-key)
       (http/call-api
         client :post (u/join-path mount path)
         {:content-type :json
@@ -234,8 +238,9 @@
   (delete-secret!
     [client path]
     (let [mount (::mount client default-mount)
-          path (u/trim-path path)]
-      ;; TODO: invalidate lease cache
+          path (u/trim-path path)
+          cache-key [::secret mount path]]
+      (lease/invalidate! (:leases client) cache-key)
       (http/call-api
         client :delete (u/join-path mount path)
         {}))))
