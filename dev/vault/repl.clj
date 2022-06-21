@@ -37,9 +37,8 @@
                             :lease-renewal-window 600
                             :lease-check-period    60
                             :lease-check-jitter    20)]
-    (when (and vault-token (:auth vault-client))
-      #_(vault/authenticate! vault-client :token vault-token)
-      (swap! (:auth vault-client) assoc :client-token vault-token))
+    (when vault-token
+      (vault/authenticate! vault-client {:client-token vault-token}))
     (alter-var-root #'client (constantly (component/start vault-client))))
   :init)
 
