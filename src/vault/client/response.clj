@@ -2,7 +2,13 @@
   "Vault client response paradigms. A response framework should define four
   functions which determine how responses are handled. Two built-in
   implementations are available, the `sync-handler` (default) and the
-  `promise-handler`.")
+  `promise-handler`."
+  (:refer-clojure :exclude [await])
+  (:import
+    (java.util.concurrent
+      CompletableFuture
+      TimeUnit
+      TimeoutException)))
 
 
 (defprotocol Handler
@@ -29,9 +35,9 @@
     "Perform any additional transformation on the response before returning it
     to the API caller. The result is returned by clients.")
 
-  (wait
-    [handler response]
-    [handler response timeout-ms timeout-val]
+  (await
+    [handler result]
+    [handler result timeout-ms timeout-val]
     "Wait for the given response to complete, blocking the current thread if
     necessary. Returns the response value on success, throws an exception on
     failure, or returns `timeout-val` if supplied and `timeout-ms` milliseconds
@@ -82,14 +88,14 @@
     (throwing-deref response))
 
 
-  (wait
-    [_ response]
-    response)
+  (await
+    [_ result]
+    result)
 
 
-  (wait
-    [_ response _ _]
-    response))
+  (await
+    [_ result _ _]
+    result))
 
 
 (alter-meta! #'->SyncHandler assoc :private true)
@@ -129,14 +135,14 @@
     response)
 
 
-  (wait
-    [_ response]
-    (throwing-deref response))
+  (await
+    [_ result]
+    (throwing-deref result))
 
 
-  (wait
-    [_ response timeout-ms timeout-val]
-    (throwing-deref response timeout-ms timeout-val)))
+  (await
+    [_ result timeout-ms timeout-val]
+    (throwing-deref result timeout-ms timeout-val)))
 
 
 (alter-meta! #'->PromiseHandler assoc :private true)
@@ -148,3 +154,53 @@
   (on success) or an exception (on error). Note that dereferencing the promise
   will _return_ the error, not throw it."
   (->PromiseHandler))
+
+
+;; ## Completable Future Handler
+
+(deftype CompletableFutureHandler
+  []
+
+  Handler
+
+  (create
+    [_ _]
+    (CompletableFuture.))
+
+
+  (on-success!
+    [_ response data]
+    (.complete ^CompletableFuture response data))
+
+
+  (on-error!
+    [_ response ex]
+    (.completeExceptionally ^CompletableFuture response ex))
+
+
+  (return
+    [_ response]
+    response)
+
+
+  (await
+    [_ result]
+    (.get ^CompletableFuture result))
+
+
+  (await
+    [_ result timeout-ms timeout-val]
+    (try
+      (.get ^CompletableFuture result timeout-ms TimeUnit/MILLISECONDS)
+      (catch TimeoutException _
+        timeout-val))))
+
+
+(alter-meta! #'->CompletableFutureHandler assoc :private true)
+
+
+(def completable-future-handler
+  "The completable future response handler will immediately return a
+  `CompletableFuture` value to the caller. The future will asynchronously yield
+  either the response data (on success) or an exception (on error)."
+  (->CompletableFutureHandler))
