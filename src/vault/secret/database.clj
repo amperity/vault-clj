@@ -8,12 +8,10 @@
   (:require
     [clojure.data.json :as json]
     [clojure.string :as str]
-    [vault.client :as vault]
     [vault.client.http :as http]
     [vault.client.mock :as mock]
-    [vault.client.response :as resp]
+    [vault.secret.common :as comm]
     [vault.lease :as lease]
-    [vault.sys.leases :as sys.leases]
     [vault.util :as u])
   (:import
     vault.client.http.HTTPClient
@@ -122,41 +120,9 @@
                (when lease
                  (lease/put!
                    (:leases client)
-                   cache-key lease
-                   (cond-> data
-                     (and (::lease/renewable? lease)
-                          (:renew? opts))
-                     (assoc ::lease/renew-within (:renew-within opts 60)
-                            ::lease/renew!
-                            (fn renew-credentials
-                              []
-                              (try
-                                (let [result (resp/await
-                                               (:response-handler client)
-                                               (sys.leases/renew-lease!
-                                                 client
-                                                 (::lease/id lease)
-                                                 (:renew-increment opts (* 4 60 60))))]
-                                  (when-let [f (:on-renew opts)]
-                                    (f result))
-                                  result)
-                                (catch Exception ex
-                                  (when-let [f (:on-error opts)]
-                                    (f ex))))))
-
-                     (:rotate? opts)
-                     (assoc ::lease/rotate-within (:rotate-within opts 60)
-                            ::lease/rotate!
-                            (fn rotate-credentials
-                              []
-                              (try
-                                (let [result (resp/await
-                                               (:response-handler client)
-                                               (generate-credentials! client role-name opts))]
-                                  (when-let [f (:on-rotate opts)]
-                                    (f result))
-                                  result)
-                                (catch Exception ex
-                                  (when-let [f (:on-error opts)]
-                                    (f ex)))))))))
+                   cache-key
+                   (comm/apply-lease-opts
+                     client lease opts
+                     #(generate-credentials! % role-name opts))
+                   data))
                (vary-meta data merge lease)))})))))
