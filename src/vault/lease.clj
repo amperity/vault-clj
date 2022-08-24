@@ -2,16 +2,64 @@
   "High-level namespace for tracking and maintaining leases on dynamic secrets
   read by a vault client."
   (:require
-    [vault.util :as u])
-  (:import
-    java.time.Instant))
+    [clojure.spec.alpha :as s]
+    [clojure.tools.logging :as log]
+    [vault.util :as u]))
 
 
-;; TODO:
-;; - implementing namespaces need a way of registering new leases with the state
-;; - lease code needs a way to callback to renew the lease, and another callback to rotate it
-;; - external callers need a hook (or "watch") for events on a particular dynamic secret
-;; - someone needs to know how to start a timer thread that does this maintenance
+;; ## Data Specs
+
+;; Unique lease identifier.
+(s/def ::id string?)
+
+
+;; How long the lease is valid for, in seconds.
+(s/def ::duration nat-int?)
+
+
+;; Instant in time the lease expires at.
+(s/def ::expires-at inst?)
+
+
+;; Secret data map.
+(s/def ::data map?)
+
+
+;; A no-argument function to call to renew this lease. This should return the
+;; updated lease information, or nil on error.
+(s/def ::renew! fn?)
+
+
+;; Can this lease be renewed to extend its validity?
+(s/def ::renewable? boolean?)
+
+
+;; Try to renew this lease when the current time is within this many seconds of
+;; the `expires-at` deadline.
+(s/def ::renew-within nat-int?)
+
+
+;; A no-argument function to call to rotate this lease. This should return true
+;; if the rotation succeeded, else false.
+(s/def ::rotate! fn?)
+
+
+;; Try to read a new secret when the current time is within this many seconds
+;; of the `expires-at` deadline.
+(s/def ::rotate-within nat-int?)
+
+
+;; Full lease information map.
+(s/def ::info
+  (s/keys :opt [::id
+                ::duration
+                ::expires-at
+                ::data
+                ::renew!
+                ::renewable?
+                ::renew-within
+                ::rotate!
+                ::rotate-within]))
 
 
 ;; ## Lease Functions
@@ -34,10 +82,20 @@
 
 ;; ## Lease Store
 
+(s/def ::store
+  (s/map-of vector? ::info))
+
+
+(defn- valid-store?
+  "Checks a store state for validity."
+  [state]
+  (s/valid? ::store state))
+
+
 (defn new-store
   "Construct a new stateful store for leased secrets."
   []
-  (atom {}))
+  (atom {} :validator valid-store?))
 
 
 (defn get-lease
