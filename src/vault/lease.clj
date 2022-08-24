@@ -80,6 +80,24 @@
   (expires-within? lease 0))
 
 
+(defn renewable?
+  "True if the given lease is a valid renewal target."
+  [lease]
+  (and (::renew! lease)
+       (::renewable? lease)
+       (::expires-at lease)
+       (not (expired? lease))
+       (expires-within? lease (::renew-within lease 60))))
+
+
+(defn rotatable?
+  "Return a map of cache-keys to leases which are valid rotation targets."
+  [lease]
+  (and (::rotate! lease)
+       (::expires-at lease)
+       (expires-within? lease (::rotate-within lease 60))))
+
+
 ;; ## Lease Store
 
 (s/def ::store
@@ -142,3 +160,54 @@
                  (remove (comp expired? val))
                  leases)))
   nil)
+
+
+;; ## Timer Logic
+
+(defn maintain!
+  "Maintain a single secret lease as appropriate. Returns the updated lease, or
+  nil if the lease should be removed."
+  [lease]
+  (try
+    (cond
+      (renewable? lease)
+      (let [renew! (::renew! lease)]
+        (or
+          ;; return renewed lease info
+          (renew!)
+          ;; renewal failed, leave lease to be retried
+          lease))
+
+      (rotatable? lease)
+      (let [rotate! (::rotate! lease)]
+        (if (rotate!)
+          ;; rotation succeeded, return nil to drop the old lease
+          nil
+          ;; rotation failed, leave lease to be retried
+          lease))
+
+      (expired? lease)
+      nil
+
+      :else
+      lease)
+    (catch Exception ex
+      (log/error ex "Unhandled error while maintaining lease" (::id lease))
+      ;; Leave original lease to retry.
+      ;; TODO: failure backoff?
+      lease)))
+
+
+(defn maintain-leases!
+  "Maintain all the leases in the store, blocking until complete."
+  [store]
+  (doseq [[cache-key lease] @store]
+    (if-let [result (maintain! lease)]
+      (when-not (= lease result)
+        (swap! store assoc cache-key result))
+      (swap! store
+             (fn remove-old-lease
+               [leases]
+               (if (= lease (get leases cache-key))
+                 (dissoc leases cache-key)
+                 leases))))))
