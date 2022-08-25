@@ -266,7 +266,7 @@
            opts
            {:address address
             :auth (atom nil)
-            :leases (atom {})})))
+            :leases (lease/new-store)})))
 
 
 (defmethod vault/new-client "http"

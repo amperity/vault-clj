@@ -7,9 +7,7 @@
     [vault.client :as vault]
     [vault.client.http]
     [vault.client.mock]
-    [vault.lease :as lease])
-  (:import
-    java.net.URI))
+    [vault.lease :as lease]))
 
 
 ;; ## Timer Logic

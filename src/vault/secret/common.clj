@@ -53,18 +53,21 @@
       false)))
 
 
-(defn apply-lease-opts
-  "Apply common renewal/rotation settings to the lease map."
-  ([client lease opts]
-   (apply-lease-opts client lease opts nil))
-  ([client lease opts rotate-fn]
-   (merge
-     lease
-     (when
-       (and (::lease/renewable? lease)
-            (:renew? opts))
-       {::lease/renew-within (:renew-within opts 60)
-        ::lease/renew! #(renew-lease! client lease opts)})
-     (when (and (:rotate? opts) rotate-fn)
-       {::lease/rotate-within (:rotate-within opts 60)
-        ::lease/rotate! #(rotate-secret! client rotate-fn opts)}))))
+(defn renewable-lease
+  "Apply common renewal settings to the lease map."
+  ([lease client opts]
+   (merge lease
+          (when
+            (and (::lease/renewable? lease)
+                 (:renew? opts))
+            {::lease/renew-within (:renew-within opts 60)
+             ::lease/renew! #(renew-lease! client lease opts)}))))
+
+
+(defn rotatable-lease
+  "Apply common rotation settings to the lease map."
+  ([lease client opts rotate-fn]
+   (merge lease
+          (when (and (:rotate? opts) rotate-fn)
+            {::lease/rotate-within (:rotate-within opts 60)
+             ::lease/rotate! #(rotate-secret! client rotate-fn opts)}))))

@@ -6,8 +6,6 @@
 
   Reference: https://www.vaultproject.io/api-docs/secret/databases"
   (:require
-    [clojure.data.json :as json]
-    [clojure.string :as str]
     [vault.client.http :as http]
     [vault.client.mock :as mock]
     [vault.secret.common :as comm]
@@ -79,7 +77,7 @@
 
 
   (generate-credentials!
-    [client role-name]
+    [_client _role-name]
     ,,,))
 
 
@@ -121,8 +119,8 @@
                  (lease/put!
                    (:leases client)
                    cache-key
-                   (comm/apply-lease-opts
-                     client lease opts
-                     #(generate-credentials! % role-name opts))
+                   (-> lease
+                       (comm/renewable-lease client opts)
+                       (comm/rotatable-lease client opts #(generate-credentials! % role-name opts)))
                    data))
                (vary-meta data merge lease)))})))))

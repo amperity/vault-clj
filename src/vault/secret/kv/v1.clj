@@ -194,7 +194,7 @@
        (if-let [data (and (not (:force-read opts))
                           (lease/get-data (:leases client) cache-key))]
          ;; Re-use cached secret.
-         (http/cached-response client api-path data)
+         (http/cached-response client data)
          ;; No cached value available, call API.
          (http/call-api
            client :get api-path
