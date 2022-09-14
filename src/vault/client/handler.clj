@@ -1,4 +1,4 @@
-(ns vault.client.request
+(ns vault.client.handler
   "Vault client request handling paradigms. A handler defines a collection of
   functions which determine how requests and responses are handled.
 
@@ -16,8 +16,8 @@
 
 
 (defprotocol Handler
-  "Protocol for a framework which dictates how asynchronous client requests
-  should be exposed to the consumer of the Vault APIs."
+  "Protocol for a handler which controls how client requests should be exposed
+  to the consumer of the Vault APIs."
 
   (call
     [handler info f]

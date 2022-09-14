@@ -4,7 +4,7 @@
     [org.httpkit.client :as http-client]
     [vault.client :as vault]
     [vault.client.http :as http]
-    [vault.client.request :as req]))
+    [vault.client.handler :as h]))
 
 
 (defn mock-request
@@ -18,7 +18,7 @@
 
 (deftest call-api
   (let [client {:address "https://vault.test:8200"
-                :handler req/sync-handler
+                :handler h/sync-handler
                 :auth (atom {:client-token "t0p-53cr5t"})}]
     (testing "with bad arguments"
       (with-redefs [http-client/request (fn [_ _]

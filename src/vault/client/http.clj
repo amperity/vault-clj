@@ -5,7 +5,7 @@
     [clojure.string :as str]
     [org.httpkit.client :as http]
     [vault.client :as vault]
-    [vault.client.request :as req]
+    [vault.client.handler :as h]
     [vault.lease :as lease]
     [vault.util :as u]))
 
@@ -123,14 +123,14 @@
                 (try
                   (if error
                     ;; TODO: shape exception?
-                    (req/on-error! handler state error)
+                    (h/on-error! handler state error)
                     ;; Handle response from the API based on status code.
                     (cond
                       ;; Successful response, parse body and return result.
                       (<= 200 status 299)
                       (let [handle-response (:handle-response params default-handle-response)
                             data (form-success status headers body handle-response)]
-                        (req/on-success! handler state data))
+                        (h/on-success! handler state data))
 
                       ;; Request was redirected by the server, which could mean
                       ;; we called a standby node on accident.
@@ -138,7 +138,7 @@
                       (let [location (get headers "Location")]
                         (cond
                           (nil? location)
-                          (req/on-error!
+                          (h/on-error!
                             handler
                             state
                             (ex-info (str "Vault API responded with " status
@@ -147,7 +147,7 @@
                                       ::vault/headers headers}))
 
                           (< 2 redirects)
-                          (req/on-error!
+                          (h/on-error!
                             handler
                             state
                             (ex-info (str "Aborting Vault API request after " redirects
@@ -166,13 +166,13 @@
                       (let [handle-error (:handle-error params identity)
                             result (handle-error (form-failure status headers body))]
                         (if (instance? Throwable result)
-                          (req/on-error! handler state result)
-                          (req/on-success! handler state result)))))
+                          (h/on-error! handler state result)
+                          (h/on-success! handler state result)))))
                   (catch Exception ex
                     ;; Unhandled exception while processing response.
-                    (req/on-error! handler state ex)))))]
+                    (h/on-error! handler state ex)))))]
       ;; Kick off the request.
-      (req/call
+      (h/call
         handler
         (merge {::vault/method method
                 ::vault/path path}
@@ -189,12 +189,12 @@
   to prepare and return the cached secret data."
   [client data]
   (let [handler (:handler client)]
-    (req/call
+    (h/call
       handler
       {::vault/cached? true}
       (fn cached
         [state]
-        (req/on-success! handler state data)))))
+        (h/on-success! handler state data)))))
 
 
 (defn ^:no-doc lease-info
@@ -268,7 +268,7 @@
              (str "Vault API address must be a string starting with 'http', got: "
                   (pr-str address)))))
   (map->HTTPClient
-    (merge {:handler req/sync-handler}
+    (merge {:handler h/sync-handler}
            opts
            {:address address
             :auth (atom nil)

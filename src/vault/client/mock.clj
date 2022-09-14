@@ -4,7 +4,7 @@
     [clojure.edn :as edn]
     [clojure.java.io :as io]
     [vault.client :as vault]
-    [vault.client.request :as req])
+    [vault.client.handler :as h])
   (:import
     java.net.URI))
 
@@ -47,7 +47,7 @@
    (mock-client {}))
   ([initial-memory & {:as opts}]
    (map->MockClient
-     (merge {:handler req/sync-handler}
+     (merge {:handler h/sync-handler}
             opts
             {:memory (atom initial-memory
                            :validator map?)}))))
@@ -82,19 +82,19 @@
   "Helper which uses the handler to generate a successful response."
   [client data]
   (let [handler (:handler client)]
-    (req/call
+    (h/call
       handler nil
       (fn success
         [state]
-        (req/on-success! handler state data)))))
+        (h/on-success! handler state data)))))
 
 
 (defn ^:no-doc error-response
   "Helper which uses the handler to generate an error response."
   [client ex]
   (let [handler (:handler client)]
-    (req/call
+    (h/call
       handler nil
       (fn error
         [state]
-        (req/on-error! handler state ex)))))
+        (h/on-error! handler state ex)))))
