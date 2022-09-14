@@ -5,7 +5,7 @@
     [clojure.string :as str]
     [org.httpkit.client :as http]
     [vault.client :as vault]
-    [vault.client.response :as resp]
+    [vault.client.request :as req]
     [vault.lease :as lease]
     [vault.util :as u]))
 
@@ -100,8 +100,8 @@
 
 
 (defn ^:no-doc call-api
-  "Make an HTTP call to the Vault API, using the client's response handler to
-  prepare and return the response state."
+  "Make an HTTP call to the Vault API, using the client's request handler to
+  prepare and initiate the call."
   [client method path params]
   (when-not client
     (throw (IllegalArgumentException. "Cannot make API call on nil client")))
@@ -109,14 +109,8 @@
     (throw (IllegalArgumentException. "Cannot make API call without keyword method")))
   (when (str/blank? path)
     (throw (IllegalArgumentException. "Cannot make API call on blank path")))
-  (let [handler (:response-handler client)
-        request (prepare-request client method path params)
-        response (resp/create handler
-                              (merge {::vault/method method
-                                      ::vault/path path}
-                                     (when-let [query (:query-params params)]
-                                       {::vault/query query})))]
-    ;; Kick off HTTP request.
+  (let [handler (:handler client)
+        request (prepare-request client method path params)]
     (letfn [(make-request
               [extra]
               (http/request
@@ -124,71 +118,83 @@
                 callback))
 
             (callback
-              [{:keys [status headers body error]
-                ::keys [redirects]}]
-              (try
-                (if error
-                  ;; TODO: shape exception?
-                  (resp/on-error! handler response error)
-                  ;; Handle response from the API based on status code.
-                  (cond
-                    ;; Successful response, parse body and return result.
-                    (<= 200 status 299)
-                    (let [handle-response (:handle-response params default-handle-response)
-                          data (form-success status headers body handle-response)]
-                      (resp/on-success! handler response data))
+              [{:keys [opts status headers body error]}]
+              (let [{::keys [state redirects]} opts]
+                (try
+                  (if error
+                    ;; TODO: shape exception?
+                    (req/on-error! handler state error)
+                    ;; Handle response from the API based on status code.
+                    (cond
+                      ;; Successful response, parse body and return result.
+                      (<= 200 status 299)
+                      (let [handle-response (:handle-response params default-handle-response)
+                            data (form-success status headers body handle-response)]
+                        (req/on-success! handler state data))
 
-                    ;; Request was redirected by the server, which could mean
-                    ;; we called a standby node on accident.
-                    (or (= 303 status) (= 307 status))
-                    (let [location (get headers "Location")]
-                      (cond
-                        (nil? location)
-                        (resp/on-error!
-                          handler
-                          response
-                          (ex-info (str "Vault API responded with " status
-                                        " redirect without Location header")
-                                   {::vault/status status
-                                    ::vault/headers headers}))
+                      ;; Request was redirected by the server, which could mean
+                      ;; we called a standby node on accident.
+                      (or (= 303 status) (= 307 status))
+                      (let [location (get headers "Location")]
+                        (cond
+                          (nil? location)
+                          (req/on-error!
+                            handler
+                            state
+                            (ex-info (str "Vault API responded with " status
+                                          " redirect without Location header")
+                                     {::vault/status status
+                                      ::vault/headers headers}))
 
-                        (< 2 redirects)
-                        (resp/on-error!
-                          handler
-                          response
-                          (ex-info (str "Aborting Vault API request after " redirects
-                                        " redirects")
-                                   {::vault/status status
-                                    ::vault/headers headers}))
+                          (< 2 redirects)
+                          (req/on-error!
+                            handler
+                            state
+                            (ex-info (str "Aborting Vault API request after " redirects
+                                          " redirects")
+                                     {::vault/status status
+                                      ::vault/headers headers}))
 
-                        :else
-                        (make-request
-                          {::redirects (inc redirects)
-                           :url location})))
+                          :else
+                          (make-request
+                            {::state state
+                             ::redirects (inc redirects)
+                             :url location})))
 
-                    ;; Otherwise, this was a failure response.
-                    :else
-                    (let [handle-error (:handle-error params identity)
-                          result (handle-error (form-failure status headers body))]
-                      (if (instance? Throwable result)
-                        (resp/on-error! handler response result)
-                        (resp/on-success! handler response result)))))
-                (catch Exception ex
-                  ;; Unhandled exception while processing response.
-                  (resp/on-error! handler response ex))))]
-      (make-request {::redirects 0}))
-    ;; Return response to client.
-    (resp/return handler response)))
+                      ;; Otherwise, this was a failure response.
+                      :else
+                      (let [handle-error (:handle-error params identity)
+                            result (handle-error (form-failure status headers body))]
+                        (if (instance? Throwable result)
+                          (req/on-error! handler state result)
+                          (req/on-success! handler state result)))))
+                  (catch Exception ex
+                    ;; Unhandled exception while processing response.
+                    (req/on-error! handler state ex)))))]
+      ;; Kick off the request.
+      (req/call
+        handler
+        (merge {::vault/method method
+                ::vault/path path}
+               (when-let [query (:query-params params)]
+                 {::vault/query query}))
+        (fn call
+          [state]
+          (make-request {::state state
+                         ::redirects 0}))))))
 
 
 (defn ^:no-doc cached-response
-  "Return a response without calling the API. Uses the client's response
-  handler to prepare and return the cached secret data."
+  "Return a response without calling the API. Uses the client's request handler
+  to prepare and return the cached secret data."
   [client data]
-  (let [handler (:response-handler client)
-        response (resp/create handler nil)]
-    (resp/on-success! handler response data)
-    (resp/return handler response)))
+  (let [handler (:handler client)]
+    (req/call
+      handler
+      {::vault/cached? true}
+      (fn cached
+        [state]
+        (req/on-success! handler state data)))))
 
 
 (defn ^:no-doc lease-info
@@ -208,8 +214,8 @@
 
 ;; - `address`
 ;;   The base URL for the Vault API endpoint.
-;; - `response-handler`
-;;   Handler type to use for API responses.
+;; - `handler`
+;;   Request handler to use for API calls.
 ;; - `http-opts`
 ;;   Extra options to pass to `clj-http` requests.
 ;; - `auth`
@@ -218,7 +224,7 @@
 ;; - `leases`
 ;;   Local in-memory storage of secret leases.
 (defrecord HTTPClient
-  [address response-handler http-opts auth leases]
+  [address handler http-opts auth leases]
 
   vault/Client
 
@@ -251,8 +257,8 @@
 
   Client behavior may be controlled with the options:
 
-  - `:response-handler`
-    A custom handler to control how responses are returned to clients. Defaults
+  - `:handler`
+    A custom handler to control how requests and responses are handled. Defaults
     to the `sync-handler`.
   - `:http-opts`
     Additional options to pass to `http` requests."
@@ -262,7 +268,7 @@
              (str "Vault API address must be a string starting with 'http', got: "
                   (pr-str address)))))
   (map->HTTPClient
-    (merge {:response-handler resp/sync-handler}
+    (merge {:handler req/sync-handler}
            opts
            {:address address
             :auth (atom nil)

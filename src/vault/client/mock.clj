@@ -4,7 +4,7 @@
     [clojure.edn :as edn]
     [clojure.java.io :as io]
     [vault.client :as vault]
-    [vault.client.response :as resp])
+    [vault.client.request :as req])
   (:import
     java.net.URI))
 
@@ -12,7 +12,7 @@
 ;; ## Mock Client
 
 (defrecord MockClient
-  [memory response-handler]
+  [memory handler]
 
   vault/Client
 
@@ -47,7 +47,7 @@
    (mock-client {}))
   ([initial-memory & {:as opts}]
    (map->MockClient
-     (merge {:response-handler resp/sync-handler}
+     (merge {:handler req/sync-handler}
             opts
             {:memory (atom initial-memory
                            :validator map?)}))))
@@ -79,18 +79,22 @@
 ;; ## Request Functions
 
 (defn ^:no-doc success-response
-  "Helper which uses the response protocol to generate a successful response."
+  "Helper which uses the handler to generate a successful response."
   [client data]
-  (let [handler (:response-handler client)
-        resp (resp/create handler nil)]
-    (resp/on-success! handler resp data)
-    (resp/return handler resp)))
+  (let [handler (:handler client)]
+    (req/call
+      handler nil
+      (fn success
+        [state]
+        (req/on-success! handler state data)))))
 
 
 (defn ^:no-doc error-response
-  "Helper which uses the response protocol to generate an error response."
+  "Helper which uses the handler to generate an error response."
   [client ex]
-  (let [handler (:response-handler client)
-        resp (resp/create handler nil)]
-    (resp/on-error! handler resp ex)
-    (resp/return handler resp)))
+  (let [handler (:handler client)]
+    (req/call
+      handler nil
+      (fn error
+        [state]
+        (req/on-error! handler state ex)))))

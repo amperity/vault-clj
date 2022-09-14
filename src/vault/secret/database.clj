@@ -121,6 +121,6 @@
                    cache-key
                    (-> lease
                        (comm/renewable-lease client opts)
-                       (comm/rotatable-lease client opts #(generate-credentials! % role-name opts)))
+                       (comm/rotatable-lease client opts #(generate-credentials! client role-name opts)))
                    data))
                (vary-meta data merge lease)))})))))
