@@ -5,6 +5,7 @@
   (:require
     [vault.client.http :as http]
     [vault.client.mock :as mock]
+    [vault.lease :as lease]
     [vault.util :as u])
   (:import
     vault.client.http.HTTPClient
@@ -73,11 +74,18 @@
       {:content-type :json
        :body {:lease_id lease-id
               ;; TODO: is increment optional?
-              :increment increment}}))
+              :increment increment}
+       :handle-response
+       (fn handle-response
+         [body]
+         (when-let [lease (http/lease-info body)]
+           (lease/update! (:leases client) lease)
+           lease))}))
 
 
   (revoke-lease!
     [client lease-id]
+    (lease/delete! (:leases client) lease-id)
     (http/call-api
       client :put "sys/leases/revoke"
       {:content-type :json
