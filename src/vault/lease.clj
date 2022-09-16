@@ -13,6 +13,10 @@
 (s/def ::id string?)
 
 
+;; A cache lookup key for identifying this lease to future calls.
+(s/def ::key some?)
+
+
 ;; How long the lease is valid for, in seconds.
 (s/def ::duration nat-int?)
 
@@ -25,8 +29,8 @@
 (s/def ::data map?)
 
 
-;; A no-argument function to call to renew this lease. This should return the
-;; updated lease information, or nil on error.
+;; A no-argument function to call to renew this lease. This should update the
+;; client's lease store directly.
 (s/def ::renew! fn?)
 
 
@@ -52,6 +56,7 @@
 ;; Full lease information map.
 (s/def ::info
   (s/keys :opt [::id
+                ::key
                 ::duration
                 ::expires-at
                 ::data
@@ -65,7 +70,7 @@
 ;; ## Lease Functions
 
 (defn expires-within?
-  "True if the lease will expires within `ttl` seconds."
+  "True if the lease will expire within `ttl` seconds."
   [lease ttl]
   (let [expires-at (::expires-at lease)]
     (or (nil? expires-at)
@@ -91,7 +96,7 @@
 
 
 (defn rotatable?
-  "Return a map of cache-keys to leases which are valid rotation targets."
+  "True if the given lease is a valid rotation target."
   [lease]
   (and (::rotate! lease)
        (::expires-at lease)
@@ -101,7 +106,7 @@
 ;; ## Lease Store
 
 (s/def ::store
-  (s/map-of vector? ::info))
+  (s/map-of ::id ::info))
 
 
 (defn- valid-store?
@@ -117,36 +122,63 @@
 
 
 (defn get-lease
-  "Retrieve a cached lease from the store. Returns the lease information,
-  including secret data, or nil if not found."
-  [store cache-key]
-  (when-let [lease (get @store cache-key)]
+  "Retrieve a lease from the store. Returns the lease information, including
+  secret data, or nil if not found or expired."
+  [store lease-id]
+  (when-let [lease (get @store lease-id)]
     (when-not (expired? lease)
       lease)))
 
 
-(defn get-data
-  "Retrieve an existing leased secret from the store. Returns the secret data,
-  or nil if not found."
+(defn find-data
+  "Retrieve an existing leased secret from the store by cache key. Returns the
+  secret data, or nil if not found."
   [store cache-key]
-  (let [lease (get-lease store cache-key)
+  (let [lease (first (filter (comp #{cache-key} ::key) (vals @store)))
         data (::data lease)]
     (when (and lease data)
       (vary-meta data merge (dissoc lease ::data)))))
 
 
 (defn put!
-  "Persist a leased secret in the store."
-  [store cache-key lease data]
+  "Persist a leased secret in the store. Returns the lease data."
+  [store lease data]
   (when-not (expired? lease)
-    (swap! store assoc cache-key (assoc lease ::data data)))
-  data)
+    (swap! store assoc (::id lease) (assoc lease ::data data)))
+  (vary-meta data merge lease))
+
+
+(defn update!
+  "Merge some updated information into an existing lease. Updates should
+  contain a `::lease/id`. Returns the updated lease."
+  [store updates]
+  (let [lease-id (::id updates)]
+    (-> store
+        (swap! update
+               lease-id
+               (fn update-lease
+                 [lease]
+                 (-> lease
+                     (merge updates)
+                     (vary-meta merge (meta updates)))))
+        (get lease-id))))
+
+
+(defn delete!
+  "Remove an entry for the given lease, if present."
+  [store lease-id]
+  (swap! store dissoc lease-id)
+  nil)
 
 
 (defn invalidate!
-  "Remove an entry for the given cache key, if present."
+  "Remove entries matching the given cache key."
   [store cache-key]
-  (swap! store dissoc cache-key)
+  (swap! store (fn remove-keys
+                 [leases]
+                 (into (empty leases)
+                       (remove (comp #{cache-key} ::key val))
+                       leases)))
   nil)
 
 
@@ -165,32 +197,25 @@
 ;; ## Timer Logic
 
 (defn maintain!
-  "Maintain a single secret lease as appropriate. Returns the updated lease, or
-  nil if the lease should be removed."
+  "Maintain a single secret lease as appropriate. Returns true if the lease
+  should be kept, false if it should be removed."
   [lease]
   (try
     (cond
       (renewable? lease)
       (let [renew! (::renew! lease)]
-        (or
-          ;; return renewed lease info
-          (renew!)
-          ;; renewal failed, leave lease to be retried
-          lease))
+        (renew!)
+        true)
 
       (rotatable? lease)
       (let [rotate! (::rotate! lease)]
-        (if (rotate!)
-          ;; rotation succeeded, return nil to drop the old lease
-          nil
-          ;; rotation failed, leave lease to be retried
-          lease))
+        (not (rotate!)))
 
       (expired? lease)
-      nil
+      false
 
       :else
-      lease)
+      true)
     (catch Exception ex
       (log/error ex "Unhandled error while maintaining lease" (::id lease))
       ;; Leave original lease to retry.
@@ -201,13 +226,6 @@
 (defn maintain-leases!
   "Maintain all the leases in the store, blocking until complete."
   [store]
-  (doseq [[cache-key lease] @store]
-    (if-let [result (maintain! lease)]
-      (when-not (= lease result)
-        (swap! store assoc cache-key result))
-      (swap! store
-             (fn remove-old-lease
-               [leases]
-               (if (= lease (get leases cache-key))
-                 (dissoc leases cache-key)
-                 leases))))))
+  (doseq [[lease-id lease] @store]
+    (when-not (maintain! lease)
+      (swap! store dissoc lease-id))))

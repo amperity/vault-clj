@@ -21,14 +21,14 @@
           (cb result)
           (catch Exception _
             nil)))
-      result)
+      true)
     (catch Exception ex
       (when-let [cb (:on-error opts)]
         (try
           (cb ex)
           (catch Exception _
             nil)))
-      nil)))
+      false)))
 
 
 (defn rotate-secret!
@@ -55,9 +55,8 @@
   "Apply common renewal settings to the lease map."
   ([lease client opts]
    (merge lease
-          (when
-            (and (::lease/renewable? lease)
-                 (:renew? opts))
+          (when (and (::lease/renewable? lease)
+                     (:renew? opts))
             {::lease/renew-within (:renew-within opts 60)
              ::lease/renew! #(renew-lease! client lease opts)}))))
 

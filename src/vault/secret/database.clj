@@ -99,7 +99,7 @@
     (let [mount (::mount client default-mount)
           api-path (u/join-path mount "creds" role-name)
           cache-key [::role mount role-name]]
-      (if-let [data (lease/get-data (:leases client) cache-key)]
+      (if-let [data (lease/find-data (:leases client) cache-key)]
         ;; Re-use cached secret.
         ;; TODO: what happens if the caller specifies different options?
         (http/cached-response client data)
@@ -118,8 +118,8 @@
                (when lease
                  (lease/put!
                    (:leases client)
-                   cache-key
                    (-> lease
+                       (assoc ::lease/key cache-key)
                        (comm/renewable-lease client opts)
                        (comm/rotatable-lease client opts #(generate-credentials! client role-name opts)))
                    data))

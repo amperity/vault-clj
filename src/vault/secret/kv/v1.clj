@@ -192,7 +192,7 @@
            api-path (u/join-path mount path)
            cache-key [::secret mount path]]
        (if-let [data (and (not (:force-read opts))
-                          (lease/get-data (:leases client) cache-key))]
+                          (lease/find-data (:leases client) cache-key))]
          ;; Re-use cached secret.
          (http/cached-response client data)
          ;; No cached value available, call API.
@@ -208,7 +208,9 @@
                                         ::mount mount
                                         ::path path))]
                 (when lease
-                  (lease/put! (:leases client) cache-key lease data))
+                  (lease/put! (:leases client)
+                              (assoc lease ::lease/key cache-key)
+                              data))
                 (vary-meta data merge lease)))
             :handle-error
             (fn handle-error
