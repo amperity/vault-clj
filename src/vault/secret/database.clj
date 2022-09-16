@@ -7,13 +7,11 @@
   Reference: https://www.vaultproject.io/api-docs/secret/databases"
   (:require
     [vault.client.http :as http]
-    [vault.client.mock :as mock]
     [vault.secret.common :as comm]
     [vault.lease :as lease]
     [vault.util :as u])
   (:import
-    vault.client.http.HTTPClient
-    vault.client.mock.MockClient))
+    vault.client.http.HTTPClient))
 
 
 (def default-mount
@@ -61,24 +59,6 @@
     - `:on-error`
       A function to call with any exceptions encountered while renewing or
       rotating the credentials."))
-
-
-;; ## Mock Client
-
-(extend-type MockClient
-
-  API
-
-  (with-mount
-    [client mount]
-    (if (some? mount)
-      (assoc client ::mount mount)
-      (dissoc client ::mount)))
-
-
-  (generate-credentials!
-    [_client _role-name]
-    ,,,))
 
 
 ;; ## HTTP Client
