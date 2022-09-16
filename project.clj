@@ -14,7 +14,6 @@
   [[org.clojure/clojure "1.11.1"]
    [org.clojure/data.json "2.4.0"]
    [org.clojure/tools.logging "1.2.4"]
-   [com.stuartsierra/component "1.1.0"]
    [http-kit "2.6.0"]]
 
   :test-selectors

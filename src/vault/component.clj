@@ -50,7 +50,7 @@
   "Stops a running timer thread cleanly if possible."
   [^Thread thread]
   (when (.isAlive thread)
-    (log/debug "Interrupting timer thread" (.getName thread))
+    (log/debug "Stopping timer thread" (.getName thread))
     (.interrupt thread)
     (.join thread 1000)))
 
@@ -63,10 +63,11 @@
   [client]
   (when-let [thread (::timer client)]
     (stop-thread! thread))
-  (let [period (* 1000 (::lease/check-period client 60))
+  (let [period (* 1000 (:lease-check-period client 10))
         tick (fn tick
                []
-               (lease/maintain-leases! (::lease/store client)))
+               ;; TODO: auth token renewal
+               (lease/maintain-leases! (:leases client)))
         thread (start-thread! "vault-client-timer" tick period)]
     (assoc client ::timer thread)))
 
