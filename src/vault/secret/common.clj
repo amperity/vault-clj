@@ -15,7 +15,7 @@
                    (sys.leases/renew-lease!
                      client
                      (::lease/id lease)
-                     (:renew-increment opts (* 4 60 60))))]
+                     (:renew-increment opts)))]
       (when-let [cb (:on-renew opts)]
         (try
           (cb result)

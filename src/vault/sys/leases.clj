@@ -27,6 +27,7 @@
     requires sudo capability.")
 
   (renew-lease!
+    [client lease-id]
     [client lease-id increment]
     "Renew a lease, requesting to extend the time it is valid for. The
     `increment` is a requested duration in seconds to extend the lease.")
@@ -68,19 +69,21 @@
 
 
   (renew-lease!
-    [client lease-id increment]
-    (http/call-api
-      client :put "sys/leases/renew"
-      {:content-type :json
-       :body {:lease_id lease-id
-              ;; TODO: is increment optional?
-              :increment increment}
-       :handle-response
-       (fn handle-response
-         [body]
-         (when-let [lease (http/lease-info body)]
-           (lease/update! (:leases client) lease)
-           lease))}))
+    ([client lease-id]
+     (renew-lease! client lease-id nil))
+    ([client lease-id increment]
+     (http/call-api
+       client :put "sys/leases/renew"
+       {:content-type :json
+        :body (cond-> {:lease_id lease-id}
+                increment
+                (assoc :increment increment))
+        :handle-response
+        (fn handle-response
+          [body]
+          (when-let [lease (http/lease-info body)]
+            (lease/update! (:leases client) lease)
+            lease))})))
 
 
   (revoke-lease!
