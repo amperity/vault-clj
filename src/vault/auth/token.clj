@@ -77,12 +77,9 @@
   "Look up the currently-authenticated token, merging updated information into
   the client's auth info. Returns the updated auth data."
   [client]
-  (let [current (vault/auth-info client)
-        updated (h/await (:handler client)
-                         (lookup-token client {}))
-        info (merge current updated)]
-    (vault/authenticate! client info)
-    info))
+  (let [auth-info (h/call-sync lookup-token client {})]
+    (vault/authenticate! client auth-info)
+    (vault/auth-info client)))
 
 
 ;; ## Mock Client

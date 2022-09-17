@@ -10,12 +10,9 @@
   "Renew the given lease."
   [client lease opts]
   (try
-    (let [result (h/await
-                   (:handler client)
-                   (sys.leases/renew-lease!
-                     client
-                     (::lease/id lease)
-                     (:renew-increment opts)))]
+    (let [lease-id (::lease/id lease)
+          increment (:renew-increment opts)
+          result (h/call-sync sys.leases/renew-lease! client lease-id increment)]
       (when-let [cb (:on-renew opts)]
         (try
           (cb result)

@@ -47,6 +47,15 @@
     internal state object."))
 
 
+(defn call-sync
+  "Call the given function on the client, passing any additional args. Waits
+  for the result to be ready using the client's handler."
+  [f client & args]
+  (let [handler (:handler client)
+        result (apply f client args)]
+    (await handler result)))
+
+
 (defn throwing-deref
   "A variant of `deref` which will throw if the pending value yields an
   exception."
