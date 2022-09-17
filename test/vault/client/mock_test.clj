@@ -4,11 +4,11 @@
     [clojure.test :refer [deftest testing is]]
     [vault.auth :as auth]
     [vault.client :as vault]
-    [vault.client.mock]))
+    [vault.client.mock :as mock]))
 
 
 (deftest authentication
-  (let [client (vault/new-client "mock:-")]
+  (let [client (mock/mock-client "mock:-")]
     (testing "with bad input"
       (is (thrown-with-msg? IllegalArgumentException #"Client authentication must be a map"
             (vault/authenticate! client [])))
@@ -30,14 +30,14 @@
 
 (deftest client-constructor
   (testing "with bad scheme"
-    (is (thrown-with-msg? IllegalArgumentException #"Unsupported Vault address scheme"
-          (vault/new-client "mook:abc"))))
+    (is (thrown-with-msg? IllegalArgumentException #"Mock client must be constructed with a map of data or a URN with scheme 'mock'"
+          (mock/mock-client "mook:abc"))))
   (testing "without fixture"
-    (let [client (vault/new-client "mock:-")]
+    (let [client (mock/mock-client "mock:-")]
       (is (satisfies? vault/Client client))
       (is (= {} @(:memory client)))))
   (testing "with missing fixture"
-    (let [client (vault/new-client "mock:target/test/fixture.edn")]
+    (let [client (mock/mock-client "mock:target/test/fixture.edn")]
       (is (satisfies? vault/Client client))
       (is (= {} @(:memory client)))))
   (testing "with fixture resource"
@@ -45,7 +45,7 @@
       (.deleteOnExit fixture)
       (try
         (spit fixture "{:secrets {\"kv\" {}}}")
-        (let [client (vault/new-client "mock:vault/client/fixture.edn")]
+        (let [client (mock/mock-client "mock:vault/client/fixture.edn")]
           (is (satisfies? vault/Client client))
           (is (= {:secrets {"kv" {}}}
                  @(:memory client))))
@@ -57,7 +57,7 @@
       (try
         (io/make-parents fixture)
         (spit fixture "{:secrets {\"kv\" {}}}")
-        (let [client (vault/new-client "mock:target/test/fixture.edn")]
+        (let [client (mock/mock-client "mock:target/test/fixture.edn")]
           (is (satisfies? vault/Client client))
           (is (= {:secrets {"kv" {}}}
                  @(:memory client))))

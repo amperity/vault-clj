@@ -8,9 +8,11 @@
     [vault.auth.token :as token]
     [vault.client :as vault]
     [vault.client.handler :as h]
-    [vault.client.http]
-    [vault.client.mock]
-    [vault.lease :as lease]))
+    [vault.client.http :as http]
+    [vault.client.mock :as mock]
+    [vault.lease :as lease])
+  (:import
+    java.net.URI))
 
 
 ;; ## Timer Logic
@@ -92,6 +94,23 @@
 
 ;; ## Client Construction
 
+(defn new-client
+  "Constructs a new Vault client from a URI address by dispatching on the
+  scheme. The client will be returned in an initialized but not started state."
+  [address & {:as opts}]
+  (let [uri (URI/create address)]
+    (case (.getScheme uri)
+      "mock"
+      (mock/mock-client address opts)
+
+      ("http" "https")
+      (http/http-client address opts)
+
+      ;; unknown scheme
+      (throw (IllegalArgumentException.
+               (str "Unsupported Vault address scheme: " (pr-str address)))))))
+
+
 (defn config-client
   "Configure a client from the environment if possible. Returns the initialized
   client component, or throws an exception."
@@ -104,7 +123,7 @@
                   (let [token-file (io/file (System/getProperty "user.home") ".vault-token")]
                     (when (.exists token-file)
                       (str/trim (slurp token-file)))))
-        client (vault/new-client address)]
+        client (new-client address)]
     (when-not (str/blank? token)
       (vault/authenticate! client token))
     client))

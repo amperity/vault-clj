@@ -308,9 +308,11 @@
   - `:http-opts`
     Additional options to pass to `http` requests."
   [address & {:as opts}]
-  (when-not (and (string? address) (str/starts-with? address "http"))
+  (when-not (and (string? address)
+                 (or (str/starts-with? address "http://")
+                     (str/starts-with? address "https://")))
     (throw (IllegalArgumentException.
-             (str "Vault API address must be a string starting with 'http', got: "
+             (str "Vault API address must be a URL with scheme 'http' or 'https': "
                   (pr-str address)))))
   (map->HTTPClient
     (merge {:handler h/sync-handler}
@@ -318,13 +320,3 @@
            {:address address
             :auth (auth/new-state)
             :leases (lease/new-store)})))
-
-
-(defmethod vault/new-client "http"
-  [address]
-  (http-client address))
-
-
-(defmethod vault/new-client "https"
-  [address]
-  (http-client address))

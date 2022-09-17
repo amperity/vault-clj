@@ -113,7 +113,7 @@
 
 
 (deftest authentication
-  (let [client (vault/new-client "https://vault.test:8200")]
+  (let [client (http/http-client "https://vault.test:8200")]
     (testing "with bad input"
       (is (thrown-with-msg? IllegalArgumentException #"Client authentication must be a map"
             (vault/authenticate! client [])))
@@ -133,10 +133,10 @@
 
 (deftest client-constructor
   (testing "with bad address"
-    (is (thrown-with-msg? IllegalArgumentException #"Vault API address must be a string starting with 'http'"
+    (is (thrown-with-msg? IllegalArgumentException #"Vault API address must be a URL with scheme 'http' or 'https'"
           (http/http-client :foo)))
-    (is (thrown-with-msg? IllegalArgumentException #"Vault API address must be a string starting with 'http'"
+    (is (thrown-with-msg? IllegalArgumentException #"Vault API address must be a URL with scheme 'http' or 'https'"
           (http/http-client "tcp:1234"))))
   (testing "with http addresses"
-    (is (= "http://localhost:8200" (:address (vault/new-client "http://localhost:8200"))))
-    (is (= "https://vault.test:8200" (:address (vault/new-client "https://vault.test:8200"))))))
+    (is (= "http://localhost:8200" (:address (http/http-client "http://localhost:8200"))))
+    (is (= "https://vault.test:8200" (:address (http/http-client "https://vault.test:8200"))))))

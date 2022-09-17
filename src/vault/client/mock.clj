@@ -3,11 +3,10 @@
   (:require
     [clojure.edn :as edn]
     [clojure.java.io :as io]
+    [clojure.string :as str]
     [vault.auth :as auth]
     [vault.client :as vault]
-    [vault.client.handler :as h])
-  (:import
-    java.net.URI))
+    [vault.client.handler :as h]))
 
 
 ;; ## Mock Client
@@ -41,20 +40,6 @@
 (alter-meta! #'map->MockClient assoc :private true)
 
 
-(defn mock-client
-  "Constructs a new mock Vault client. May be given a map of initial values to
-  populate the in-memory state."
-  ([]
-   (mock-client {}))
-  ([initial-memory & {:as opts}]
-   (map->MockClient
-     (merge {:handler h/sync-handler}
-            opts
-            {:auth (auth/new-state)
-             :memory (atom initial-memory
-                           :validator map?)}))))
-
-
 (defn- load-fixtures
   "Helper method to load fixture data from a path. The path may resolve to a
   resource on the classpath, a file on the filesystem, or be `-` to specify no
@@ -70,12 +55,30 @@
       (edn/read-string))))
 
 
-(defmethod vault/new-client "mock"
-  [address]
-  (let [uri (URI. address)
-        path (.getSchemeSpecificPart uri)
-        data (load-fixtures path)]
-    (mock-client (or data {}))))
+(defn mock-client
+  "Constructs a new mock Vault client. Accepts a URI address for loading mock
+  data, or may be given a map of initial values to directly populate the
+  in-memory state."
+  ([]
+   (mock-client {}))
+  ([addr-or-data & {:as opts}]
+   (let [initial (cond
+                   (map? addr-or-data)
+                   addr-or-data
+
+                   (str/starts-with? (str addr-or-data) "mock:")
+                   (let [path (subs (str addr-or-data) 5)]
+                     (or (load-fixtures path) {}))
+
+                   :else
+                   (throw (IllegalArgumentException.
+                            (str "Mock client must be constructed with a map of data or a URN with scheme 'mock': "
+                                 (pr-str addr-or-data)))))]
+     (map->MockClient
+       (merge {:handler h/sync-handler}
+              opts
+              {:auth (auth/new-state)
+               :memory (atom initial :validator map?)})))))
 
 
 ;; ## Request Functions
