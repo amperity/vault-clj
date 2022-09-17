@@ -4,10 +4,15 @@
     [clojure.data.json :as json]
     [clojure.string :as str]
     [org.httpkit.client :as http]
+    [vault.auth :as auth]
     [vault.client :as vault]
     [vault.client.handler :as h]
     [vault.lease :as lease]
-    [vault.util :as u]))
+    [vault.util :as u])
+  (:import
+    (java.time
+      Instant
+      ZonedDateTime)))
 
 
 ;; ## API Functions
@@ -16,7 +21,7 @@
   "Produce a map of options to pass to the HTTP client from the provided
   method, API path, and other request parameters."
   [client method path params]
-  (let [token (:client-token @(:auth client))]
+  (let [token (::auth/client-token @(:auth client))]
     (->
       (:http-opts client)
       (assoc :accept :json)
@@ -210,6 +215,46 @@
       {::lease/renewable? renewable})))
 
 
+(defn ^:no-doc shape-auth
+  "Coerce a map of non-namespaced token information from `create-token!` or
+  `lookup-token` into the authentication map shape."
+  [auth]
+  (let [lease-duration (or (::auth/lease-duration auth)
+                           (:lease-duration auth))
+        created-at (or (::auth/created-at auth)
+                       (some-> (:creation-time auth)
+                               (Instant/ofEpochSecond)))
+        expires-at (or (::auth/expires-at auth)
+                       (if-let [expire-time (:expire-time auth)]
+                         (try
+                           (.toInstant (ZonedDateTime/parse expire-time))
+                           (catch Exception _
+                             nil))
+                         (when lease-duration
+                           (let [start (or created-at (u/now))]
+                             (.plusSeconds start lease-duration)))))]
+    (into {}
+          (filter (comp some? val))
+          {::auth/accessor (or (::auth/accessor auth)
+                               (:accessor auth))
+           ::auth/client-token (or (::auth/client-token auth)
+                                   (:client-token auth))
+           ::auth/display-name (or (::auth/display-name auth)
+                                   (:display-name auth))
+           ::auth/lease-duration lease-duration
+           ::auth/policies (or (::auth/policies auth)
+                               (not-empty (set (or (:token-policies auth)
+                                                   (:policies auth)))))
+           ::auth/orphan? (if-some [orphan? (::auth/orphan? auth)]
+                            orphan?
+                            (:orphan auth))
+           ::auth/renewable? (if-some [renewable? (::auth/renewable? auth)]
+                               renewable?
+                               (:renewable auth))
+           ::auth/created-at created-at
+           ::auth/expires-at expires-at})))
+
+
 ;; ## HTTP Client
 
 ;; - `address`
@@ -236,9 +281,9 @@
   (authenticate!
     [this auth-info]
     (let [auth-info (if (string? auth-info)
-                      {:client-token auth-info}
-                      auth-info)]
-      (when-not (and (map? auth-info) (:client-token auth-info))
+                      {::auth/client-token auth-info}
+                      (shape-auth auth-info))]
+      (when-not (and (map? auth-info) (::auth/client-token auth-info))
         (throw (IllegalArgumentException.
                  "Client authentication must be a map of information containing a client-token.")))
       (reset! auth auth-info)

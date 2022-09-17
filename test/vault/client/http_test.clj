@@ -2,6 +2,7 @@
   (:require
     [clojure.test :refer [deftest testing is]]
     [org.httpkit.client :as http-client]
+    [vault.auth :as auth]
     [vault.client :as vault]
     [vault.client.http :as http]
     [vault.client.handler :as h]))
@@ -19,7 +20,7 @@
 (deftest call-api
   (let [client {:address "https://vault.test:8200"
                 :handler h/sync-handler
-                :auth (atom {:client-token "t0p-53cr5t"})}]
+                :auth (atom {::auth/client-token "t0p-53cr5t"})}]
     (testing "with bad arguments"
       (with-redefs [http-client/request (fn [_ _]
                                           (is false "should not be called"))]
@@ -120,14 +121,13 @@
             (vault/authenticate! client {}))))
     (testing "with token string"
       (is (identical? client (vault/authenticate! client "t0p-53cr3t")))
-      (is (= {:client-token "t0p-53cr3t"} (vault/auth-info client))))
+      (is (= {::auth/client-token "t0p-53cr3t"} (vault/auth-info client))))
     (testing "with auth info"
       (is (identical? client (vault/authenticate!
                                client
                                {:client-token "t0p-53cr3t"
                                 :ttl 12345})))
-      (is (= {:client-token "t0p-53cr3t"
-              :ttl 12345}
+      (is (= {::auth/client-token "t0p-53cr3t"}
              (vault/auth-info client))))))
 
 
