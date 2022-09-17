@@ -4,8 +4,10 @@
    :aliases {clojure.java.io io
              clojure.set set
              clojure.string str
+             clojure.tools.logging log
              vault.client vault
-             vault.client.handler h}}
+             vault.client.handler h
+             vault.lease lease}}
 
   :unresolved-symbol
   {:exclude [(vault.integration/with-dev-server [client])]}}}
