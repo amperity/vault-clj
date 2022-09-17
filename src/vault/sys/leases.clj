@@ -4,12 +4,10 @@
   Reference: https://www.vaultproject.io/api-docs/system/leases"
   (:require
     [vault.client.http :as http]
-    [vault.client.mock :as mock]
     [vault.lease :as lease]
     [vault.util :as u])
   (:import
-    vault.client.http.HTTPClient
-    vault.client.mock.MockClient))
+    vault.client.http.HTTPClient))
 
 
 ;; ## API Protocol
@@ -35,16 +33,6 @@
   (revoke-lease!
     [client lease-id]
     "Revoke a lease, invalidating the secret it references."))
-
-
-;; ## Mock Client
-
-#_
-(extend-type MockClient
-
-  API
-
-  ,,,)
 
 
 ;; ## HTTP Client
