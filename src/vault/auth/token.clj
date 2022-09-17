@@ -3,6 +3,8 @@
 
   Reference: https://www.vaultproject.io/api-docs/auth/token"
   (:require
+    [vault.client :as vault]
+    [vault.client.handler :as h]
     [vault.client.http :as http]
     [vault.client.mock :as mock]
     [vault.util :as u])
@@ -69,6 +71,18 @@
     - a directly-provided `:token`
     - a token `:accessor`
     - otherwise, the currently-authenticated token"))
+
+
+(defn update-auth!
+  "Look up the currently-authenticated token, merging updated information into
+  the client's auth info. Returns the updated auth data."
+  [client]
+  (let [current (vault/auth-info client)
+        updated (h/await (:handler client)
+                         (lookup-token client {}))
+        info (merge current updated)]
+    (vault/authenticate! client info)
+    info))
 
 
 ;; ## Mock Client
