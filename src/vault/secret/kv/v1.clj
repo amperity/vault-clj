@@ -56,9 +56,9 @@
     - `:not-found`
       If no secret exists at the given path, return this value instead of
       throwing an exception.
-    - `:force-read`
-      If true, always read the secret from the server, even if a cached value
-      is available.")
+    - `:fresh?`
+      Always make a read for fresh data, even if a cached secret is
+      available.")
 
   (write-secret!
     [client path data]
@@ -191,7 +191,7 @@
            path (u/trim-path path)
            api-path (u/join-path mount path)
            cache-key [::secret mount path]]
-       (if-let [data (and (not (:force-read opts))
+       (if-let [data (and (not (:fresh? opts))
                           (lease/find-data (:leases client) cache-key))]
          ;; Re-use cached secret.
          (http/cached-response client data)
