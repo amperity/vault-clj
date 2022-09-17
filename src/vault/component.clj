@@ -15,6 +15,16 @@
 
 ;; ## Timer Logic
 
+(defn- tick
+  "Perform the maintenance expected during a single tick of the timer loop."
+  [client]
+  (auth/maintain!
+    (:auth client)
+    #(h/call-sync token/renew-token! client {}))
+  (lease/maintain-leases!
+    (:leases client)))
+
+
 (defn- timer-loop
   "Constructs a new runnable looping function which performs the timer logic
   every `period` milliseconds. If the `jitter` property is set, the sleep cycle
@@ -23,28 +33,29 @@
 
   The loop can be terminated by interrupting the thread."
   ^Runnable
-  [handler period jitter]
-  (fn tick
+  [client period jitter]
+  (fn runnable
     []
     (try
       (while (not (Thread/interrupted))
         (Thread/sleep (+ period (rand-int (long (* jitter period)))))
         (try
-          (handler)
+          (tick client)
           (catch InterruptedException ex
             (throw ex))
           (catch Exception ex
-            (log/error ex "Error while running timer handler!"))))
+            (log/error ex "Unhandled error while running timer!"))))
       (catch InterruptedException _
         nil))))
 
 
 (defn- start-thread!
-  "Constructs and starts a new timer thread to call the given handler function.
-  The returned thread will be in daemon mode."
-  [label handler period]
-  (log/infof "Starting %s thread with period of %d ms" label period)
-  (doto (Thread. (timer-loop handler period 0.10) (str label))
+  "Constructs and starts a new timer thread to maintain the given client. The
+  returned thread will be in daemon mode."
+  [client period]
+  (log/infof "Starting vault timer thread with period of %d ms" period)
+  (doto (Thread. (timer-loop client period 0.10)
+                 "vault-client-timer")
     (.setDaemon true)
     (.start)))
 
@@ -67,14 +78,7 @@
   (when-let [thread (::timer client)]
     (stop-thread! thread))
   (let [period (* 1000 (:timer-period client 10))
-        tick (fn tick
-               []
-               (auth/maintain!
-                 (:auth client)
-                 #(h/call-sync token/renew-token! client {}))
-               (lease/maintain-leases!
-                 (:leases client)))
-        thread (start-thread! "vault-client-timer" tick period)]
+        thread (start-thread! client period)]
     (assoc client ::timer thread)))
 
 
