@@ -38,9 +38,17 @@
 (s/def ::renewable? boolean?)
 
 
+;; Time after which this lease can be attempted to be renewed.
+(s/def ::renew-after inst?)
+
+
 ;; Try to renew this lease when the current time is within this many seconds of
 ;; the `expires-at` deadline.
 (s/def ::renew-within nat-int?)
+
+
+;; Wait at least this many seconds between successful renewals of this lease.
+(s/def ::renew-backoff nat-int?)
 
 
 ;; A no-argument function to call to rotate this lease. This should return true
@@ -62,12 +70,14 @@
                 ::data
                 ::renew!
                 ::renewable?
+                ::renew-after
                 ::renew-within
+                ::renew-backoff
                 ::rotate!
                 ::rotate-within]))
 
 
-;; ## Lease Functions
+;; ## General Functions
 
 (defn expires-within?
   "True if the lease will expire within `ttl` seconds."
@@ -91,6 +101,9 @@
   (and (::renew! lease)
        (::renewable? lease)
        (::expires-at lease)
+       (if-let [gate (::renew-after lease)]
+         (.isAfter (u/now) gate)
+         true)
        (not (expired? lease))
        (expires-within? lease (::renew-within lease 60))))
 
@@ -103,7 +116,7 @@
        (expires-within? lease (::rotate-within lease 60))))
 
 
-;; ## Lease Store
+;; ## Lease Tracking
 
 (s/def ::store
   (s/map-of ::id ::info))
@@ -194,38 +207,53 @@
   nil)
 
 
-;; ## Timer Logic
+;; ## Maintenance Logic
 
-(defn maintain!
-  "Maintain a single secret lease as appropriate. Returns true if the lease
-  should be kept, false if it should be removed."
+(defn- maintain!
+  "Maintain a single secret lease as appropriate. Returns a keyword indicating
+  the action and final state of the lease."
   [lease]
   (try
     (cond
       (renewable? lease)
       (let [renew! (::renew! lease)]
-        (renew!)
-        true)
+        (if (renew!)
+          :renew-ok
+          :renew-fail))
 
       (rotatable? lease)
       (let [rotate! (::rotate! lease)]
-        (not (rotate!)))
+        (if (rotate!)
+          :rotate-ok
+          :rotate-fail))
 
       (expired? lease)
-      false
+      :expired
 
       :else
-      true)
+      :active)
     (catch Exception ex
       (log/error ex "Unhandled error while maintaining lease" (::id lease))
-      ;; Leave original lease to retry.
-      ;; TODO: failure backoff?
-      lease)))
+      :error)))
 
 
 (defn maintain-leases!
   "Maintain all the leases in the store, blocking until complete."
   [store]
   (doseq [[lease-id lease] @store]
-    (when-not (maintain! lease)
-      (swap! store dissoc lease-id))))
+    (case (maintain! lease)
+      ;; After rotating, remove the old lease.
+      :rotate-ok
+      (swap! store dissoc lease-id)
+
+      ;; After successful renewal, set a backoff before we try to renew again.
+      :renew-ok
+      (let [after (.plusSeconds (u/now) (::renew-backoff lease 60))]
+        (swap! store assoc-in [lease-id ::renew-after] after))
+
+      ;; Remove expired leases.
+      :expired
+      (swap! store dissoc lease-id)
+
+      ;; In other cases, there's no action to take.
+      nil)))
