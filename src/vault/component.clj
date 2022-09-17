@@ -4,7 +4,10 @@
     [clojure.java.io :as io]
     [clojure.string :as str]
     [clojure.tools.logging :as log]
+    [vault.auth :as auth]
+    [vault.auth.token :as token]
     [vault.client :as vault]
+    [vault.client.handler :as h]
     [vault.client.http]
     [vault.client.mock]
     [vault.lease :as lease]))
@@ -63,11 +66,14 @@
   [client]
   (when-let [thread (::timer client)]
     (stop-thread! thread))
-  (let [period (* 1000 (:lease-check-period client 10))
+  (let [period (* 1000 (:timer-period client 10))
         tick (fn tick
                []
-               ;; TODO: auth token renewal
-               (lease/maintain-leases! (:leases client)))
+               (auth/maintain!
+                 (:auth client)
+                 #(h/call-sync token/renew-token! client {}))
+               (lease/maintain-leases!
+                 (:leases client)))
         thread (start-thread! "vault-client-timer" tick period)]
     (assoc client ::timer thread)))
 
