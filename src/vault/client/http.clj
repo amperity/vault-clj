@@ -135,6 +135,8 @@
                       (<= 200 status 299)
                       (let [handle-response (:handle-response params default-handle-response)
                             data (form-success status headers body handle-response)]
+                        (when-let [on-success (:on-success params)]
+                          (on-success data))
                         (h/on-success! handler state data))
 
                       ;; Request was redirected by the server, which could mean

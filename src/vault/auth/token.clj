@@ -211,12 +211,10 @@
         client :post "auth/token/renew-self"
         {:content-type :json
          :body (select-keys params [:increment])
-         :handle-response
-         (fn renew-auth
-           [body]
-           (let [auth (kebabify-body-auth body)]
-             (vault/authenticate! client auth)
-             auth))})))
+         :handle-response kebabify-body-auth
+         :on-success (fn update-auth
+                       [auth]
+                       (vault/authenticate! client auth))})))
 
 
   (revoke-token!
@@ -237,8 +235,4 @@
       :else
       (http/call-api
         client :post "auth/token/revoke-self"
-        {:handle-response
-         (fn revoke-auth
-           [body]
-           (vault/authenticate! client {})
-           body)}))))
+        {}))))

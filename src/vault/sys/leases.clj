@@ -66,12 +66,10 @@
         :body (cond-> {:lease_id lease-id}
                 increment
                 (assoc :increment increment))
-        :handle-response
-        (fn handle-response
-          [body]
-          (when-let [lease (http/lease-info body)]
-            (lease/update! (:leases client) lease)
-            lease))})))
+        :handle-response http/lease-info
+        :on-success (fn update-lease
+                      [lease]
+                      (lease/update! (:leases client) lease))})))
 
 
   (revoke-lease!
