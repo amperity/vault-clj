@@ -210,12 +210,16 @@
          :handle-response kebabify-body-auth})
 
       :else
-      ;; TODO: update current auth info?
       (http/call-api
         client :post "auth/token/renew-self"
         {:content-type :json
          :body (select-keys params [:increment])
-         :handle-response kebabify-body-auth})))
+         :handle-response
+         (fn renew-auth
+           [body]
+           (let [auth (kebabify-body-auth body)]
+             (vault/authenticate! client auth)
+             auth))})))
 
 
   (revoke-token!
@@ -234,7 +238,10 @@
          :body {:accessor (:accessor params)}})
 
       :else
-      ;; TODO: update current auth info?
       (http/call-api
         client :post "auth/token/revoke-self"
-        {}))))
+        {:handle-response
+         (fn revoke-auth
+           [body]
+           (vault/authenticate! client {})
+           body)}))))
