@@ -3,6 +3,7 @@
   (:require
     [clojure.edn :as edn]
     [clojure.java.io :as io]
+    [vault.auth :as auth]
     [vault.client :as vault]
     [vault.client.handler :as h])
   (:import
@@ -12,24 +13,24 @@
 ;; ## Mock Client
 
 (defrecord MockClient
-  [memory handler]
+  [memory handler auth]
 
   vault/Client
 
   (auth-info
     [_]
-    (:auth @memory))
+    @auth)
 
 
   (authenticate!
     [this auth-info]
     (let [auth-info (if (string? auth-info)
-                      {:client-token auth-info}
+                      {::auth/client-token auth-info}
                       auth-info)]
-      (when-not (and (map? auth-info) (:client-token auth-info))
+      (when-not (and (map? auth-info) (::auth/client-token auth-info))
         (throw (IllegalArgumentException.
                  "Client authentication must be a map of information containing a client-token.")))
-      (swap! memory assoc :auth auth-info)
+      (reset! auth auth-info)
       this)))
 
 
@@ -49,7 +50,8 @@
    (map->MockClient
      (merge {:handler h/sync-handler}
             opts
-            {:memory (atom initial-memory
+            {:auth (auth/new-state)
+             :memory (atom initial-memory
                            :validator map?)}))))
 
 

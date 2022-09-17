@@ -2,6 +2,7 @@
   (:require
     [clojure.java.io :as io]
     [clojure.test :refer [deftest testing is]]
+    [vault.auth :as auth]
     [vault.client :as vault]
     [vault.client.mock]))
 
@@ -15,15 +16,15 @@
             (vault/authenticate! client {}))))
     (testing "with token string"
       (is (identical? client (vault/authenticate! client "t0p-53cr3t")))
-      (is (= {:client-token "t0p-53cr3t"}
+      (is (= {::auth/client-token "t0p-53cr3t"}
              (vault/auth-info client))))
     (testing "with auth info"
       (is (identical? client (vault/authenticate!
                                client
-                               {:client-token "t0p-53cr3t"
-                                :ttl 12345})))
-      (is (= {:client-token "t0p-53cr3t"
-              :ttl 12345}
+                               {::auth/client-token "t0p-53cr3t"
+                                ::auth/lease-duration 12345})))
+      (is (= {::auth/client-token "t0p-53cr3t"
+              ::auth/lease-duration 12345}
              (vault/auth-info client))))))
 
 

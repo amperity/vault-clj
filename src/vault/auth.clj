@@ -64,6 +64,12 @@
 
 ;; ## General Functions
 
+(defn valid?
+  "True if the auth information map conforms to the spec."
+  [auth]
+  (s/valid? ::info auth))
+
+
 (defn expires-within?
   "True if the auth will expire within `ttl` seconds."
   [auth ttl]
@@ -85,28 +91,41 @@
   [auth]
   (and (::renewable? auth)
        (::expires-at auth)
-       (if-let [gate (::renew-after auth)]
-         (.isAfter (u/now) gate)
-         true)
        (not (expired? auth))))
 
 
-;; ## Maintenance Logic
+;; ## State Maintenance
+
+(defn new-state
+  "Construct a new auth state atom."
+  []
+  (atom {} :validator valid?))
+
 
 (defn maintain!
-  "Maintain an auth token as part of a timer."
-  [f auth]
-  (try
-    (cond
-      (expired? auth)
-      :expired
+  "Maintain authentication state. Returns a keyword indicating the maintenance
+  result."
+  [state f]
+  (let [renew-within 60
+        renew-backoff 60
+        auth @state]
+    (try
+      (cond
+        (expired? auth)
+        :expired
 
-      (and (renewable? auth)
-           (expires-within? auth 60))
-      (do (f auth) :renewed)
+        (and (renewable? auth)
+             (expires-within? auth renew-within)
+             (if-let [renew-after (::renew-after auth)]
+               (.isAfter (u/now) renew-after)
+               true))
+        (do
+          (f)
+          (swap! state assoc ::renew-after (.plusSeconds (u/now) renew-backoff))
+          :renewed)
 
-      :else
-      :current)
-    (catch Exception ex
-      (log/error ex "Failed to renew Vault authentication" (ex-message ex))
-      :error)))
+        :else
+        :current)
+      (catch Exception ex
+        (log/error ex "Failed to maintain Vault authentication" (ex-message ex))
+        :error))))

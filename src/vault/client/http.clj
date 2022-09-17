@@ -316,7 +316,7 @@
     (merge {:handler h/sync-handler}
            opts
            {:address address
-            :auth (atom nil)
+            :auth (auth/new-state)
             :leases (lease/new-store)})))
 
 
