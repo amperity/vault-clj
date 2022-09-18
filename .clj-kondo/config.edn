@@ -6,7 +6,7 @@
              clojure.string str
              clojure.tools.logging log
              vault.client vault
-             vault.client.handler h
+             vault.client.flow f
              vault.client.proto proto
              vault.lease lease
              vault.util u}}

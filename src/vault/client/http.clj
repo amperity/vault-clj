@@ -5,7 +5,7 @@
     [clojure.string :as str]
     [org.httpkit.client :as http]
     [vault.auth :as auth]
-    [vault.client.handler :as h]
+    [vault.client.flow :as f]
     [vault.client.proto :as proto]
     [vault.lease :as lease]
     [vault.util :as u])
@@ -105,7 +105,7 @@
 
 
 (defn ^:no-doc call-api
-  "Make an HTTP call to the Vault API, using the client's request handler to
+  "Make an HTTP call to the Vault API, using the client's flow handler to
   prepare and initiate the call."
   [client method path params]
   (when-not client
@@ -114,7 +114,7 @@
     (throw (IllegalArgumentException. "Cannot make API call without keyword method")))
   (when (str/blank? path)
     (throw (IllegalArgumentException. "Cannot make API call on blank path")))
-  (let [handler (:handler client)
+  (let [handler (:flow client)
         request (prepare-request client method path params)]
     (letfn [(make-request
               [extra]
@@ -128,7 +128,7 @@
                 (try
                   (if error
                     ;; TODO: shape exception?
-                    (h/on-error! handler state error)
+                    (f/on-error! handler state error)
                     ;; Handle response from the API based on status code.
                     (cond
                       ;; Successful response, parse body and return result.
@@ -137,7 +137,7 @@
                             data (form-success status headers body handle-response)]
                         (when-let [on-success (:on-success params)]
                           (on-success data))
-                        (h/on-success! handler state data))
+                        (f/on-success! handler state data))
 
                       ;; Request was redirected by the server, which could mean
                       ;; we called a standby node on accident.
@@ -145,7 +145,7 @@
                       (let [location (get headers "Location")]
                         (cond
                           (nil? location)
-                          (h/on-error!
+                          (f/on-error!
                             handler
                             state
                             (ex-info (str "Vault API responded with " status
@@ -154,7 +154,7 @@
                                       :vault.client/headers headers}))
 
                           (< 2 redirects)
-                          (h/on-error!
+                          (f/on-error!
                             handler
                             state
                             (ex-info (str "Aborting Vault API request after " redirects
@@ -173,13 +173,13 @@
                       (let [handle-error (:handle-error params identity)
                             result (handle-error (form-failure status headers body))]
                         (if (instance? Throwable result)
-                          (h/on-error! handler state result)
-                          (h/on-success! handler state result)))))
+                          (f/on-error! handler state result)
+                          (f/on-success! handler state result)))))
                   (catch Exception ex
                     ;; Unhandled exception while processing response.
-                    (h/on-error! handler state ex)))))]
+                    (f/on-error! handler state ex)))))]
       ;; Kick off the request.
-      (h/call
+      (f/call
         handler
         (merge {:vault.client/method method
                 :vault.client/path path}
@@ -192,16 +192,16 @@
 
 
 (defn ^:no-doc cached-response
-  "Return a response without calling the API. Uses the client's request handler
+  "Return a response without calling the API. Uses the client's flow handler
   to prepare and return the cached secret data."
   [client data]
-  (let [handler (:handler client)]
-    (h/call
+  (let [handler (:flow client)]
+    (f/call
       handler
       {:vault.client/cached? true}
       (fn cached
         [state]
-        (h/on-success! handler state data)))))
+        (f/on-success! handler state data)))))
 
 
 (defn ^:no-doc lease-info
@@ -233,7 +233,7 @@
                            (catch Exception _
                              nil))
                          (when lease-duration
-                           (let [start (or created-at (u/now))]
+                           (let [start ^Instant (or created-at (u/now))]
                              (.plusSeconds start lease-duration)))))]
     (into {}
           (filter (comp some? val))
@@ -259,19 +259,18 @@
 
 ;; ## HTTP Client
 
+;; - `flow`
+;;   Control flow handler.
+;; - `auth`
+;;   Atom containing the authentication state.
+;; - `leases`
+;;   Local secret lease tracker.
 ;; - `address`
 ;;   The base URL for the Vault API endpoint.
-;; - `handler`
-;;   Request handler to use for API calls.
 ;; - `http-opts`
 ;;   Extra options to pass to `clj-http` requests.
-;; - `auth`
-;;   Atom containing the authentication lease information, including the
-;;   client token.
-;; - `leases`
-;;   Local in-memory storage of secret leases.
 (defrecord HTTPClient
-  [address handler http-opts auth leases]
+  [flow auth leases address http-opts]
 
   proto/Client
 
@@ -304,9 +303,8 @@
 
   Client behavior may be controlled with the options:
 
-  - `:handler`
-    A custom handler to control how requests and responses are handled. Defaults
-    to the `sync-handler`.
+  - `:flow`
+    Custom control flow handler for requests. Defaults to `sync-handler`.
   - `:http-opts`
     Additional options to pass to `http` requests."
   [address & {:as opts}]
@@ -317,7 +315,7 @@
              (str "Vault API address must be a URL with scheme 'http' or 'https': "
                   (pr-str address)))))
   (map->HTTPClient
-    (merge {:handler h/sync-handler}
+    (merge {:flow f/sync-handler}
            opts
            {:address address
             :auth (auth/new-state)

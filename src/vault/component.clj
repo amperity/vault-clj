@@ -6,10 +6,10 @@
     [clojure.tools.logging :as log]
     [vault.auth :as auth]
     [vault.auth.token :as token]
-    [vault.client.proto :as proto]
-    [vault.client.handler :as h]
+    [vault.client.flow :as f]
     [vault.client.http :as http]
     [vault.client.mock :as mock]
+    [vault.client.proto :as proto]
     [vault.lease :as lease])
   (:import
     java.net.URI))
@@ -22,7 +22,7 @@
   [client]
   (auth/maintain!
     (:auth client)
-    #(h/call-sync token/renew-token! client {}))
+    #(f/call-sync token/renew-token! client {}))
   (lease/maintain-leases!
     (:leases client)))
 

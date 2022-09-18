@@ -8,7 +8,7 @@
     [vault.auth :as auth]
     [vault.auth.token :as auth.token]
     [vault.client :as vault]
-    [vault.client.handler :as h]
+    [vault.client.flow :as f]
     [vault.client.http :as http]
     [vault.client.mock :as mock]
     [vault.component :as component]

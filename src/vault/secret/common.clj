@@ -1,7 +1,7 @@
 (ns ^:no-doc vault.secret.common
   "Common secret engine implementation utilities."
   (:require
-    [vault.client.handler :as h]
+    [vault.client.flow :as f]
     [vault.lease :as lease]
     [vault.sys.leases :as sys.leases]))
 
@@ -12,7 +12,7 @@
   (try
     (let [lease-id (::lease/id lease)
           increment (:renew-increment opts)
-          result (h/call-sync sys.leases/renew-lease! client lease-id increment)]
+          result (f/call-sync sys.leases/renew-lease! client lease-id increment)]
       (when-let [cb (:on-renew opts)]
         (try
           (cb result)
@@ -32,7 +32,7 @@
   "Rotate a credential by calling `f`."
   [client f opts]
   (try
-    (let [result (h/await (:handler client) (f))]
+    (let [result (f/await (:flow client) (f))]
       (when-let [cb (:on-rotate opts)]
         (try
           (cb result)

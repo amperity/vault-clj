@@ -6,7 +6,7 @@
     ;; TODO: clean this up
     [vault.client.proto :as vault]
     [vault.client.http :as http]
-    [vault.client.handler :as h]))
+    [vault.client.flow :as f]))
 
 
 (defn mock-request
@@ -20,7 +20,7 @@
 
 (deftest call-api
   (let [client {:address "https://vault.test:8200"
-                :handler h/sync-handler
+                :flow f/sync-handler
                 :auth (atom {::auth/client-token "t0p-53cr5t"})}]
     (testing "with bad arguments"
       (with-redefs [http-client/request (fn [_ _]

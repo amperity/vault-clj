@@ -3,10 +3,10 @@
 
   Reference: https://www.vaultproject.io/api-docs/auth/token"
   (:require
-    [vault.client.proto :as proto]
-    [vault.client.handler :as h]
+    [vault.client.flow :as f]
     [vault.client.http :as http]
     [vault.client.mock :as mock]
+    [vault.client.proto :as proto]
     [vault.util :as u])
   (:import
     vault.client.http.HTTPClient
@@ -77,7 +77,7 @@
   "Look up the currently-authenticated token, merging updated information into
   the client's auth info. Returns the updated auth data."
   [client]
-  (let [auth-info (h/call-sync lookup-token client {})]
+  (let [auth-info (f/call-sync lookup-token client {})]
     (proto/authenticate! client auth-info)
     (proto/auth-info client)))
 

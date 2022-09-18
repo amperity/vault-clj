@@ -1,6 +1,6 @@
-(ns vault.client.handler
-  "Vault client request handling paradigms. A handler defines a collection of
-  functions which determine how requests and responses are handled.
+(ns vault.client.flow
+  "A _control flow handler_ defines a collection of functions which determine
+  how requests and responses are handled through the vault client.
 
   The goal of this is to enable the consumer to decide whether they want the
   simplicity of synchronous (blocking) calls to Vault (via `sync-handler`), or
@@ -49,9 +49,9 @@
 
 (defn call-sync
   "Call the given function on the client, passing any additional args. Waits
-  for the result to be ready using the client's handler."
+  for the result to be ready using the client's flow handler."
   [f client & args]
-  (let [handler (:handler client)
+  (let [handler (:flow client)
         result (apply f client args)]
     (await handler result)))
 
