@@ -5,8 +5,8 @@
     [clojure.string :as str]
     [org.httpkit.client :as http]
     [vault.auth :as auth]
-    [vault.client :as vault]
     [vault.client.handler :as h]
+    [vault.client.proto :as proto]
     [vault.lease :as lease]
     [vault.util :as u])
   (:import
@@ -62,14 +62,14 @@
       parsed
       (handle-response)
       (vary-meta assoc
-                 ::vault/status status
-                 ::vault/headers headers)
+                 :vault.client/status status
+                 :vault.client/headers headers)
       (cond->
         request-id
-        (vary-meta assoc ::vault/request-id request-id)
+        (vary-meta assoc :vault.client/request-id request-id)
 
         (seq warnings)
-        (vary-meta assoc ::vault/warnings warnings)))))
+        (vary-meta assoc :vault.client/warnings warnings)))))
 
 
 (defn- form-failure
@@ -82,17 +82,17 @@
         warnings (get parsed "warnings")
         errors (get parsed "errors")]
     (->
-      {::vault/status status
-       ::vault/headers headers}
+      {:vault.client/status status
+       :vault.client/headers headers}
       (cond->
         request-id
-        (assoc ::vault/request-id request-id)
+        (assoc :vault.client/request-id request-id)
 
         (seq warnings)
-        (assoc ::vault/warnings warnings)
+        (assoc :vault.client/warnings warnings)
 
         (seq errors)
-        (assoc ::vault/errors errors))
+        (assoc :vault.client/errors errors))
       (as-> data
         (ex-info (if (seq errors)
                    (str "Vault API errors: " (str/join ", " errors))
@@ -150,8 +150,8 @@
                             state
                             (ex-info (str "Vault API responded with " status
                                           " redirect without Location header")
-                                     {::vault/status status
-                                      ::vault/headers headers}))
+                                     {:vault.client/status status
+                                      :vault.client/headers headers}))
 
                           (< 2 redirects)
                           (h/on-error!
@@ -159,8 +159,8 @@
                             state
                             (ex-info (str "Aborting Vault API request after " redirects
                                           " redirects")
-                                     {::vault/status status
-                                      ::vault/headers headers}))
+                                     {:vault.client/status status
+                                      :vault.client/headers headers}))
 
                           :else
                           (make-request
@@ -181,10 +181,10 @@
       ;; Kick off the request.
       (h/call
         handler
-        (merge {::vault/method method
-                ::vault/path path}
+        (merge {:vault.client/method method
+                :vault.client/path path}
                (when-let [query (:query-params params)]
-                 {::vault/query query}))
+                 {:vault.client/query query}))
         (fn call
           [state]
           (make-request {::state state
@@ -198,7 +198,7 @@
   (let [handler (:handler client)]
     (h/call
       handler
-      {::vault/cached? true}
+      {:vault.client/cached? true}
       (fn cached
         [state]
         (h/on-success! handler state data)))))
@@ -273,7 +273,7 @@
 (defrecord HTTPClient
   [address handler http-opts auth leases]
 
-  vault/Client
+  proto/Client
 
   (auth-info
     [_]

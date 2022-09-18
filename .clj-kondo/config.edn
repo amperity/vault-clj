@@ -7,7 +7,9 @@
              clojure.tools.logging log
              vault.client vault
              vault.client.handler h
-             vault.lease lease}}
+             vault.client.proto proto
+             vault.lease lease
+             vault.util u}}
 
   :unresolved-symbol
   {:exclude [(vault.integration/with-dev-server [client])]}}}

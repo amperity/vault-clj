@@ -5,8 +5,8 @@
     [clojure.java.io :as io]
     [clojure.string :as str]
     [vault.auth :as auth]
-    [vault.client :as vault]
-    [vault.client.handler :as h]))
+    [vault.client.handler :as h]
+    [vault.client.proto :as proto]))
 
 
 ;; ## Mock Client
@@ -14,7 +14,7 @@
 (defrecord MockClient
   [memory handler auth]
 
-  vault/Client
+  proto/Client
 
   (auth-info
     [_]

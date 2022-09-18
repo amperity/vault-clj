@@ -5,7 +5,8 @@
     [clojure.java.io :as io]
     [clojure.java.shell :as shell]
     [clojure.string :as str]
-    [vault.client :as vault]
+    ;; TODO: clean this up
+    [vault.client.proto :as vault]
     [vault.component :as component])
   (:import
     (java.net

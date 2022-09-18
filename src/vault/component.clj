@@ -6,7 +6,7 @@
     [clojure.tools.logging :as log]
     [vault.auth :as auth]
     [vault.auth.token :as token]
-    [vault.client :as vault]
+    [vault.client.proto :as proto]
     [vault.client.handler :as h]
     [vault.client.http :as http]
     [vault.client.mock :as mock]
@@ -125,5 +125,5 @@
                       (str/trim (slurp token-file)))))
         client (new-client address)]
     (when-not (str/blank? token)
-      (vault/authenticate! client token))
+      (proto/authenticate! client token))
     client))

@@ -3,7 +3,8 @@
     [clojure.test :refer [deftest testing is]]
     [org.httpkit.client :as http-client]
     [vault.auth :as auth]
-    [vault.client :as vault]
+    ;; TODO: clean this up
+    [vault.client.proto :as vault]
     [vault.client.http :as http]
     [vault.client.handler :as h]))
 

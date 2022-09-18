@@ -3,7 +3,7 @@
 
   Reference: https://www.vaultproject.io/api-docs/auth/token"
   (:require
-    [vault.client :as vault]
+    [vault.client.proto :as proto]
     [vault.client.handler :as h]
     [vault.client.http :as http]
     [vault.client.mock :as mock]
@@ -78,8 +78,8 @@
   the client's auth info. Returns the updated auth data."
   [client]
   (let [auth-info (h/call-sync lookup-token client {})]
-    (vault/authenticate! client auth-info)
-    (vault/auth-info client)))
+    (proto/authenticate! client auth-info)
+    (proto/auth-info client)))
 
 
 ;; ## Mock Client
@@ -214,7 +214,7 @@
          :handle-response kebabify-body-auth
          :on-success (fn update-auth
                        [auth]
-                       (vault/authenticate! client auth))})))
+                       (proto/authenticate! client auth))})))
 
 
   (revoke-token!

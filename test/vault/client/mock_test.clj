@@ -3,7 +3,8 @@
     [clojure.java.io :as io]
     [clojure.test :refer [deftest testing is]]
     [vault.auth :as auth]
-    [vault.client :as vault]
+    ;; TODO: clean this up
+    [vault.client.proto :as vault]
     [vault.client.mock :as mock]))
 
 

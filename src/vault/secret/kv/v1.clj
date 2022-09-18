@@ -7,7 +7,6 @@
   (:require
     [clojure.data.json :as json]
     [clojure.string :as str]
-    [vault.client :as vault]
     [vault.client.http :as http]
     [vault.client.mock :as mock]
     [vault.lease :as lease]
@@ -178,8 +177,8 @@
          (fn handle-error
            [ex]
            (let [data (ex-data ex)]
-             (when-not (and (empty? (::vault/errors data))
-                            (= 404 (::vault/status data)))
+             (when-not (and (empty? (:vault.client/errors data))
+                            (= 404 (:vault.client/status data)))
                ex)))})))
 
 
@@ -215,8 +214,8 @@
             (fn handle-error
               [ex]
               (let [data (ex-data ex)]
-                (if (and (empty? (::vault/errors data))
-                         (= 404 (::vault/status data)))
+                (if (and (empty? (:vault.client/errors data))
+                         (= 404 (:vault.client/status data)))
                   (if (contains? opts :not-found)
                     (:not-found opts)
                     (ex-info (str "No kv-v1 secret found at " mount ":" path)
