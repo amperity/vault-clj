@@ -5,6 +5,7 @@
     [clojure.stacktrace :refer [print-cause-trace]]
     [clojure.string :as str]
     [clojure.tools.namespace.repl :refer [refresh]]
+    [vault.auth :as auth]
     [vault.auth.token :as auth.token]
     [vault.client :as vault]
     [vault.client.handler :as h]
@@ -35,9 +36,9 @@
   (stop-client)
   (let [vault-addr "http://127.0.0.1:8200"
         vault-token "t0p-53cr3t"
-        vault-client (vault/new-client vault-addr)]
+        vault-client (http/http-client vault-addr)]
     (when vault-token
-      (vault/authenticate! vault-client {:client-token vault-token}))
+      (vault/authenticate! vault-client vault-token))
     (alter-var-root #'client (constantly (component/start vault-client))))
   :init)
 
