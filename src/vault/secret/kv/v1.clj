@@ -201,16 +201,15 @@
            {:handle-response
             (fn handle-response
               [body]
-              (let [lease (http/lease-info body)
+              (let [lease (assoc (http/lease-info body)
+                                 ::lease/id (str (random-uuid))
+                                 ::lease/key cache-key)
                     data (-> (get body "data")
                              (u/walk-keys keyword)
                              (vary-meta assoc
                                         ::mount mount
                                         ::path path))]
-                (when lease
-                  (lease/put! (:leases client)
-                              (assoc lease ::lease/key cache-key)
-                              data))
+                (lease/put! (:leases client) lease data)
                 (vary-meta data merge lease)))
             :handle-error
             (fn handle-error
