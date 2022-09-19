@@ -22,12 +22,12 @@
             "should return nil on nonexistent prefix")
         (is (nil? (kv1/list-secrets client "test/foo/alpha"))
             "should return nil on secret path")
-        (is (= ["test/"] (kv1/list-secrets client "/")))
-        (is (= ["foo/" "gamma"] (kv1/list-secrets client "test")))
-        (is (= ["alpha" "beta"] (kv1/list-secrets client "/test/foo/"))))
+        (is (= {:keys ["test/"]} (kv1/list-secrets client "/")))
+        (is (= {:keys ["foo/" "gamma"]} (kv1/list-secrets client "test")))
+        (is (= {:keys ["alpha" "beta"]} (kv1/list-secrets client "/test/foo/"))))
       (testing "with alternate mount"
         (let [client' (kv1/with-mount client "kv")]
-          (is (= ["test"] (kv1/list-secrets client' "alt"))))))
+          (is (= {:keys ["test"]} (kv1/list-secrets client' "alt"))))))
     (testing "read-secret"
       (testing "with default mount"
         (is (= {:one "two", :three 456, :seven true}
@@ -55,7 +55,7 @@
           "should overwrite previous secret"))
     (testing "delete-secret!"
       (is (nil? (kv1/delete-secret! client "test/gamma")))
-      (is (= ["foo/"] (kv1/list-secrets client "test")))
+      (is (= {:keys ["foo/"]} (kv1/list-secrets client "test")))
       (is (= :deleted (kv1/read-secret client "test/gamma" {:not-found :deleted}))))))
 
 
@@ -78,12 +78,12 @@
             "should return nil on nonexistent prefix")
         (is (nil? (kv1/list-secrets client "test/foo/alpha"))
             "should return nil on secret path")
-        (is (= ["test/"] (kv1/list-secrets client "/")))
-        (is (= ["foo/" "gamma"] (kv1/list-secrets client "test")))
-        (is (= ["alpha" "beta"] (kv1/list-secrets client "/test/foo/"))))
+        (is (= {:keys ["test/"]} (kv1/list-secrets client "/")))
+        (is (= {:keys ["foo/" "gamma"]} (kv1/list-secrets client "test")))
+        (is (= {:keys ["alpha" "beta"]} (kv1/list-secrets client "/test/foo/"))))
       (testing "with alternate mount"
         (let [client' (kv1/with-mount client "kv")]
-          (is (= ["test"] (kv1/list-secrets client' "alt"))))))
+          (is (= {:keys ["test"]} (kv1/list-secrets client' "alt"))))))
     (testing "read-secret"
       (testing "with default mount"
         (is (= {:one "two", :three 456, :seven true}
@@ -111,7 +111,7 @@
           "should overwrite previous secret"))
     (testing "delete-secret!"
       (is (nil? (kv1/delete-secret! client "test/gamma")))
-      (is (= ["foo/"] (kv1/list-secrets client "test")))
+      (is (= {:keys ["foo/"]} (kv1/list-secrets client "test")))
       (is (= :deleted (kv1/read-secret client "test/gamma" {:not-found :deleted}))))
     (testing "invalid mounts"
       (is (thrown-with-msg? Exception #"no handler"

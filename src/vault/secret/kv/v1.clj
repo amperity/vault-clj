@@ -39,10 +39,10 @@
 
   (list-secrets
     [client path]
-    "List the secret names located under a path prefix location. Returns a
-    vector of name strings, where further folders are suffixed with `/`. The
-    path must be a folder; calling this method on a file or a prefix which does
-    not exist will return nil.")
+    "List the secret names located under a path prefix location. Returns a map
+    with a `:keys` vector of name strings, where further folders are suffixed
+    with `/`. The path must be a folder; calling this method on a file or a
+    prefix which does not exist will return nil.")
 
   (read-secret
     [client path]
@@ -94,19 +94,20 @@
           data (get-in @(:memory client) [:secrets mount])
           depth (if (str/blank? path)
                   1
-                  (inc (count (str/split path #"/"))))]
+                  (inc (count (str/split path #"/"))))
+          result (->> (keys data)
+                      (filter #(or (= "" path) (str/starts-with? % (str path "/"))))
+                      (map #(let [parts (str/split % #"/")]
+                              (if (< depth (count parts))
+                                (str (nth parts (dec depth)) "/")
+                                (last parts))))
+                      (distinct)
+                      (sort)
+                      (vec))]
       (mock/success-response
         client
-        (->> (keys data)
-             (filter #(or (= "" path) (str/starts-with? % (str path "/"))))
-             (map #(let [parts (str/split % #"/")]
-                     (if (< depth (count parts))
-                       (str (nth parts (dec depth)) "/")
-                       (last parts))))
-             (distinct)
-             (sort)
-             (vec)
-             (not-empty)))))
+        (when (seq result)
+          {:keys result}))))
 
 
   (read-secret
@@ -172,7 +173,7 @@
          :handle-response
          (fn handle-response
            [body]
-           (get-in body ["data" "keys"]))
+           (u/kebabify-keys (get body "data")))
          :handle-error
          (fn handle-error
            [ex]
