@@ -11,7 +11,6 @@
     [vault.client.flow :as f]
     [vault.client.http :as http]
     [vault.client.mock :as mock]
-    [vault.component :as component]
     [vault.lease :as lease]
     [vault.secret.database :as database]
     [vault.secret.kv.v1 :as kv1]
@@ -27,7 +26,7 @@
   "Stop the running client, if any."
   []
   (when client
-    (alter-var-root #'client component/stop)))
+    (alter-var-root #'client vault/stop)))
 
 
 (defn init-client
@@ -39,7 +38,7 @@
         vault-client (http/http-client vault-addr)]
     (when vault-token
       (vault/authenticate! vault-client vault-token))
-    (alter-var-root #'client (constantly (component/start vault-client))))
+    (alter-var-root #'client (constantly (vault/start vault-client))))
   :init)
 
 

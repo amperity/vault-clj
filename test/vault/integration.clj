@@ -5,9 +5,7 @@
     [clojure.java.io :as io]
     [clojure.java.shell :as shell]
     [clojure.string :as str]
-    ;; TODO: clean this up
-    [vault.client.proto :as vault]
-    [vault.component :as component])
+    [vault.client :as vault])
   (:import
     (java.net
       InetSocketAddress
@@ -116,7 +114,7 @@
   ([]
    (test-client root-token))
   ([token]
-   (doto (component/new-client address)
+   (doto (vault/new-client address)
      (vault/authenticate! token))))
 
 
