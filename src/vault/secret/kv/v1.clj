@@ -47,9 +47,11 @@
   (read-secret
     [client path]
     [client path opts]
-    "Read the secret at the provided path. Returns the secret data, if
-    present. Note that Vault internally stores data as JSON, so not all
-    Clojure types will round-trip successfully!
+    "Read the secret at the provided path. Returns the secret data, if present.
+    Throws an exception or returns the provided not-found value if not.
+
+    Note that Vault internally stores data as JSON, so not all Clojure types
+    will round-trip successfully!
 
     Options:
     - `:not-found`
@@ -91,7 +93,7 @@
     [client path]
     (let [mount (::mount client default-mount)
           path (u/trim-path path)
-          data (get-in @(:memory client) [:secrets mount])
+          data (get-in @(:memory client) [::data mount])
           depth (if (str/blank? path)
                   1
                   (inc (count (str/split path #"/"))))
@@ -116,7 +118,7 @@
     ([client path opts]
      (let [mount (::mount client default-mount)
            path (u/trim-path path)]
-       (if-let [secret (get-in @(:memory client) [:secrets mount path])]
+       (if-let [secret (get-in @(:memory client) [::data mount path])]
          (mock/success-response
            client
            (-> secret
@@ -137,7 +139,7 @@
           path (u/trim-path path)]
       (swap! (:memory client)
              assoc-in
-             [:secrets mount path]
+             [::data mount path]
              (json/write-str data))
       (mock/success-response client nil)))
 
@@ -146,7 +148,7 @@
     [client path]
     (let [mount (::mount client default-mount)
           path (u/trim-path path)]
-      (swap! (:memory client) update-in [:secrets mount] dissoc path)
+      (swap! (:memory client) update-in [::data mount] dissoc path)
       (mock/success-response client nil))))
 
 
