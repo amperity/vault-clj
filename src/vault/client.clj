@@ -7,12 +7,13 @@
     [clojure.string :as str]
     [clojure.tools.logging :as log]
     [vault.auth :as auth]
-    [vault.auth.token :as token]
+    [vault.auth.token :as auth.token]
     [vault.client.flow :as f]
     [vault.client.http :as http]
     [vault.client.mock :as mock]
     [vault.client.proto :as proto]
-    [vault.lease :as lease])
+    [vault.lease :as lease]
+    [vault.sys.leases :as sys.leases])
   (:import
     java.net.URI))
 
@@ -48,9 +49,13 @@
   [client]
   (auth/maintain!
     (:auth client)
-    #(f/call-sync token/renew-token! client {}))
-  (lease/maintain-leases!
-    (:leases client)))
+    #(f/call-sync auth.token/renew-token! client {}))
+  (lease/maintain!
+    (:leases client)
+    #(f/call-sync sys.leases/renew-lease!
+                  client
+                  (::lease/id %)
+                  (::lease/renew-increment %))))
 
 
 (defn- timer-loop

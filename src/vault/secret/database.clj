@@ -8,7 +8,6 @@
   (:require
     [vault.client.http :as http]
     [vault.lease :as lease]
-    [vault.secret.common :as comm]
     [vault.util :as u])
   (:import
     vault.client.http.HTTPClient))
@@ -46,7 +45,7 @@
       Renew the secret when within this many seconds of the lease expiry.
       (Default: 60)
     - `:renew-increment`
-      How long to request credentials be renewed for. (Default: 4h)
+      How long to request credentials be renewed for, in seconds.
     - `:on-renew`
       A function to call with the updated lease information after the
       credentials have been renewed.
@@ -100,7 +99,7 @@
                                        ::mount mount
                                        ::role role-name))]
                (when lease
-                 (letfn [(renew!
+                 (letfn [(rotate!
                            []
                            (generate-credentials!
                              client role-name
@@ -109,7 +108,7 @@
                      (:leases client)
                      (-> lease
                          (assoc ::lease/key cache-key)
-                         (comm/renewable-lease client opts)
-                         (comm/rotatable-lease client opts renew!))
+                         (lease/renewable-lease opts)
+                         (lease/rotatable-lease opts rotate!))
                      data)))
                (vary-meta data merge lease)))})))))

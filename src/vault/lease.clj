@@ -29,36 +29,47 @@
 (s/def ::data map?)
 
 
-;; A no-argument function to call to renew this lease. This should update the
-;; client's lease store directly.
-(s/def ::renew! fn?)
-
-
 ;; Can this lease be renewed to extend its validity?
 (s/def ::renewable? boolean?)
 
 
-;; Time after which this lease can be attempted to be renewed.
-(s/def ::renew-after inst?)
+;; How many seconds to attempt to add to the lease duration when renewing.
+(s/def ::renew-increment pos-int?)
 
 
 ;; Try to renew this lease when the current time is within this many seconds of
 ;; the `expires-at` deadline.
-(s/def ::renew-within nat-int?)
+(s/def ::renew-within pos-int?)
 
 
 ;; Wait at least this many seconds between successful renewals of this lease.
 (s/def ::renew-backoff nat-int?)
 
 
+;; Time after which this lease can be attempted to be renewed.
+(s/def ::renew-after inst?)
+
+
 ;; A no-argument function to call to rotate this lease. This should return true
 ;; if the rotation succeeded, else false.
-(s/def ::rotate! fn?)
+(s/def ::rotate-fn fn?)
 
 
 ;; Try to read a new secret when the current time is within this many seconds
 ;; of the `expires-at` deadline.
 (s/def ::rotate-within nat-int?)
+
+
+;; Functions to call with updated lease information after a successful renewal.
+(s/def ::on-renew (s/coll-of fn?))
+
+
+;; Functions to call with updated secret data after a successful rotation.
+(s/def ::on-rotate (s/coll-of fn?))
+
+
+;; Functions to call with any exceptions thrown during periodic maintenance.
+(s/def ::on-error (s/coll-of fn?))
 
 
 ;; Full lease information map.
@@ -68,13 +79,15 @@
                 ::duration
                 ::expires-at
                 ::data
-                ::renew!
                 ::renewable?
                 ::renew-after
                 ::renew-within
                 ::renew-backoff
-                ::rotate!
-                ::rotate-within]))
+                ::rotate-fn
+                ::rotate-within
+                ::on-renew
+                ::on-rotate
+                ::on-error]))
 
 
 ;; ## General Functions
@@ -95,25 +108,93 @@
   (expires-within? lease 0))
 
 
-(defn renewable?
-  "True if the given lease is a valid renewal target."
+(defn renew?
+  "True if the lease should be renewed."
   [lease]
-  (and (::renew! lease)
-       (::renewable? lease)
+  (and (::renewable? lease)
+       (::renew-within lease)
        (::expires-at lease)
        (if-let [gate (::renew-after lease)]
          (.isAfter (u/now) gate)
          true)
        (not (expired? lease))
-       (expires-within? lease (::renew-within lease 60))))
+       (expires-within? lease (::renew-within lease))))
 
 
-(defn rotatable?
-  "True if the given lease is a valid rotation target."
+(defn rotate?
+  "True if the lease should be rotated."
   [lease]
-  (and (::rotate! lease)
+  (and (::rotate-fn lease)
+       (::rotate-within lease)
        (::expires-at lease)
-       (expires-within? lease (::rotate-within lease 60))))
+       (expires-within? lease (::rotate-within lease))))
+
+
+(defn renewable-lease
+  "Helper to apply common renewal settings to the lease map.
+
+  Options may contain:
+
+  - `:renew?`
+    If true, attempt to automatically renew the lease when near expiry.
+    (Default: false)
+  - `:renew-within`
+    Renew the lease when within this many seconds of the lease expiry.
+    (Default: 60)
+  - `:renew-increment`
+    How long to request the lease be renewed for, in seconds.
+  - `:on-renew`
+    A function to call with the updated lease information after a successful
+    renewal.
+  - `:on-error`
+    A function to call with any exceptions encountered while renewing or
+    rotating the lease."
+  [lease opts]
+  (if (and (:renew? opts) (::renewable? lease))
+    (-> lease
+        (assoc ::renew-within (:renew-within opts 60))
+        (cond->
+          (:renew-increment opts)
+          (assoc ::renew-increment (:renew-increment opts))
+
+          (:on-renew opts)
+          (update ::on-renew (fnil conj #{}) (:on-renew opts))
+
+          (:on-error opts)
+          (update ::on-error (fnil conj #{}) (:on-error opts))))
+    lease))
+
+
+(defn rotatable-lease
+  "Helper to apply common rotation settings to the lease map. The rotation
+  function will be called with no arguments and should synchronously return
+  a new secret data result, and update the lease store as a side-effect.
+
+  Options may contain:
+
+  - `:rotate?`
+    If true, attempt to read a new secret when the lease can no longer be
+    renewed. (Default: false)
+  - `:rotate-within`
+    Rotate the secret when within this many seconds of the lease expiry.
+    (Default: 60)
+  - `:on-rotate`
+    A function to call with the new secret data after a successful rotation.
+  - `:on-error`
+    A function to call with any exceptions encountered while renewing or
+    rotating the lease."
+  [lease opts rotate-fn]
+  (if (and (:rotate? opts) rotate-fn)
+    (-> lease
+        (assoc ::rotate-fn rotate-fn
+               ::rotate-within (:rotate-within opts 60))
+        (cond->
+          (:on-rotate opts)
+          (update ::on-rotate (fnil conj #{}) (:on-rotate opts))
+
+          (:on-error opts)
+          (update ::on-error (fnil conj #{}) (:on-error opts))))
+    lease))
 
 
 ;; ## Lease Tracking
@@ -209,23 +290,67 @@
 
 ;; ## Maintenance Logic
 
-(defn- maintain!
-  "Maintain a single secret lease as appropriate. Returns a keyword indicating
-  the action and final state of the lease."
+(defn- renew!
+  "Attempt to renew the lease, handling callbacks. Returns true if the renewal
+  succeeded, false if not. The renewal function will be called with the lease
+  and should synchronously return updated lease info. The renewal function
+  should also update the lease store as a side-effect."
+  [renew-fn lease]
+  (try
+    (let [result (renew-fn lease)]
+      (doseq [cb (::on-renew lease)]
+        (try
+          (cb result)
+          (catch Exception _
+            nil)))
+      true)
+    (catch Exception ex
+      (doseq [cb (::on-error lease)]
+        (try
+          (cb ex)
+          (catch Exception _
+            nil)))
+      false)))
+
+
+(defn- rotate!
+  "Attempt to rotate a secret, handling callbacks. Returns true if the rotation
+  succeeded, false if not. The rotation function will be called with no
+  arguments and should synchronously return a result or throw an error."
   [lease]
   (try
-    (cond
-      (renewable? lease)
-      (let [renew! (::renew! lease)]
-        (if (renew!)
-          :renew-ok
-          :renew-fail))
+    (let [rotate-fn (::rotate-fn lease)
+          result (rotate-fn)]
+      (doseq [cb (::on-rotate lease)]
+        (try
+          (cb result)
+          (catch Exception _
+            nil)))
+      true)
+    (catch Exception ex
+      (doseq [cb (::on-error lease)]
+        (try
+          (cb ex)
+          (catch Exception _
+            nil)))
+      false)))
 
-      (rotatable? lease)
-      (let [rotate! (::rotate! lease)]
-        (if (rotate!)
-          :rotate-ok
-          :rotate-fail))
+
+(defn- maintain-lease!
+  "Maintain a single secret lease as appropriate. Returns a keyword indicating
+  the action and final state of the lease."
+  [renew-fn lease]
+  (try
+    (cond
+      (renew? lease)
+      (if (renew! renew-fn lease)
+        :renew-ok
+        :renew-fail)
+
+      (rotate? lease)
+      (if (rotate! lease)
+        :rotate-ok
+        :rotate-fail)
 
       (expired? lease)
       :expired
@@ -237,11 +362,11 @@
       :error)))
 
 
-(defn maintain-leases!
+(defn maintain!
   "Maintain all the leases in the store, blocking until complete."
-  [store]
+  [store renew-fn]
   (doseq [[lease-id lease] @store]
-    (case (maintain! lease)
+    (case (maintain-lease! renew-fn lease)
       ;; After rotating, remove the old lease.
       :rotate-ok
       (swap! store dissoc lease-id)
