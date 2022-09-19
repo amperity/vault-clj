@@ -7,8 +7,8 @@
   Reference: https://www.vaultproject.io/api-docs/secret/databases"
   (:require
     [vault.client.http :as http]
-    [vault.secret.common :as comm]
     [vault.lease :as lease]
+    [vault.secret.common :as comm]
     [vault.util :as u])
   (:import
     vault.client.http.HTTPClient))

@@ -5,6 +5,7 @@
              clojure.set set
              clojure.string str
              clojure.tools.logging log
+             vault.auth auth
              vault.client vault
              vault.client.flow f
              vault.client.proto proto

@@ -3,10 +3,9 @@
     [clojure.test :refer [deftest testing is]]
     [org.httpkit.client :as http-client]
     [vault.auth :as auth]
-    ;; TODO: clean this up
-    [vault.client.proto :as vault]
+    [vault.client.flow :as f]
     [vault.client.http :as http]
-    [vault.client.flow :as f]))
+    [vault.client.proto :as proto]))
 
 
 (defn mock-request
@@ -117,19 +116,19 @@
   (let [client (http/http-client "https://vault.test:8200")]
     (testing "with bad input"
       (is (thrown-with-msg? IllegalArgumentException #"Client authentication must be a map"
-            (vault/authenticate! client [])))
+            (proto/authenticate! client [])))
       (is (thrown-with-msg? IllegalArgumentException #"containing a client-token"
-            (vault/authenticate! client {}))))
+            (proto/authenticate! client {}))))
     (testing "with token string"
-      (is (identical? client (vault/authenticate! client "t0p-53cr3t")))
-      (is (= {::auth/client-token "t0p-53cr3t"} (vault/auth-info client))))
+      (is (identical? client (proto/authenticate! client "t0p-53cr3t")))
+      (is (= {::auth/client-token "t0p-53cr3t"} (proto/auth-info client))))
     (testing "with auth info"
-      (is (identical? client (vault/authenticate!
+      (is (identical? client (proto/authenticate!
                                client
                                {:client-token "t0p-53cr3t"
                                 :ttl 12345})))
       (is (= {::auth/client-token "t0p-53cr3t"}
-             (vault/auth-info client))))))
+             (proto/auth-info client))))))
 
 
 (deftest client-constructor

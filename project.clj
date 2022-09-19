@@ -21,7 +21,8 @@
    :integration :integration}
 
   :hiera
-  {:cluster-depth 2
+  {:ignore-ns #{"vault.util"}
+   :cluster-depth 2
    :vertical false}
 
   :profiles

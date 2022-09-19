@@ -233,8 +233,8 @@
                            (catch Exception _
                              nil))
                          (when lease-duration
-                           (let [start ^Instant (or created-at (u/now))]
-                             (.plusSeconds start lease-duration)))))]
+                           (let [start (or created-at (u/now))]
+                             (.plusSeconds ^Instant start lease-duration)))))]
     (into {}
           (filter (comp some? val))
           {::auth/accessor (or (::auth/accessor auth)
