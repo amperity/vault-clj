@@ -94,18 +94,7 @@
     (let [mount (::mount client default-mount)
           path (u/trim-path path)
           data (get-in @(:memory client) [::data mount])
-          depth (if (str/blank? path)
-                  1
-                  (inc (count (str/split path #"/"))))
-          result (->> (keys data)
-                      (filter #(or (= "" path) (str/starts-with? % (str path "/"))))
-                      (map #(let [parts (str/split % #"/")]
-                              (if (< depth (count parts))
-                                (str (nth parts (dec depth)) "/")
-                                (last parts))))
-                      (distinct)
-                      (sort)
-                      (vec))]
+          result (mock/list-paths (keys data) path)]
       (mock/success-response
         client
         (when (seq result)

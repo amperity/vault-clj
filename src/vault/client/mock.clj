@@ -124,6 +124,29 @@
         (f/on-error! handler state ex)))))
 
 
+(defn ^:no-doc list-paths
+  "Given a collection of path key strings and a target path, return a vector of
+  path segments that are direct children of the target."
+  [paths target]
+  (let [depth (if (str/blank? target)
+                1
+                (inc (count (str/split target #"/"))))
+        prefix (if (str/blank? target)
+                 ""
+                 (str target "/"))]
+    (->> paths
+         (keep (fn check-path
+                 [path]
+                 (when (str/starts-with? path prefix)
+                   (let [parts (str/split path #"/")]
+                     (if (< depth (count parts))
+                       (str (nth parts (dec depth)) "/")
+                       (last parts))))))
+         (distinct)
+         (sort)
+         (vec))))
+
+
 (defn ^:no-doc update-secret!
   "Update the secret at the given path into the memory. If `update-fn` returns
   nil, the secret path will be removed. Calls `result-fn` to produce a result
