@@ -14,6 +14,7 @@
     [vault.lease :as lease]
     [vault.secret.database :as database]
     [vault.secret.kv.v1 :as kv1]
+    [vault.secret.kv.v2 :as kv2]
     [vault.sys.auth :as sys.auth]
     [vault.sys.health :as sys.health]
     [vault.util :as u]))

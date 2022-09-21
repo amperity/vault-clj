@@ -129,7 +129,7 @@
       (swap! (:memory client)
              assoc-in
              [::data mount path]
-             (json/write-str data))
+             (json/write-str (u/stringify-keys data)))
       (mock/success-response client nil)))
 
 
@@ -219,7 +219,7 @@
       (http/call-api
         client :post (u/join-path mount path)
         {:content-type :json
-         :body data})))
+         :body (u/stringify-keys data)})))
 
 
   (delete-secret!
