@@ -51,6 +51,22 @@
               :three "456"})))))
 
 
+(deftest string-casing
+  (testing "stringify-key"
+    (is (= "abc" (u/stringify-key "abc")))
+    (is (= "123" (u/stringify-key 123)))
+    (is (= "foo" (u/stringify-key :foo)))
+    (is (= "foo-bar" (u/stringify-key :foo-bar)))
+    (is (= "foo_bar" (u/stringify-key :foo_bar)))
+    (is (= "foo.bar/baz" (u/stringify-key :foo.bar/baz))))
+  (testing "stringify-keys"
+    (is (= {"foo" [{"x" 123, "y/z" true}]
+            "bar" "456"}
+           (u/stringify-keys
+             {:foo [{:x 123, :y/z true}]
+              :bar "456"})))))
+
+
 (deftest encoding
   (testing "hex"
     (is (= "a0" (u/hex-encode (byte-array [160]))))

@@ -83,6 +83,20 @@
   (walk-keys data snake-str))
 
 
+(defn stringify-key
+  "Convert a map key into a string, with some special treatment for keywords."
+  [k]
+  (if (keyword? k)
+    (subs (str k) 1)
+    (str k)))
+
+
+(defn stringify-keys
+  "Walk the provided data structure to transform map keys to strings."
+  [data]
+  (walk-keys data stringify-key))
+
+
 ;; ## Encoding
 
 (defn hex-encode
