@@ -100,7 +100,7 @@
                :memory (atom data :validator map?)})))))
 
 
-;; ## Request Functions
+;; ## Utility Functions
 
 (defn ^:no-doc success-response
   "Helper which uses the handler to generate a successful response."
@@ -122,3 +122,27 @@
       (fn error
         [state]
         (f/on-error! handler state ex)))))
+
+
+(defn ^:no-doc update-secret!
+  "Update the secret at the given path into the memory. If `update-fn` returns
+  nil, the secret path will be removed. Calls `result-fn` to produce a result
+  which is returned to the caller."
+  ([client secret-path update-fn]
+   (update-secret! client secret-path update-fn (constantly nil)))
+  ([client secret-path update-fn result-fn]
+   (try
+     (-> (:memory client)
+         (swap!
+           (fn apply-update
+             [secrets]
+             (let [secret (update-fn (get-in secrets secret-path))]
+               (if (nil? secret)
+                 (update-in secrets (butlast secret-path) dissoc (last secret-path))
+                 (assoc-in secrets secret-path secret)))))
+         (get-in secret-path)
+         (result-fn)
+         (as-> result
+           (success-response client result)))
+     (catch Exception ex
+       (error-response client ex)))))

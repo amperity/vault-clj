@@ -257,6 +257,14 @@
            ::auth/expires-at expires-at})))
 
 
+(defn ^:no-doc not-found?
+  "True if an exception represents a not-found response from the server."
+  [ex]
+  (let [data (ex-data ex)]
+    (and (empty? (:vault.client/errors data))
+         (= 404 (:vault.client/status data)))))
+
+
 ;; ## HTTP Client
 
 ;; - `flow`

@@ -179,10 +179,8 @@
          :handle-error
          (fn handle-error
            [ex]
-           (let [data (ex-data ex)]
-             (when-not (and (empty? (:vault.client/errors data))
-                            (= 404 (:vault.client/status data)))
-               ex)))})))
+           (when-not (http/not-found? ex)
+             ex))})))
 
 
   (read-secret
@@ -191,7 +189,6 @@
     ([client path opts]
      (let [mount (::mount client default-mount)
            path (u/trim-path path)
-           api-path (u/join-path mount path)
            cache-key [::secret mount path]]
        (if-let [data (and (not (:fresh? opts))
                           (lease/find-data (:leases client) cache-key))]
@@ -199,7 +196,7 @@
          (http/cached-response client data)
          ;; No cached value available, call API.
          (http/call-api
-           client :get api-path
+           client :get (u/join-path mount path)
            {:handle-response
             (fn handle-response
               [body]
@@ -216,14 +213,12 @@
             :handle-error
             (fn handle-error
               [ex]
-              (let [data (ex-data ex)]
-                (if (and (empty? (:vault.client/errors data))
-                         (= 404 (:vault.client/status data)))
-                  (if (contains? opts :not-found)
-                    (:not-found opts)
-                    (ex-info (str "No kv-v1 secret found at " mount ":" path)
-                             data))
-                  ex)))})))))
+              (if (http/not-found? ex)
+                (if (contains? opts :not-found)
+                  (:not-found opts)
+                  (ex-info (str "No kv-v1 secret found at " mount ":" path)
+                           (ex-data ex)))
+                ex))})))))
 
 
   (write-secret!
