@@ -184,8 +184,275 @@
 
 
 (deftest maintenance-helpers
-  ,,,)
+  (testing "renewable-lease"
+    (testing "with non-renewable lease"
+      (is (= {::lease/id "foo/bar"
+              ::lease/renewable? false}
+             (lease/renewable-lease
+               {::lease/id "foo/bar"
+                ::lease/renewable? false}
+               {:renew? true}))
+          "should return lease unchanged"))
+    (testing "without opt-in"
+      (is (= {::lease/id "foo/bar"
+              ::lease/renewable? true}
+             (lease/renewable-lease
+               {::lease/id "foo/bar"
+                ::lease/renewable? true}
+               {}))
+          "should return lease unchanged"))
+    (testing "with opt-in"
+      (is (= {::lease/id "foo/bar"
+              ::lease/renewable? true
+              ::lease/renew-within 60}
+             (lease/renewable-lease
+               {::lease/id "foo/bar"
+                ::lease/renewable? true}
+               {:renew? true}))
+          "should return lease with renew-within setting"))
+    (testing "with full opts"
+      (is (= {::lease/id "foo/bar"
+              ::lease/renewable? true
+              ::lease/renew-within 300
+              ::lease/renew-increment 3600
+              ::lease/on-renew #{prn}
+              ::lease/on-error #{prn}}
+             (lease/renewable-lease
+               {::lease/id "foo/bar"
+                ::lease/renewable? true}
+               {:renew? true
+                :renew-within 300
+                :renew-increment 3600
+                :on-renew prn
+                :on-error prn}))
+          "should return lease with optional settings")))
+  (testing "rotatable-lease"
+    (let [rotate-fn (constantly true)]
+      (testing "without rotation fn"
+        (is (thrown? IllegalArgumentException
+              (lease/rotatable-lease
+                {::lease/id "foo/bar"}
+                {:rotate? true}
+                nil))
+            "should throw an exception"))
+      (testing "without opt-in"
+        (is (= {::lease/id "foo/bar"}
+               (lease/rotatable-lease
+                 {::lease/id "foo/bar"}
+                 {}
+                 rotate-fn))
+            "should return lease unchanged"))
+      (testing "with opt-in"
+        (is (= {::lease/id "foo/bar"
+                ::lease/rotate-fn rotate-fn
+                ::lease/rotate-within 60}
+               (lease/rotatable-lease
+                 {::lease/id "foo/bar"}
+                 {:rotate? true}
+                 rotate-fn))
+            "should return lease with rotation settings"))
+      (testing "with full opts"
+        (is (= {::lease/id "foo/bar"
+                ::lease/rotate-fn rotate-fn
+                ::lease/rotate-within 300
+                ::lease/on-rotate #{prn}
+                ::lease/on-error #{prn}}
+               (lease/rotatable-lease
+                 {::lease/id "foo/bar"}
+                 {:rotate? true
+                  :rotate-within 300
+                  :on-rotate prn
+                  :on-error prn}
+                 rotate-fn))
+            "should return lease with optional settings")))))
 
 
 (deftest maintenance-logic
-  ,,,)
+  (testing "on active lease"
+    (let [store (lease/new-store)
+          lease-id "foo/bar/123"
+          lease {::lease/id lease-id
+                 ::lease/renewable? true
+                 ::lease/renew-within 60
+                 ::lease/rotate-within 60
+                 ::lease/rotate-fn (constantly nil)
+                 ::lease/expires-at (Instant/parse "2022-09-22T09:00:00Z")
+                 ::lease/data {:foo 123}}
+          renew-calls (atom 0)
+          renew-fn (fn [_] (swap! renew-calls inc))]
+      (swap! store assoc lease-id lease)
+      (u/with-now (Instant/parse "2022-09-22T03:00:00Z")
+        (is (nil? (lease/maintain! store renew-fn))))
+      (is (zero? @renew-calls)
+          "should not call renew-fn")
+      (is (= lease (first (vals @store)))
+          "should leave lease unchanged in store")))
+  (testing "on unrenewable lease"
+    (let [store (lease/new-store)
+          lease-id "foo/bar/123"
+          lease {::lease/id lease-id
+                 ::lease/renewable? false
+                 ::lease/expires-at (Instant/parse "2022-09-22T09:00:00Z")
+                 ::lease/data {:foo 123}}
+          renew-calls (atom 0)
+          renew-fn (fn [_] (swap! renew-calls inc))]
+      (swap! store assoc lease-id lease)
+      (u/with-now (Instant/parse "2022-09-22T08:59:50Z")
+        (is (nil? (lease/maintain! store renew-fn))))
+      (is (zero? @renew-calls)
+          "should not call renew-fn")
+      (is (= lease (first (vals @store)))
+          "should leave lease unchanged in store")))
+  (testing "on lease in renewal backoff"
+    (let [store (lease/new-store)
+          lease-id "foo/bar/123"
+          lease {::lease/id lease-id
+                 ::lease/renewable? true
+                 ::lease/renew-within 300
+                 ::lease/renew-after (Instant/parse "2022-09-22T09:28:00Z")
+                 ::lease/expires-at (Instant/parse "2022-09-22T09:30:00Z")
+                 ::lease/data {:foo 123}}
+          renew-calls (atom 0)
+          renew-fn (fn [_] (swap! renew-calls inc))]
+      (swap! store assoc lease-id lease)
+      (u/with-now (Instant/parse "2022-09-22T09:27:00Z")
+        (is (nil? (lease/maintain! store renew-fn))))
+      (is (zero? @renew-calls)
+          "should not call renew-fn")
+      (is (= lease (first (vals @store)))
+          "should leave lease unchanged in store")))
+  (testing "on renewable lease"
+    (testing "with successful renewal"
+      (let [store (lease/new-store)
+            callbacks (atom #{})
+            make-cb (fn [tag] (fn [_] (swap! callbacks conj tag)))
+            lease-id "foo/bar/123"
+            lease {::lease/id lease-id
+                   ::lease/renewable? true
+                   ::lease/renew-within 60
+                   ::lease/expires-at (Instant/parse "2022-09-22T09:30:00Z")
+                   ::lease/on-renew #{(make-cb :a) (make-cb :b)}
+                   ::lease/on-rotate #{(make-cb :c) (make-cb :d)}
+                   ::lease/on-error #{(make-cb :err)}
+                   ::lease/data {:foo 123}}
+            renew-fn (fn [_]
+                       (lease/update!
+                         store
+                         {::lease/id lease-id
+                          ::lease/expires-at (Instant/parse "2022-09-22T10:30:00Z")}))]
+        (swap! store assoc lease-id lease)
+        (u/with-now (Instant/parse "2022-09-22T09:29:10Z")
+          (is (nil? (lease/maintain! store renew-fn))))
+        (let [lease' (first (vals @store))]
+          (is (= (Instant/parse "2022-09-22T10:30:00Z")
+                 (::lease/expires-at lease'))
+              "should update lease expiry")
+          (is (= (Instant/parse "2022-09-22T09:30:10Z")
+                 (::lease/renew-after lease'))
+              "should set lease renewal backoff"))
+        (is (= #{:a :b} @callbacks)
+            "should invoke on-renew callbacks")))
+    (testing "with failed renewal"
+      (let [store (lease/new-store)
+            callbacks (atom #{})
+            make-cb (fn [tag] (fn [_] (swap! callbacks conj tag)))
+            lease-id "foo/bar/123"
+            lease {::lease/id lease-id
+                   ::lease/renewable? true
+                   ::lease/renew-within 60
+                   ::lease/expires-at (Instant/parse "2022-09-22T09:30:00Z")
+                   ::lease/on-renew #{(make-cb :a) (make-cb :b)}
+                   ::lease/on-rotate #{(make-cb :c) (make-cb :d)}
+                   ::lease/on-error #{(make-cb :err)}
+                   ::lease/data {:foo 123}}
+            renew-fn (fn [_] (throw (RuntimeException. "BOOM")))]
+        (swap! store assoc lease-id lease)
+        (u/with-now (Instant/parse "2022-09-22T09:29:10Z")
+          (is (nil? (lease/maintain! store renew-fn))))
+        (is (= lease (first (vals @store)))
+            "should leave lease unchanged in store")
+        (is (= #{:err} @callbacks)
+            "should invoke on-error callbacks"))))
+  (testing "on rotatable lease"
+    (testing "with successful rotation"
+      (let [store (lease/new-store)
+            callbacks (atom #{})
+            make-cb (fn [tag] (fn [_] (swap! callbacks conj tag)))
+            lease-id "foo/bar/123"
+            lease {::lease/id lease-id
+                   ::lease/rotate-within 60
+                   ::lease/rotate-fn (constantly true)
+                   ::lease/expires-at (Instant/parse "2022-09-22T09:30:00Z")
+                   ::lease/on-renew #{(make-cb :a) (make-cb :b)}
+                   ::lease/on-rotate #{(make-cb :c) (make-cb :d)}
+                   ::lease/on-error #{(make-cb :err)}
+                   ::lease/data {:foo 123}}
+            renew-calls (atom 0)
+            renew-fn (fn [_] (swap! renew-calls inc))]
+        (swap! store assoc lease-id lease)
+        (u/with-now (Instant/parse "2022-09-22T09:29:10Z")
+          (is (nil? (lease/maintain! store renew-fn))))
+        (is (zero? @renew-calls)
+            "should not call renew-fn")
+        (is (empty? @store)
+            "should remove old lease from store")
+        (is (= #{:c :d} @callbacks)
+            "should invoke on-rotate callbacks")))
+    (testing "with failed rotation"
+      (let [store (lease/new-store)
+            callbacks (atom #{})
+            make-cb (fn [tag] (fn [_] (swap! callbacks conj tag)))
+            lease-id "foo/bar/123"
+            lease {::lease/id lease-id
+                   ::lease/rotate-within 60
+                   ::lease/rotate-fn (fn [] (throw (RuntimeException. "BOOM")))
+                   ::lease/expires-at (Instant/parse "2022-09-22T09:30:00Z")
+                   ::lease/on-renew #{(make-cb :a) (make-cb :b)}
+                   ::lease/on-rotate #{(make-cb :c) (make-cb :d)}
+                   ::lease/on-error #{(make-cb :err)}
+                   ::lease/data {:foo 123}}
+            renew-calls (atom 0)
+            renew-fn (fn [_] (swap! renew-calls inc))]
+        (swap! store assoc lease-id lease)
+        (u/with-now (Instant/parse "2022-09-22T09:29:10Z")
+          (is (nil? (lease/maintain! store renew-fn))))
+        (is (zero? @renew-calls)
+            "should not call renew-fn")
+        (is (= lease (first (vals @store)))
+            "should leave lease unchanged in store")
+        (is (= #{:err} @callbacks)
+            "should invoke on-error callbacks"))))
+  (testing "on expired lease"
+    (let [store (lease/new-store)
+          lease-id "foo/bar/123"
+          lease {::lease/id lease-id
+                 ::lease/renewable? true
+                 ::lease/renew-within 60
+                 ::lease/expires-at (Instant/parse "2022-09-22T09:00:00Z")
+                 ::lease/data {:foo 123}}
+          renew-calls (atom 0)
+          renew-fn (fn [_] (swap! renew-calls inc))]
+      (swap! store assoc lease-id lease)
+      (u/with-now (Instant/parse "2022-09-22T12:00:00Z")
+        (is (nil? (lease/maintain! store renew-fn))))
+      (is (zero? @renew-calls)
+          "should not call renew-fn")
+      (is (empty? @store)
+          "should remove it from store")))
+  (testing "with unexpected error"
+    (let [store (lease/new-store)
+          lease-id "foo/bar/123"
+          lease {::lease/id lease-id
+                 ::lease/renewable? true
+                 ::lease/renew-within 60
+                 ::lease/expires-at (Instant/parse "2022-09-22T09:00:00Z")
+                 ::lease/data {:foo 123}}
+          renew-calls (atom 0)
+          renew-fn (fn [_] (swap! renew-calls inc))]
+      (swap! store assoc lease-id lease)
+      (with-redefs [lease/renew? (fn [_] (throw (RuntimeException. "BOOM")))]
+        (is (nil? (lease/maintain! store renew-fn))))
+      (is (zero? @renew-calls)
+          "should not call renew-fn")
+      (is (= lease (first (vals @store)))
+          "should leave lease in store"))))

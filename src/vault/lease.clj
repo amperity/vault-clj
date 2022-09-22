@@ -109,28 +109,6 @@
   (expires-within? lease 0))
 
 
-(defn renew?
-  "True if the lease should be renewed."
-  [lease]
-  (and (::renewable? lease)
-       (::renew-within lease)
-       (::expires-at lease)
-       (if-let [gate (::renew-after lease)]
-         (.isAfter (u/now) gate)
-         true)
-       (not (expired? lease))
-       (expires-within? lease (::renew-within lease))))
-
-
-(defn rotate?
-  "True if the lease should be rotated."
-  [lease]
-  (and (::rotate-fn lease)
-       (::rotate-within lease)
-       (::expires-at lease)
-       (expires-within? lease (::rotate-within lease))))
-
-
 (defn renewable-lease
   "Helper to apply common renewal settings to the lease map.
 
@@ -185,7 +163,10 @@
     A function to call with any exceptions encountered while renewing or
     rotating the lease."
   [lease opts rotate-fn]
-  (if (and (:rotate? opts) rotate-fn)
+  (when-not rotate-fn
+    (throw (IllegalArgumentException.
+             "Can't make a lease rotatable with no rotation function")))
+  (if (:rotate? opts)
     (-> lease
         (assoc ::rotate-fn rotate-fn
                ::rotate-within (:rotate-within opts 60))
@@ -274,56 +255,73 @@
 
 ;; ## Maintenance Logic
 
+(defn- renew?
+  "True if the lease should be renewed."
+  [lease]
+  (and (::renewable? lease)
+       (expires-within? lease (::renew-within lease 0))
+       (not (expired? lease))
+       (if-let [gate (::renew-after lease)]
+         (.isAfter (u/now) gate)
+         true)))
+
+
+(defn- rotate?
+  "True if the lease should be rotated."
+  [lease]
+  (and (::rotate-fn lease)
+       (expires-within? lease (::rotate-within lease 0))))
+
+
+(defn- run-callbacks!
+  "Invoke the collection of callback functions with the provided argument
+  value, ignoring any errors."
+  [callbacks x]
+  (run!
+    (fn invoke
+      [f]
+      (try
+        (f x)
+        (catch Exception _
+          nil)))
+    callbacks))
+
+
 (defn- renew!
   "Attempt to renew the lease, handling callbacks. Returns true if the renewal
   succeeded, false if not. The renewal function will be called with the lease
-  and should synchronously return updated lease info. The renewal function
-  should also update the lease store as a side-effect."
+  and should synchronously return updated lease info. The lease store should be
+  updated as a side-effect."
   [renew-fn lease]
   (try
     (let [result (renew-fn lease)]
-      (doseq [cb (::on-renew lease)]
-        (try
-          (cb result)
-          (catch Exception _
-            nil)))
+      (run-callbacks! (::on-renew lease) result)
       true)
     (catch Exception ex
-      (doseq [cb (::on-error lease)]
-        (try
-          (cb ex)
-          (catch Exception _
-            nil)))
+      (run-callbacks! (::on-error lease) ex)
       false)))
 
 
 (defn- rotate!
   "Attempt to rotate a secret, handling callbacks. Returns true if the rotation
   succeeded, false if not. The rotation function will be called with no
-  arguments and should synchronously return a result or throw an error."
+  arguments and should synchronously return a result or throw an error. The
+  lease store should be updated as a side-effect."
   [lease]
   (try
     (let [rotate-fn (::rotate-fn lease)
           result (rotate-fn)]
-      (doseq [cb (::on-rotate lease)]
-        (try
-          (cb result)
-          (catch Exception _
-            nil)))
+      (run-callbacks! (::on-rotate lease) result)
       true)
     (catch Exception ex
-      (doseq [cb (::on-error lease)]
-        (try
-          (cb ex)
-          (catch Exception _
-            nil)))
+      (run-callbacks! (::on-error lease) ex)
       false)))
 
 
 (defn- maintain-lease!
   "Maintain a single secret lease as appropriate. Returns a keyword indicating
   the action and final state of the lease."
-  [renew-fn lease]
+  [lease renew-fn]
   (try
     (cond
       (renew? lease)
@@ -350,7 +348,7 @@
   "Maintain all the leases in the store, blocking until complete."
   [store renew-fn]
   (doseq [[lease-id lease] @store]
-    (case (maintain-lease! renew-fn lease)
+    (case (maintain-lease! lease renew-fn)
       ;; After successful renewal, set a backoff before we try to renew again.
       :renew-ok
       (let [after (.plusSeconds (u/now) (::renew-backoff lease 60))]
