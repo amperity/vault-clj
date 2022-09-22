@@ -7,10 +7,19 @@
     java.util.concurrent.CompletableFuture))
 
 
-(defn nop
-  "A no-op request function."
-  [_]
-  nil)
+(deftest sync-helper
+  (let [handler f/promise-handler
+        client {:flow handler}
+        api-fn (fn api-fn
+                 [client x y]
+                 (is (= 123 x))
+                 (is (true? y))
+                 (f/call
+                   (:flow client) nil
+                   (fn request
+                     [state]
+                     (f/on-success! handler state :ok))))]
+    (is (= :ok (f/call-sync api-fn client 123 true)))))
 
 
 (deftest sync-response
