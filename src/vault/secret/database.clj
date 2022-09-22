@@ -94,7 +94,7 @@
              [body]
              (let [lease (http/lease-info body)
                    data (-> (get body "data")
-                            (u/walk-keys keyword)
+                            (u/keywordize-keys)
                             (vary-meta assoc
                                        ::mount mount
                                        ::role role-name))]

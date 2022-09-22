@@ -112,7 +112,7 @@
            client
            (-> secret
                (json/read-str)
-               (u/walk-keys keyword)))
+               (u/keywordize-keys)))
          (if (contains? opts :not-found)
            (mock/success-response client (:not-found opts))
            (mock/error-response
@@ -193,7 +193,7 @@
                                  ::lease/id (str (random-uuid))
                                  ::lease/key cache-key)
                     data (-> (get body "data")
-                             (u/walk-keys keyword)
+                             (u/keywordize-keys)
                              (vary-meta assoc
                                         ::mount mount
                                         ::path path))]

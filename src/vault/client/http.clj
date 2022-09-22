@@ -47,7 +47,7 @@
         (u/kebabify-keys)
         (cond->
           raw-body
-          (assoc :data (u/walk-keys raw-body keyword))))))
+          (assoc :data (u/keywordize-keys raw-body))))))
 
 
 (defn- form-success

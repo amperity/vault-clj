@@ -252,7 +252,7 @@
            client
            (-> (:data version)
                (json/read-str)
-               (u/walk-keys keyword)
+               (u/keywordize-keys)
                (vary-meta merge
                           {::mount mount
                            ::path path
@@ -508,7 +508,7 @@
                 (seq (:custom-metadata opts))
                 (assoc :custom-metadata (-> (:custom-metadata secret)
                                             (json/read-str)
-                                            (u/walk-keys keyword)
+                                            (u/keywordize-keys)
                                             (mock-patch (:custom-metadata opts))
                                             (u/stringify-keys)
                                             (json/write-str))))))))))
@@ -540,7 +540,7 @@
         (parse-meta-times)
         (merge
           (when-let [cm (get raw-data "custom_metadata")]
-            {:custom-metadata (u/walk-keys cm keyword)})
+            {:custom-metadata (u/keywordize-keys cm)})
           (when-let [versions (not-empty (get raw-data "versions"))]
             {:versions (into (sorted-map)
                              (map
@@ -600,7 +600,7 @@
                                (parse-meta-times)
                                (update-keys qualify-keyword))]
               (-> (get-in body ["data" "data"])
-                  (u/walk-keys keyword)
+                  (u/keywordize-keys)
                   (vary-meta merge
                              metadata
                              {::mount mount

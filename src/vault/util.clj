@@ -36,6 +36,12 @@
     data))
 
 
+(defn keywordize-keys
+  "Update the provided data structure by coercing all map keys to keywords."
+  [data]
+  (walk-keys data keyword))
+
+
 (defn kebab-keyword
   "Converts underscores to hyphens in a string or unqualified keyword. Returns
   a simple kebab-case keyword."
