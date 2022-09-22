@@ -99,7 +99,8 @@
     (or (nil? expires-at)
         (-> (u/now)
             (.plusSeconds ttl)
-            (.isAfter expires-at)))))
+            (.isBefore expires-at)
+            (not)))))
 
 
 (defn expired?
@@ -226,11 +227,11 @@
 
 (defn find-data
   "Retrieve an existing leased secret from the store by cache key. Returns the
-  secret data, or nil if not found."
+  secret data, or nil if not found or expired."
   [store cache-key]
   (let [lease (first (filter (comp #{cache-key} ::key) (vals @store)))
         data (::data lease)]
-    (when (and lease data)
+    (when (and data (not (expired? lease)))
       (vary-meta data merge (dissoc lease ::data)))))
 
 
@@ -244,17 +245,12 @@
 
 (defn update!
   "Merge some updated information into an existing lease. Updates should
-  contain a `::lease/id`. Returns the updated lease."
+  contain a `::lease/id`. Returns the updated lease, or nil if no such lease
+  was present."
   [store updates]
   (let [lease-id (::id updates)]
     (-> store
-        (swap! update
-               lease-id
-               (fn update-lease
-                 [lease]
-                 (-> lease
-                     (merge updates)
-                     (vary-meta merge (meta updates)))))
+        (swap! u/update-some lease-id merge updates)
         (get lease-id))))
 
 
@@ -273,18 +269,6 @@
                  (into (empty leases)
                        (remove (comp #{cache-key} ::key val))
                        leases)))
-  nil)
-
-
-(defn prune!
-  "Remove expired leases from the store."
-  [store]
-  (swap! store
-         (fn remove-expired
-           [leases]
-           (into (empty leases)
-                 (remove (comp expired? val))
-                 leases)))
   nil)
 
 
@@ -367,14 +351,14 @@
   [store renew-fn]
   (doseq [[lease-id lease] @store]
     (case (maintain-lease! renew-fn lease)
-      ;; After rotating, remove the old lease.
-      :rotate-ok
-      (swap! store dissoc lease-id)
-
       ;; After successful renewal, set a backoff before we try to renew again.
       :renew-ok
       (let [after (.plusSeconds (u/now) (::renew-backoff lease 60))]
         (swap! store assoc-in [lease-id ::renew-after] after))
+
+      ;; After rotating, remove the old lease.
+      :rotate-ok
+      (swap! store dissoc lease-id)
 
       ;; Remove expired leases.
       :expired

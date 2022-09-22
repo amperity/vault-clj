@@ -6,11 +6,11 @@
     java.time.Instant))
 
 
-(deftest time-controls
-  (let [t (Instant/parse "2021-08-31T22:06:17Z")]
-    (u/with-now t
-      (is (= t (u/now)))
-      (is (= 1630447577000 (u/now-milli))))))
+(deftest misc-utils
+  (testing "update-some"
+    (is (= {:foo true} (u/update-some {:foo true} :bar inc)))
+    (is (= {:foo true, :bar 124}
+           (u/update-some {:foo true, :bar 123} :bar inc)))))
 
 
 (deftest kebab-casing
@@ -94,3 +94,10 @@
   (testing "join-path"
     (is (= "foo/bar" (u/join-path "foo" "bar")))
     (is (= "foo/bar/baz/qux" (u/join-path "foo/bar/" "/baz" "qux/")))))
+
+
+(deftest time-controls
+  (let [t (Instant/parse "2021-08-31T22:06:17Z")]
+    (u/with-now t
+      (is (= t (u/now)))
+      (is (= 1630447577000 (u/now-milli))))))
