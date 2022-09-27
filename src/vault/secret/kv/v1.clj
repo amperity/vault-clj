@@ -6,7 +6,6 @@
   Reference: https://www.vaultproject.io/api-docs/secret/kv/kv-v1"
   (:require
     [clojure.data.json :as json]
-    [clojure.string :as str]
     [vault.client.http :as http]
     [vault.client.mock :as mock]
     [vault.lease :as lease]
@@ -59,7 +58,10 @@
       throwing an exception.
     - `:refresh?`
       Always make a read for fresh data, even if a cached secret is
-      available.")
+      available.
+    - `:ttl`
+      Cache the data read for the given number of seconds. Overrides the TTL
+      returned by Vault. A value of zero or less will disable caching.")
 
   (write-secret!
     [client path data]
@@ -143,6 +145,23 @@
 
 ;; ## HTTP Client
 
+(defn- synthesize-lease
+  "Produce a synthetic map of lease information from the given raw lease, cache
+  key, and an optional custom TTL. Returns nil if the TTL is present and
+  non-positive."
+  [lease cache-key ttl]
+  (when (or (and (::lease/duration lease)
+                 (nil? ttl))
+            (pos? ttl))
+    (-> lease
+        (assoc ::lease/id (str (random-uuid))
+               ::lease/key cache-key)
+        (cond->
+          ttl
+          (assoc ::lease/duration (long ttl)
+                 ::lease/expires-at (.plusSeconds (u/now) (long ttl)))))))
+
+
 (extend-type HTTPClient
 
   API
@@ -188,9 +207,10 @@
            {:handle-response
             (fn handle-response
               [body]
-              (let [lease (assoc (http/lease-info body)
-                                 ::lease/id (str (random-uuid))
-                                 ::lease/key cache-key)
+              (let [lease (synthesize-lease
+                            (http/lease-info body)
+                            cache-key
+                            (:ttl opts))
                     data (-> (get body "data")
                              (u/keywordize-keys)
                              (vary-meta assoc

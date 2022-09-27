@@ -195,10 +195,12 @@
   "Return a response without calling the API. Uses the client's flow handler
   to prepare and return the cached secret data."
   [client data]
-  (let [handler (:flow client)]
+  (let [handler (:flow client)
+        info {:vault.client/cached? true}
+        data (vary-meta data merge info)]
     (f/call
       handler
-      {:vault.client/cached? true}
+      info
       (fn cached
         [state]
         (f/on-success! handler state data)))))

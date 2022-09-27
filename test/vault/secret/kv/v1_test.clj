@@ -3,6 +3,7 @@
     [clojure.test :refer [is testing deftest]]
     [vault.client.mock :refer [mock-client]]
     [vault.integration :refer [with-dev-server cli]]
+    [vault.lease :as lease]
     [vault.secret.kv.v1 :as kv1]))
 
 
@@ -10,11 +11,14 @@
   (let [client (mock-client)]
     (testing "write-secret!"
       (testing "with default mount"
+        (is (nil? (::kv1/mount client)))
         (is (nil? (kv1/write-secret! client "test/foo/alpha" {:one :two, :three 456, :seven true})))
         (is (nil? (kv1/write-secret! client "test/foo/beta" {:xyz #{"abc"}})))
         (is (nil? (kv1/write-secret! client "test/gamma" {:map {:a 1, :b 2}}))))
       (testing "with alternate mount"
         (let [client' (kv1/with-mount client "kv")]
+          (is (= "kv" (::kv1/mount client')))
+          (is (nil? (::kv1/mount (kv1/with-mount client' nil))))
           (is (nil? (kv1/write-secret! client' "alt/test" {:some "thing"}))))))
     (testing "list-secrets"
       (testing "with default mount"
@@ -66,11 +70,14 @@
     (cli "secrets" "enable" "-path=kv" "-version=1" "kv")
     (testing "write-secret!"
       (testing "with default mount"
+        (is (nil? (::kv1/mount client)))
         (is (nil? (kv1/write-secret! client "test/foo/alpha" {:one :two, :three 456, :seven true})))
         (is (nil? (kv1/write-secret! client "test/foo/beta" {:xyz #{"abc"}})))
         (is (nil? (kv1/write-secret! client "test/gamma" {:map {:a 1, :b 2}}))))
       (testing "with alternate mount"
         (let [client' (kv1/with-mount client "kv")]
+          (is (= "kv" (::kv1/mount client')))
+          (is (nil? (::kv1/mount (kv1/with-mount client' nil))))
           (is (nil? (kv1/write-secret! client' "alt/test" {:some "thing"}))))))
     (testing "list-secrets"
       (testing "with default mount"
@@ -104,7 +111,31 @@
                  (kv1/read-secret client' "alt/test")))
           (is (thrown-with-msg? Exception #"No kv-v1 secret found at kv:foo/bar"
                 (kv1/read-secret client' "foo/bar")))
-          (is (= :shrug (kv1/read-secret client' "test/foo/alpha" {:not-found :shrug}))))))
+          (is (= :shrug (kv1/read-secret client' "test/foo/alpha" {:not-found :shrug})))))
+      (testing "lease caching"
+        (let [cache-key [::kv1/secret "secret" "test/foo/beta"]]
+          (lease/invalidate! (:leases client) cache-key)
+          (testing "with zero ttl"
+            (let [result (kv1/read-secret client "test/foo/beta" {:ttl 0})]
+              (is (= {:xyz ["abc"]} result))
+              (is (not (:vault.client/cached? (meta result)))
+                  "should read a new result")
+              (is (nil? (lease/find-data (:leases client) cache-key))
+                  "should not cache data")))
+          (testing "with positive ttl"
+            (is (= {:xyz ["abc"]}
+                   (kv1/read-secret client "test/foo/beta" {:ttl 300})))
+            (is (= {:xyz ["abc"]} (lease/find-data (:leases client) cache-key))
+                "should cache data")
+            (let [result (kv1/read-secret client "test/foo/beta" {:ttl 300})]
+              (is (:vault.client/cached? (meta result))
+                  "should read cached result")))
+          (testing "with refresh option"
+            (let [result (kv1/read-secret client "test/foo/beta" {:refresh? true})]
+              (is (not (:vault.client/cached? (meta result)))
+                  "should read a new result")
+              (is (= 1 (count (filter #(= cache-key (::lease/key (val %))) @(:leases client))))
+                  "should replace old lease"))))))
     (testing "write-secret! update"
       (is (nil? (kv1/write-secret! client "test/foo/beta" {:qrs false})))
       (is (= {:qrs false} (kv1/read-secret client "test/foo/beta"))
