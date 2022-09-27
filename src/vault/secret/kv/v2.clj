@@ -9,6 +9,7 @@
     [clojure.string :as str]
     [vault.client.http :as http]
     [vault.client.mock :as mock]
+    [vault.lease :as lease]
     [vault.util :as u])
   (:import
     java.time.Instant
@@ -60,7 +61,13 @@
       Read a specific version of the secret. Defaults to the latest version.
     - `:not-found`
       If no secret exists at the given path or version, return this value
-      instead of throwing an exception.")
+      instead of throwing an exception.
+    - `:refresh?`
+      Always make a read for fresh data, even if a cached secret is
+      available.
+    - `:ttl`
+      Cache the data read for the given number of seconds. A value of zero or
+      less will disable caching.")
 
   (write-secret!
     [client path data]
@@ -148,7 +155,7 @@
       describe the secret.")
 
   (patch-metadata!
-    [client path data opts]
+    [client path opts]
     "Patch the existing metadata for the secret at the provided location.
     Returns nil.
 
@@ -489,7 +496,7 @@
 
 
   (patch-metadata!
-    [client path data opts]
+    [client path opts]
     (let [mount (::mount client default-mount)
           path (u/trim-path path)]
       (mock/update-secret!
@@ -553,6 +560,17 @@
                              versions)})))))
 
 
+(defn- synthesize-lease
+  "Produce a synthetic map of lease information from the cache key and an
+  optional custom TTL. Returns nil if the TTL is not a positive number."
+  [cache-key ttl]
+  (when (and ttl (pos? ttl))
+    {::lease/id (str (random-uuid))
+     ::lease/key cache-key
+     ::lease/duration (long ttl)
+     ::lease/expires-at (.plusSeconds (u/now) (long ttl))}))
+
+
 (extend-type HTTPClient
 
   API
@@ -586,33 +604,45 @@
      (read-secret client path nil))
     ([client path opts]
      (let [mount (::mount client default-mount)
-           path (u/trim-path path)]
-       (http/call-api
-         client :get (u/join-path mount "data" path)
-         {:query-params (if-let [version (:version opts)]
-                          {:version version}
-                          {})
-          :handle-response
-          (fn handle-response
-            [body]
-            (let [metadata (-> (get-in body ["data" "metadata"])
-                               (u/kebabify-keys)
-                               (parse-meta-times)
-                               (update-keys qualify-keyword))]
-              (-> (get-in body ["data" "data"])
-                  (u/keywordize-keys)
-                  (vary-meta merge
-                             metadata
-                             {::mount mount
-                              ::path path}))))
-          :handle-error
-          (fn handle-error
-            [ex]
-            (if (http/not-found? ex)
-              (if (contains? opts :not-found)
-                (:not-found opts)
-                (ex-not-found mount path (ex-data ex)))
-              ex))}))))
+           path (u/trim-path path)
+           cache-key [::secret mount path]
+           cached (when-not (:refresh? opts)
+                    (lease/find-data (:leases client) cache-key))]
+       (if (and cached
+                (or (nil? (:version opts))
+                    (= (:version opts) (::version (meta cached)))))
+         (http/cached-response client cached)
+         (http/call-api
+           client :get (u/join-path mount "data" path)
+           {:query-params (if-let [version (:version opts)]
+                            {:version version}
+                            {})
+            :handle-response
+            (fn handle-response
+              [body]
+              (let [lease (synthesize-lease cache-key (:ttl opts))
+                    metadata (-> (get-in body ["data" "metadata"])
+                                 (u/kebabify-keys)
+                                 (parse-meta-times)
+                                 (update-keys qualify-keyword))
+                    data (-> (get-in body ["data" "data"])
+                             (u/keywordize-keys)
+                             (vary-meta merge
+                                        metadata
+                                        {::mount mount
+                                         ::path path}))]
+                (when lease
+                  (lease/invalidate! (:leases client) cache-key)
+                  (lease/put! (:leases client) lease data))
+                (vary-meta data merge lease)))
+            :handle-error
+            (fn handle-error
+              [ex]
+              (if (http/not-found? ex)
+                (if (contains? opts :not-found)
+                  (:not-found opts)
+                  (ex-not-found mount path (ex-data ex)))
+                ex))})))))
 
 
   (write-secret!
@@ -620,7 +650,9 @@
      (write-secret! client path data nil))
     ([client path data opts]
      (let [mount (::mount client default-mount)
-           path (u/trim-path path)]
+           path (u/trim-path path)
+           cache-key [::secret mount path]]
+       (lease/invalidate! (:leases client) cache-key)
        (http/call-api
          client :post (u/join-path mount "data" path)
          {:content-type :json
@@ -634,7 +666,9 @@
      (patch-secret! client path data nil))
     ([client path data opts]
      (let [mount (::mount client default-mount)
-           path (u/trim-path path)]
+           path (u/trim-path path)
+           cache-key [::secret mount path]]
+       (lease/invalidate! (:leases client) cache-key)
        (http/call-api
          client :patch (u/join-path mount "data" path)
          {:headers {"content-type" "application/merge-patch+json"}
@@ -647,7 +681,9 @@
   (delete-secret!
     [client path]
     (let [mount (::mount client default-mount)
-          path (u/trim-path path)]
+          path (u/trim-path path)
+          cache-key [::secret mount path]]
+      (lease/invalidate! (:leases client) cache-key)
       (http/call-api
         client :delete (u/join-path mount "data" path)
         {})))
@@ -656,7 +692,9 @@
   (destroy-secret!
     [client path]
     (let [mount (::mount client default-mount)
-          path (u/trim-path path)]
+          path (u/trim-path path)
+          cache-key [::secret mount path]]
+      (lease/invalidate! (:leases client) cache-key)
       (http/call-api
         client :delete (u/join-path mount "metadata" path)
         {})))
@@ -665,7 +703,9 @@
   (delete-versions!
     [client path versions]
     (let [mount (::mount client default-mount)
-          path (u/trim-path path)]
+          path (u/trim-path path)
+          cache-key [::secret mount path]]
+      (lease/invalidate! (:leases client) cache-key)
       (http/call-api
         client :post (u/join-path mount "delete" path)
         {:content-type :json
@@ -675,7 +715,9 @@
   (undelete-versions!
     [client path versions]
     (let [mount (::mount client default-mount)
-          path (u/trim-path path)]
+          path (u/trim-path path)
+          cache-key [::secret mount path]]
+      (lease/invalidate! (:leases client) cache-key)
       (http/call-api
         client :post (u/join-path mount "undelete" path)
         {:content-type :json
@@ -685,7 +727,9 @@
   (destroy-versions!
     [client path versions]
     (let [mount (::mount client default-mount)
-          path (u/trim-path path)]
+          path (u/trim-path path)
+          cache-key [::secret mount path]]
+      (lease/invalidate! (:leases client) cache-key)
       (http/call-api
         client :post (u/join-path mount "destroy" path)
         {:content-type :json
@@ -725,7 +769,7 @@
 
 
   (patch-metadata!
-    [client path data opts]
+    [client path opts]
     (let [mount (::mount client default-mount)
           path (u/trim-path path)]
       (http/call-api
