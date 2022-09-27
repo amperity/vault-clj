@@ -35,7 +35,7 @@
     "Generate a new set of dynamic credentials based on the named role.
 
     Options:
-    - `:fresh?`
+    - `:refresh?`
       Always make a call for fresh data, even if a cached secret lease is
       available.
     - `:renew?`
@@ -81,10 +81,9 @@
     (let [mount (::mount client default-mount)
           api-path (u/join-path mount "creds" role-name)
           cache-key [::role mount role-name]]
-      (if-let [data (and (not (:fresh? opts))
+      (if-let [data (and (not (:refresh? opts))
                          (lease/find-data (:leases client) cache-key))]
         ;; Re-use cached secret.
-        ;; TODO: what happens if the caller specifies different options?
         (http/cached-response client data)
         ;; No cached value available, call API.
         (http/call-api
@@ -103,7 +102,7 @@
                            []
                            (generate-credentials!
                              client role-name
-                             (assoc opts :fresh? true)))]
+                             (assoc opts :refresh? true)))]
                    (lease/put!
                      (:leases client)
                      (-> lease

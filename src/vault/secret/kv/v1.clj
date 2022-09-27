@@ -57,7 +57,7 @@
     - `:not-found`
       If no secret exists at the given path, return this value instead of
       throwing an exception.
-    - `:fresh?`
+    - `:refresh?`
       Always make a read for fresh data, even if a cached secret is
       available.")
 
@@ -178,12 +178,11 @@
     ([client path opts]
      (let [mount (::mount client default-mount)
            path (u/trim-path path)
-           cache-key [::secret mount path]]
-       (if-let [data (and (not (:fresh? opts))
-                          (lease/find-data (:leases client) cache-key))]
-         ;; Re-use cached secret.
-         (http/cached-response client data)
-         ;; No cached value available, call API.
+           cache-key [::secret mount path]
+           cached (when-not (:refresh? opts)
+                    (lease/find-data (:leases client) cache-key))]
+       (if cached
+         (http/cached-response client cached)
          (http/call-api
            client :get (u/join-path mount path)
            {:handle-response
@@ -197,7 +196,9 @@
                              (vary-meta assoc
                                         ::mount mount
                                         ::path path))]
-                (lease/put! (:leases client) lease data)
+                (when lease
+                  (lease/invalidate! (:leases client) cache-key)
+                  (lease/put! (:leases client) lease data))
                 (vary-meta data merge lease)))
             :handle-error
             (fn handle-error
