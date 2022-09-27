@@ -14,7 +14,7 @@
   [[org.clojure/clojure "1.11.1"]
    [org.clojure/data.json "2.4.0"]
    [org.clojure/tools.logging "1.2.4"]
-   [http-kit "2.6.0"]]
+   [http-kit "2.7.0-alpha1"]]
 
   :test-selectors
   {:default (complement :integration)
