@@ -56,6 +56,13 @@
   (walk-keys data kebab-keyword))
 
 
+(defn kebabify-body-auth
+  "Look up a map in the provided body under the `\"auth\"` key and kebabify
+  it."
+  [body]
+  (kebabify-keys (get body "auth")))
+
+
 (defn kebabify-body-data
   "Look up a map in the provided body under the `\"data\"` key and kebabify
   it."
