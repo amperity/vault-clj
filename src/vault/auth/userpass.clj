@@ -11,9 +11,20 @@
     vault.client.http.HTTPClient))
 
 
+(def default-mount
+  "Default mount point to use if one is not provided."
+  "userpass")
+
+
 (defprotocol API
   "The userpass endpoints manage username & password authentication
   functionality."
+
+  (with-mount
+    [client mount]
+    "Return an updated client which will resolve calls against the provided
+    mount instead of the default. Passing `nil` will reset the client to the
+    default.")
 
   (login
     [client username password]
@@ -24,13 +35,22 @@
 
   API
 
+  (with-mount
+    [client mount]
+    (if (some? mount)
+      (assoc client ::mount mount)
+      (dissoc client ::mount)))
+
+
   (login
     [client username password]
-    (http/call-api
-      client :post (u/join-path "auth/userpass/login/" username)
-      {:content-type :json
-       :body {:password password}
-       :handle-response u/kebabify-body-auth
-       :on-success (fn update-auth
-                     [auth]
-                     (proto/authenticate! client auth))})))
+    (let [mount (::mount client default-mount)
+          api-path (u/join-path "auth" mount "login" username)]
+      (http/call-api
+        client :post api-path
+        {:content-type :json
+         :body {:password password}
+         :handle-response u/kebabify-body-auth
+         :on-success (fn update-auth
+                       [auth]
+                       (proto/authenticate! client auth))}))))
