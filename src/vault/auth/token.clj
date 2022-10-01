@@ -128,13 +128,6 @@
 
 ;; ## HTTP Client
 
-(defn- kebabify-body-auth
-  "Look up a map in the provided body under the `\"auth\"` key and kebabify
-  it."
-  [body]
-  (u/kebabify-keys (get body "auth")))
-
-
 (extend-type HTTPClient
 
   API
@@ -145,7 +138,7 @@
       client :post "auth/token/create"
       {:content-type :json
        :body (u/snakify-keys params)
-       :handle-response kebabify-body-auth}))
+       :handle-response u/kebabify-body-auth}))
 
 
   (create-orphan-token!
@@ -154,7 +147,7 @@
       client :post "auth/token/create-orphan"
       {:content-type :json
        :body (u/snakify-keys params)
-       :handle-response kebabify-body-auth}))
+       :handle-response u/kebabify-body-auth}))
 
 
   (create-role-token!
@@ -163,7 +156,7 @@
       client :post (u/join-path "auth/token/create" role-name)
       {:content-type :json
        :body (u/snakify-keys params)
-       :handle-response kebabify-body-auth}))
+       :handle-response u/kebabify-body-auth}))
 
 
   (lookup-token
@@ -197,21 +190,21 @@
         client :post "auth/token/renew"
         {:content-type :json
          :body (select-keys params [:token :increment])
-         :handle-response kebabify-body-auth})
+         :handle-response u/kebabify-body-auth})
 
       (:accessor params)
       (http/call-api
         client :post "auth/token/renew-accessor"
         {:content-type :json
          :body (select-keys params [:accessor :increment])
-         :handle-response kebabify-body-auth})
+         :handle-response u/kebabify-body-auth})
 
       :else
       (http/call-api
         client :post "auth/token/renew-self"
         {:content-type :json
          :body (select-keys params [:increment])
-         :handle-response kebabify-body-auth
+         :handle-response u/kebabify-body-auth
          :on-success (fn update-auth
                        [auth]
                        (proto/authenticate! client auth))})))

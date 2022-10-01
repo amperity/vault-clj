@@ -7,6 +7,7 @@
     [clojure.tools.namespace.repl :refer [refresh]]
     [vault.auth :as auth]
     [vault.auth.token :as auth.token]
+    [vault.auth.userpass :as auth.userpass]
     [vault.client :as vault]
     [vault.client.flow :as f]
     [vault.client.http :as http]
