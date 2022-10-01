@@ -23,6 +23,7 @@
         (let [original-auth-info (vault/auth-info client)
               response (userpass/login client "foo" "bar")
               auth-info (vault/auth-info client)]
+          (is (nil? (::userpass/mount client)))
           (assert-authenticated-map response)
           (is (= (:client-token response)
                  (::auth/client-token auth-info)))
@@ -31,12 +32,9 @@
       (testing "with alternate mount"
         (cli "auth" "enable" "-path=auth-test" "userpass")
         (cli "write" "auth/auth-test/users/baz" "password=qux")
-        (let [original-auth-info (vault/auth-info client)
-              client' (userpass/with-mount client "auth-test")
-              response (userpass/login client' "baz" "qux")
-              auth-info (vault/auth-info client)]
+        (let [client' (userpass/with-mount client "auth-test")
+              response (userpass/login client' "baz" "qux")]
+          (is (= "auth-test" (::userpass/mount client')))
           (assert-authenticated-map response)
           (is (= (:client-token response)
-                 (::auth/client-token (vault/auth-info client))))
-          (is (not= (::auth/client-token original-auth-info)
-                    (::auth/client-token auth-info))))))))
+                 (::auth/client-token (vault/auth-info client')))))))))
