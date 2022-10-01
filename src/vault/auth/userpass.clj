@@ -28,7 +28,11 @@
 
   (login
     [client username password]
-    "Login with the username and password."))
+    "Login with the username and password. This method uses the
+    `/auth/userpass/login/:username` endpoint.
+
+    Returns the `auth` map from the login endpoint and also updates the auth
+    information in the client, including the new client token."))
 
 
 (extend-type HTTPClient
