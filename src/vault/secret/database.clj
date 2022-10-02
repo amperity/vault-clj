@@ -1,7 +1,7 @@
 (ns vault.secret.database
   "The database secrets engine is used to manage dynamically-issued credentials
   for users of a database backend such as mysql, postgresql, mongodb, etc. The
-  vault server uses a priveleged 'root' user to create new users with randomized
+  vault server uses a privileged 'root' user to create new users with randomized
   passwords on-demand for callers.
 
   Reference: https://www.vaultproject.io/api-docs/secret/databases"
