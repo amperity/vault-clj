@@ -16,7 +16,7 @@ commands:
       - run:
           name: Install vault
           environment:
-            VAULT_VERSION: 1.8.1
+            VAULT_VERSION: 1.11.4
           command: |
             wget https://releases.hashicorp.com/vault/${VAULT_VERSION}/vault_${VAULT_VERSION}_linux_amd64.zip
             unzip vault_${VAULT_VERSION}_linux_amd64.zip
