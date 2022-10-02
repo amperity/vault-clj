@@ -26,15 +26,10 @@
     default.")
 
   (login
-    [client params]
-    "Login to the provided role using a JWT. This method uses the
+    [client role jwt]
+    "Login to the provided role using a signed JSON Web Token (JWT) for
+    authenticating a service account. This method uses the
     `/auth/kubernetes/login` endpoint.
-
-    Parameters must include:
-    - `:role`
-      Name of the role against which the login is being attempted.
-    - `:jwt`
-      Signed JSON Web Token (JWT) for authenticating a service account.
 
     Returns the `auth` map from the login endpoint and also updates the auth
     information in the client, including the new client token."))
@@ -52,11 +47,7 @@
 
 
   (login
-    [client {:keys [jwt role]}]
-    (when-not jwt
-      (throw (IllegalArgumentException. "Kubernetes auth params must include :jwt")))
-    (when-not role
-      (throw (IllegalArgumentException. "Kubernetes auth params must include :role")))
+    [client role jwt]
     (let [mount (::mount client default-mount)
           api-path (u/join-path "auth" mount "login")]
       (http/call-api
