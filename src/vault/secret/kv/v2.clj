@@ -191,7 +191,7 @@
         ;; key is on both sides
         (and (contains? m k) (contains? u k))
         (let [mv (get m k)
-              uv (get m k)]
+              uv (get u k)]
           (cond
             ;; nil overwrites original entry to remove it, so we just don't add
             ;; it here
@@ -267,7 +267,7 @@
                            ::created-time (:created-time version)
                            ::destroyed false}
                           (when-let [cm (:custom-metadata secret)]
-                            {::custom-metadata (json/read-str cm)}))))
+                            {::custom-metadata (u/keywordize-keys (json/read-str cm))}))))
 
          (contains? opts :not-found)
          (mock/success-response client (:not-found opts))
@@ -282,7 +282,9 @@
     ([client path data opts]
      (let [mount (::mount client default-mount)
            path (u/trim-path path)
-           serialized (json/write-str data)]
+           serialized (-> data
+                          (u/stringify-keys)
+                          (json/write-str))]
        (mock/update-secret!
          client
          [::data mount path]
@@ -297,7 +299,7 @@
                                 ::path path
                                 ::version current}))))
            (let [max-version (if (seq (:versions secret))
-                               (apply max (keys (:verisons secret)))
+                               (apply max (keys (:versions secret)))
                                0)
                  version-id (inc max-version)
                  version {:data serialized
@@ -306,7 +308,15 @@
              (-> (or secret {:created-time (u/now)})
                  (assoc-in [:versions version-id] version)
                  (assoc :current-version version-id
-                        :updated-time (u/now)))))))))
+                        :updated-time (u/now)))))
+         (fn secret-meta
+           [secret]
+           (let [current (:current-version secret)
+                 version (get-in secret [:versions current])]
+             (merge
+               (select-keys secret [:custom-metadata])
+               (select-keys version [:created-time :destroyed])
+               {:version current})))))))
 
 
   (patch-secret!
@@ -334,17 +344,29 @@
                                {::mount mount
                                 ::path path
                                 ::version current})))
-             (let [new-data (mock-patch (:data version) data)
-                   max-version (if (seq (:versions secret))
-                                 (apply max (keys (:verisons secret)))
-                                 0)
+             (let [new-data (-> (:data version)
+                                (json/read-str)
+                                (u/keywordize-keys)
+                                (mock-patch data)
+                                (u/stringify-keys)
+                                (json/write-str))
+                   max-version (apply max (keys (:versions secret)))
                    version-id (inc max-version)
-                   version {:data (json/write-str new-data)
+                   version {:data new-data
                             :created-time (u/now)
                             :destroyed false}]
                (-> secret
                    (assoc-in [:versions version-id] version)
-                   (assoc :current-version version-id)))))))))
+                   (assoc :current-version version-id
+                          :updated-time (u/now))))))
+         (fn secret-meta
+           [secret]
+           (let [current (:current-version secret)
+                 version (get-in secret [:versions current])]
+             (merge
+               (select-keys secret [:custom-metadata])
+               (select-keys version [:created-time :destroyed])
+               {:version current})))))))
 
 
   (delete-secret!
@@ -356,9 +378,8 @@
         [::data mount path]
         (fn update-secret
           [secret]
-          (when-not (:current-version secret)
-            (throw (ex-not-found mount path)))
-          (assoc-in secret [:versions (:current-version secret) :deletion-time] (u/now))))))
+          (when secret
+            (assoc-in secret [:versions (:current-version secret) :deletion-time] (u/now)))))))
 
 
   (destroy-secret!
@@ -379,18 +400,17 @@
         [::data mount path]
         (fn update-secret
           [secret]
-          (when-not secret
-            (throw (ex-not-found mount path)))
-          (assoc secret
-                 :versions
-                 (reduce
-                   (fn set-deletions
-                     [acc version-id]
-                     (if (contains? acc version-id)
-                       (assoc-in acc [version-id :deletion-time] (u/now))
-                       acc))
-                   (:versions secret)
-                   versions))))))
+          (when secret
+            (assoc secret
+                   :versions
+                   (reduce
+                     (fn set-deletions
+                       [acc version-id]
+                       (if (contains? acc version-id)
+                         (assoc-in acc [version-id :deletion-time] (u/now))
+                         acc))
+                     (:versions secret)
+                     versions)))))))
 
 
   (undelete-versions!
@@ -403,18 +423,17 @@
         [::data mount path]
         (fn update-secret
           [secret]
-          (when-not secret
-            (throw (ex-not-found mount path)))
-          (assoc secret
-                 :versions
-                 (reduce
-                   (fn unset-deletions
-                     [acc version-id]
-                     (if (contains? acc version-id)
-                       (update acc version-id dissoc :deletion-time)
-                       acc))
-                   (:versions secret)
-                   versions))))))
+          (when secret
+            (assoc secret
+                   :versions
+                   (reduce
+                     (fn unset-deletions
+                       [acc version-id]
+                       (if (contains? acc version-id)
+                         (update acc version-id dissoc :deletion-time)
+                         acc))
+                     (:versions secret)
+                     versions)))))))
 
 
   (destroy-versions!
@@ -427,20 +446,19 @@
         [::data mount path]
         (fn update-secret
           [secret]
-          (when-not secret
-            (throw (ex-not-found mount path)))
-          (assoc secret
-                 :versions
-                 (reduce
-                   (fn destroy
-                     [acc version-id]
-                     (if (contains? acc version-id)
-                       (-> acc
-                           (update version-id dissoc :data)
-                           (assoc-in [version-id :destroyed] true))
-                       acc))
-                   (:versions secret)
-                   versions))))))
+          (when secret
+            (assoc secret
+                   :versions
+                   (reduce
+                     (fn destroy
+                       [acc version-id]
+                       (if (contains? acc version-id)
+                         (-> acc
+                             (update version-id dissoc :data)
+                             (assoc-in [version-id :destroyed] true))
+                         acc))
+                     (:versions secret)
+                     versions)))))))
 
   (read-metadata
     [client path]
@@ -454,9 +472,13 @@
                       :cas-required false
                       :delete-version-after "0s"}
                      secret)
-              (select-keys [:created-time
+              (select-keys [:max-versions
+                            :cas-required
+                            :created-time
                             :updated-time
-                            :current-version])
+                            :current-version
+                            :custom-metadata
+                            :delete-version-after])
               (assoc :oldest-version (if (seq (:versions secret))
                                        (->> (:versions secret)
                                             (sort-by (comp :created-time val))
@@ -468,7 +490,8 @@
                                                                   [:created-time
                                                                    :deletion-time
                                                                    :destroyed])))
-                                     (:versions secret)))))
+                                     (:versions secret)))
+              (u/update-some :custom-metadata (comp u/keywordize-keys json/read-str))))
         (mock/error-response client (ex-not-found mount path)))))
 
 
@@ -489,10 +512,12 @@
                                    :cas-required
                                    :delete-version-after]))
               (cond->
-                (seq (:custom-metadata opts))
-                (assoc :custom-metadata (-> (:custom-metadata opts)
-                                            (u/stringify-keys)
-                                            (json/write-str)))))))))
+                (:custom-metadata opts)
+                (assoc :custom-metadata
+                       (-> (:custom-metadata opts)
+                           (u/stringify-keys)
+                           (update-vals str)
+                           (json/write-str)))))))))
 
 
   (patch-metadata!
@@ -512,13 +537,15 @@
                                    :cas-required
                                    :delete-version-after]))
               (cond->
-                (seq (:custom-metadata opts))
-                (assoc :custom-metadata (-> (:custom-metadata secret)
-                                            (json/read-str)
-                                            (u/keywordize-keys)
-                                            (mock-patch (:custom-metadata opts))
-                                            (u/stringify-keys)
-                                            (json/write-str))))))))))
+                (:custom-metadata opts)
+                (assoc :custom-metadata
+                       (-> (:custom-metadata secret)
+                           (json/read-str)
+                           (u/keywordize-keys)
+                           (mock-patch (:custom-metadata opts))
+                           (u/stringify-keys)
+                           (update-vals str)
+                           (json/write-str))))))))))
 
 
 ;; ## HTTP Client

@@ -27,7 +27,8 @@
 
   :profiles
   {:dev
-   {:dependencies [[com.amperity/dialog "1.0.1"]]}
+   {:dependencies [[com.amperity/dialog "1.0.1"]]
+    :jvm-opts ["-XX:-OmitStackTraceInFastThrow"]}
 
    :test
    {:jvm-opts ["-Ddialog.profile=test"]}
@@ -36,5 +37,4 @@
    {:source-paths ["dev"]
     :repl-options {:init-ns vault.repl}
     :dependencies [[org.clojure/tools.namespace "1.3.0"]]
-    :jvm-opts ["-XX:-OmitStackTraceInFastThrow"
-               "-Ddialog.profile=repl"]}})
+    :jvm-opts ["-Ddialog.profile=repl"]}})
