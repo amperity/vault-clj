@@ -22,6 +22,3 @@ vault write auth/ldap/config \
     insecure_tls=true
 
 vault write auth/ldap/groups/dev policies=default
-
-# Now you can login to Vault using Alice's user:
-# vault login -method=ldap username=alice password=hunter2
