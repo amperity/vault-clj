@@ -17,8 +17,4 @@ vault write auth/ldap/config \
     userdn="ou=users,dc=test,dc=com" \
     groupdn="ou=groups,dc=test,dc=com" \
     binddn="cn=admin,dc=test,dc=com" \
-    bindpass="ldap-admin" \
-    starttls=false \
-    insecure_tls=true
-
-vault write auth/ldap/groups/dev policies=default
+    bindpass="ldap-admin"
