@@ -37,7 +37,7 @@ again. Future Vault requests will automatically use this token.
 
 Key                    Value
 ---                    -----
-token                  <token
+token                  <token>
 token_accessor         N5a2eNiNu7QkbGTslMeYe5mp
 token_duration         768h
 token_renewable        true
