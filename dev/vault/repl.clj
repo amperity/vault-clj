@@ -6,6 +6,7 @@
     [clojure.string :as str]
     [clojure.tools.namespace.repl :refer [refresh]]
     [vault.auth :as auth]
+    [vault.auth.approle :as auth.approle]
     [vault.auth.token :as auth.token]
     [vault.auth.userpass :as auth.userpass]
     [vault.client :as vault]
