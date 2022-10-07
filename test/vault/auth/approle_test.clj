@@ -23,7 +23,7 @@
     (testing "login"
       (testing "with default mount"
         (cli "auth" "enable" "approle")
-        (cli "write" "auth/approle/role/foo" "secret_id_ttl=1m")
+        (approle/upsert-role client "foo" {:secret-id-ttl "1m"})
         (let [role-id  (-> (cli "read" "auth/approle/role/foo/role-id")
                            (json/read-str)
                            (get-in ["data" "role_id"]))
