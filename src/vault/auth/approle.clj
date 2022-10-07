@@ -30,7 +30,8 @@
 
     When creating or updating an AppRole, there must be at least
     one option supplied
-    
+
+    This method uses the `/auth/approle/role/:role_name` endpoint
     For additional information see https://www.vaultproject.io/api-docs/auth/approle#create-update-approle
 
     Options:
@@ -69,6 +70,11 @@
     - `:token-type` (string)
       The type of token that should be generated.")
 
+  (read-role-id
+    [client role-id]
+    "Reads the `role-id` of an exiting role
+    This method uses the `/auth/approle/role/:role_name/role-id` endpont")
+
   (login
     [client role-id secret-id]
     "Login using an AppRole role_id and secret_id.
@@ -87,6 +93,7 @@
     (if (some? mount)
       (assoc client ::mount mount)
       (dissoc client ::mount)))
+
 
   (upsert-role
     [client role-id opts]
@@ -112,6 +119,15 @@
                                       :token-type])
                         (u/snakify-keys)
                         (u/stringify-keys))})))
+
+
+  (read-role-id
+    [client role-id]
+    (let [mount (::mount client default-mount)
+          api-path (u/join-path "auth" mount "role" role-id "role-id")]
+      (http/call-api
+        client :get api-path
+        {:handle-response u/kebabify-body-data})))
 
 
   (login
