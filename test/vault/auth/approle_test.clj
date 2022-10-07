@@ -1,11 +1,10 @@
 (ns vault.auth.approle-test
   (:require
-    [clojure.data.json :as json]
     [clojure.test :refer [deftest is testing]]
     [vault.auth :as auth]
     [vault.auth.approle :as approle]
     [vault.client :as vault]
-    [vault.integration :refer [with-dev-server cli]]))
+    [vault.integration :refer [with-dev-server test-client cli]]))
 
 
 (defn- assert-authenticated-map
@@ -37,7 +36,7 @@
                     (::auth/client-token auth-info)))))
       (testing "with alternate mount"
         (cli "auth" "enable" "-path=auth-test" "approle")
-        (let [client' (approle/with-mount client "auth-test")
+        (let [client' (approle/with-mount (test-client) "auth-test")
               role-id (do (approle/upsert-role client' "bar" {:secret-id-ttl "1m"})
                           (:role-id (approle/read-role-id client' "bar")))
               secret-id (:secret-id (approle/generate-secret-id client' "bar"))
