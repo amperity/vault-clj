@@ -25,9 +25,7 @@
         (cli "auth" "enable" "approle")
         (approle/upsert-role client "foo" {:secret-id-ttl "1m"})
         (let [role-id (:role-id (approle/read-role-id client "foo"))
-              secret-id (-> (cli "write" "-f" "auth/approle/role/foo/secret-id")
-                            (json/read-str)
-                            (get-in ["data" "secret_id"]))
+              secret-id (:secret-id (approle/generate-secret-id client "foo"))
               original-auth-info (vault/auth-info client)
               response (approle/login client role-id secret-id)
               auth-info (vault/auth-info client)]
@@ -42,9 +40,7 @@
         (let [client' (approle/with-mount client "auth-test")
               role-id (do (approle/upsert-role client' "bar" {:secret-id-ttl "1m"})
                           (:role-id (approle/read-role-id client' "bar")))
-              secret-id (-> (cli "write" "-f" "auth/auth-test/role/bar/secret-id")
-                            (json/read-str)
-                            (get-in ["data" "secret_id"]))
+              secret-id (:secret-id (approle/generate-secret-id client' "bar"))
               original-auth-info (vault/auth-info client')
               response (approle/login client' role-id secret-id)
               auth-info (vault/auth-info client')]
