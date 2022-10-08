@@ -25,7 +25,7 @@
     default.")
 
   (upsert-role
-    [client role-id opts]
+    [client role-name opts]
     "Creates a new AppRole or updates an existing AppRole.
 
     When creating or updating an AppRole, there must be at least
@@ -70,14 +70,24 @@
     - `:token-type` (string)
       The type of token that should be generated.")
 
+  (list-roles
+    [client]
+    "Returns a list of the existing AppRoles
+    This method uses the `/auth/applrole/role` endpoint")
+
+  (read-role
+    [client role-name]
+    "Reads the properities associated with an AppRole
+    This method uses the `/auth/approle/role/:role_name` endpoint")
+
   (read-role-id
-    [client role-id]
-    "Reads the `role-id` of an exiting role
+    [client role-name]
+    "Reads the `role-id` of an exiting role name
     This method uses the `/auth/approle/role/:role_name/role-id` endpont")
 
   (generate-secret-id
-    [client role-id]
-    [client role-id opts]
+    [client role-name]
+    [client role-name opts]
     "Generates and issues a new `secret-id` for an existing role
     This method uses the `/auth/approle/role/:role_name/secret-id` endpoint
 
@@ -113,46 +123,64 @@
 
 
   (upsert-role
-    [client role-id opts]
+    [client role-name opts]
     (let [mount (::mount client default-mount)
-          api-path (u/join-path "auth" mount "role" role-id)]
+          api-path (u/join-path "auth" mount "role" role-name)]
       (http/call-api
         client :post api-path
         {:content-type :json
-         :body-type (-> opts
-                        (select-keys [:bind-secret-id
-                                      :secret-id-bound-cidrs
-                                      :secret-id-num-uses
-                                      :secret-id-ttl
-                                      :local-secret-ids
-                                      :token-ttl
-                                      :token-max-ttl
-                                      :token-policies
-                                      :token-bound-cidrs
-                                      :token-explicit-max-ttl
-                                      :token-no-default-policy
-                                      :token-num-uses
-                                      :token-period
-                                      :token-type])
-                        (u/snakify-keys)
-                        (u/stringify-keys))})))
+         :body (-> opts
+                   (select-keys [:bind-secret-id
+                                 :secret-id-bound-cidrs
+                                 :secret-id-num-uses
+                                 :secret-id-ttl
+                                 :local-secret-ids
+                                 :token-ttl
+                                 :token-max-ttl
+                                 :token-policies
+                                 :token-bound-cidrs
+                                 :token-explicit-max-ttl
+                                 :token-no-default-policy
+                                 :token-num-uses
+                                 :token-period
+                                 :token-type])
+                   (u/snakify-keys)
+                   (u/stringify-keys))})))
+
+
+  (list-roles
+    [client]
+    (let [mount (::mount client default-mount)
+          api-path (u/join-path "auth" mount "role")]
+      (http/call-api
+        client :list api-path
+        {:handle-response u/kebabify-body-data})))
+
+
+  (read-role
+    [client role-name]
+    (let [mount (::mount client default-mount)
+          api-path (u/join-path "auth" mount "role" role-name)]
+      (http/call-api
+        client :get api-path
+        {:handle-response u/kebabify-body-data})))
 
 
   (read-role-id
-    [client role-id]
+    [client role-name]
     (let [mount (::mount client default-mount)
-          api-path (u/join-path "auth" mount "role" role-id "role-id")]
+          api-path (u/join-path "auth" mount "role" role-name "role-id")]
       (http/call-api
         client :get api-path
         {:handle-response u/kebabify-body-data})))
 
 
   (generate-secret-id
-    ([client role-id]
-     (generate-secret-id client role-id {}))
-    ([client role-id opts]
+    ([client role-name]
+     (generate-secret-id client role-name {}))
+    ([client role-name opts]
      (let [mount (::mount client default-mount)
-           api-path (u/join-path "auth" mount "role" role-id "secret-id")]
+           api-path (u/join-path "auth" mount "role" role-name "secret-id")]
        (http/call-api
          client :post api-path
          {:content-type :json
