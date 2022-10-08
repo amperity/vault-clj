@@ -22,7 +22,7 @@
     (testing "with default mount"
       (is (nil? (::approle/mount client)))
       (cli "auth" "enable" "approle")
-      (testing "creating and reading an approle"
+      (testing "create and read approle"
         (let [role-properties {:bind-secret-id true
                                :secret-id-bound-cidrs ["127.0.0.1/32" "192.0.2.0/23" "192.0.2.0/24"]
                                :secret-id-num-uses 10
