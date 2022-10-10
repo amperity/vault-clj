@@ -37,15 +37,15 @@
                                :token-num-uses 2
                                :token-period 0
                                :token-type "service"}]
-          (approle/upsert-role client "foo" role-properties)
+          (approle/upsert-role! client "foo" role-properties)
           (is (= role-properties (approle/read-role client "foo")))))
       (testing "list approles"
-        (approle/upsert-role client "baz" {:secret-id-ttl "1m"})
+        (approle/upsert-role! client "baz" {:secret-id-ttl "1m"})
         (is (= #{"foo" "baz"}
                (into #{} (:keys (approle/list-roles client))))))
       (testing "login"
         (let [role-id (:role-id (approle/read-role-id client "foo"))
-              secret-id (:secret-id (approle/generate-secret-id client "foo"))
+              secret-id (:secret-id (approle/generate-secret-id! client "foo"))
               original-auth-info (vault/auth-info client)
               response (approle/login client role-id secret-id)
               auth-info (vault/auth-info client)]
@@ -57,9 +57,9 @@
     (testing "with alternate mount"
       (cli "auth" "enable" "-path=auth-test" "approle")
       (let [client' (approle/with-mount (test-client) "auth-test")
-            role-id (do (approle/upsert-role client' "bar" {:secret-id-ttl "1m"})
+            role-id (do (approle/upsert-role! client' "bar" {:secret-id-ttl "1m"})
                         (:role-id (approle/read-role-id client' "bar")))
-            secret-id (:secret-id (approle/generate-secret-id client' "bar"))
+            secret-id (:secret-id (approle/generate-secret-id! client' "bar"))
             original-auth-info (vault/auth-info client')
             response (approle/login client' role-id secret-id)
             auth-info (vault/auth-info client')]

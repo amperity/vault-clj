@@ -24,7 +24,7 @@
     mount instead of the default. Passing `nil` will reset the client to the
     default.")
 
-  (upsert-role
+  (upsert-role!
     [client role-name opts]
     "Creates a new AppRole or updates an existing AppRole.
 
@@ -85,7 +85,7 @@
     "Reads the `role-id` of an exiting role name
     This method uses the `/auth/approle/role/:role_name/role-id` endpont")
 
-  (generate-secret-id
+  (generate-secret-id!
     [client role-name]
     [client role-name opts]
     "Generates and issues a new `secret-id` for an existing role
@@ -122,7 +122,7 @@
       (dissoc client ::mount)))
 
 
-  (upsert-role
+  (upsert-role!
     [client role-name opts]
     (let [mount (::mount client default-mount)
           api-path (u/join-path "auth" mount "role" role-name)]
@@ -175,9 +175,9 @@
         {:handle-response u/kebabify-body-data})))
 
 
-  (generate-secret-id
+  (generate-secret-id!
     ([client role-name]
-     (generate-secret-id client role-name {}))
+     (generate-secret-id! client role-name {}))
     ([client role-name opts]
      (let [mount (::mount client default-mount)
            api-path (u/join-path "auth" mount "role" role-name "secret-id")]
