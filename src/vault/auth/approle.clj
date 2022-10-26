@@ -144,8 +144,7 @@
                                  :token-num-uses
                                  :token-period
                                  :token-type])
-                   (u/snakify-keys)
-                   (u/stringify-keys))})))
+                   (u/snakify-keys))})))
 
 
   (list-roles
@@ -188,8 +187,7 @@
                     (select-keys [:metadata
                                   :cidr-list
                                   :token-bound-cidrs])
-                    (u/snakify-keys)
-                    (u/stringify-keys))
+                    (u/snakify-keys))
           :handle-response u/kebabify-body-data}))))
 
 
