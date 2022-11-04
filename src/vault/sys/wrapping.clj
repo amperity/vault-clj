@@ -40,12 +40,12 @@
     new token info."))
 
 
+;; ## HTTP Client
+
 (defn- kebabify-body-wrap-info
   [body]
   (u/kebabify-keys (get body "wrap_info")))
 
-
-;; ## HTTP Client
 
 (extend-type HTTPClient
 
