@@ -1,0 +1,26 @@
+dn: ou=groups,dc=test,dc=com
+objectClass: organizationalunit
+objectClass: top
+ou: groups
+description: groups of users
+
+dn: ou=users,dc=test,dc=com
+objectClass: organizationalunit
+objectClass: top
+ou: users
+description: users
+
+dn: cn=dev,ou=groups,dc=test,dc=com
+objectClass: groupofnames
+objectClass: top
+description: testing group for dev
+cn: dev
+member: cn=alice,ou=users,dc=test,dc=com
+
+dn: cn=alice,ou=users,dc=test,dc=com
+objectClass: person
+objectClass: top
+cn: alice
+sn: andbob
+memberOf: cn=dev,ou=groups,dc=test,dc=com
+userPassword: hunter2

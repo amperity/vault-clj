@@ -1,0 +1,11 @@
+version: '3.3'
+services:
+    openldap:
+        container_name: vault-openldap
+        environment:
+            - LDAP_ORGANISATION=vault-clj
+            - LDAP_DOMAIN=test.com
+            - LDAP_ADMIN_PASSWORD=ldap-admin
+        ports:
+            - '389:389'
+        image: 'osixia/openldap:1.4.0'
