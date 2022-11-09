@@ -37,8 +37,7 @@
     - `:bind-secret-id` (boolean)
       If a `secret-id` is required to be presented when logging in with this role.
     - `:secret-id-bound-cidrs` (collection)
-      Collection of CIDR blocks. When set, specifies blocks of IP addresses.
-      which can perform the login operation.
+      Collection of CIDR blocks. When set, specifies blocks of IP addresses which can perform the login operation.
     - `:secret-id-num-uses` (integer)
       The number of times any single `secret-id` can be used to fetch a token
       from this AppRole, after which the `secret-id` will expire. Specify 0 for unlimited uses.
