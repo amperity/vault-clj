@@ -8,7 +8,7 @@ ldapadd -cxD "cn=admin,dc=test,dc=com" -f sample-organization.ldif -w ldap-admin
 
 export OPENLDAP_URL=127.0.0.1:389
 
-source ../env.sh
+source ../../dev/env.sh
 
 vault auth enable ldap
 
