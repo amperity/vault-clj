@@ -12,16 +12,18 @@ in `vault.auth.ldap`.
 
 1. Start a local vault server:
    ```bash
-   ../server
+   ../../dev/server
    ```
 
 1. Start the OpenLDAP docker container:
    ```bash
+   cd ../
    docker compose up -d openldap
    ```
 
 1. Setup the LDAP and Vault configuration:
    ```bash
+   cd ldap
    ./setup.sh
    ```
 
