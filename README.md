@@ -25,12 +25,8 @@ Leiningen, add the following dependency to your project definition:
 
 ## Local Development
 
-A local development server can be started using the `dev/server` script; this
-starts a `vault` development server with a fixed root token. You can source the
-`dev/env.sh` script to set the relevant connection variables for using the
-`vault` CLI locally.
-
-**TODO:** more local dev instructions
+Most of the code should be able to be exercised locally. See the [development
+doc](doc/development.md) for more detailed instructions.
 
 
 ## License
