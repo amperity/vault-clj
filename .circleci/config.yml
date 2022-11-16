@@ -4,7 +4,7 @@ version: 2.1
 executors:
   clojure:
     docker:
-      - image: circleci/clojure:openjdk-11-lein-2.9.1
+      - image: cimg/clojure:1.11-openjdk-11.0
     working_directory: ~/repo
 
 
@@ -47,7 +47,7 @@ jobs:
       - run:
           name: Install clj-kondo
           environment:
-            CLJ_KONDO_VERSION: 2022.09.08
+            CLJ_KONDO_VERSION: 2022.11.02
           command: |
             wget https://github.com/clj-kondo/clj-kondo/releases/download/v${CLJ_KONDO_VERSION}/clj-kondo-${CLJ_KONDO_VERSION}-linux-amd64.zip
             unzip clj-kondo-${CLJ_KONDO_VERSION}-linux-amd64.zip
@@ -117,6 +117,51 @@ jobs:
           name: Publish coverage report
           command: './codecov -f target/coverage/codecov.json'
 
+  auth-ldap:
+    docker:
+      - image: cimg/clojure:1.11-openjdk-11.0
+      - image: osixia/openldap:1.4.0
+        environment:
+          LDAP_DOMAIN: test.com
+          LDAP_ORGANISATION: vault-clj
+          LDAP_ADMIN_PASSWORD: ldap-admin
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - install-vault
+        # TODO wait for ldap server to be available
+      - run:
+          name: Configure LDAP server
+          command: ldapadd -cxD "cn=admin,dc=test,dc=com" -w ldap-admin -f docker/ldap/sample-organization.ldif
+      - restore_cache:
+          keys:
+            - v1-test-{{ checksum "project.clj" }}
+            - v1-test-
+      - run:
+          name: Test LDAP auth
+          command: lein test :only vault.auth.ldap-test
+          environment:
+            VAULT_LDAP_DOMAIN: dc=test,dc=com
+            VAULT_LDAP_ADMIN_PASS: ldap-admin
+            VAULT_LDAP_LOGIN_USER: alice
+            VAULT_LDAP_LOGIN_PASS: hunter2
+
+  secret-database:
+    docker:
+      - image: cimg/clojure:1.11-openjdk-11.0
+      - image: cimg/postgres:14.5
+        environment:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: hunter2
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - install-vault
+      - restore_cache:
+          keys:
+            - v1-test-{{ checksum "project.clj" }}
+            - v1-test-
+
 
 # Workflow definitions
 workflows:
@@ -131,3 +176,9 @@ workflows:
           requires:
             - test
             - integration
+      - auth-ldap:
+          requires:
+            - test
+      - secret-database:
+          requires:
+            - test
