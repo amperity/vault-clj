@@ -2,7 +2,7 @@
   (:require
     [clojure.test :refer [is testing deftest]]
     [vault.client.mock :refer [mock-client]]
-    [vault.integration :refer [with-dev-server cli]]
+    [vault.integration :refer [with-dev-server]]
     [vault.secret.kv.v2 :as kv2]
     [vault.util :as u])
   (:import

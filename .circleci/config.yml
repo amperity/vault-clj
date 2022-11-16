@@ -129,10 +129,14 @@ jobs:
     steps:
       - checkout
       - install-vault
-        # TODO wait for ldap server to be available
+      - run:
+          name: Install LDAP utils
+          command: sudo apt-get update && sudo apt-get install -y ldap-utils
       - run:
           name: Configure LDAP server
-          command: ldapadd -cxD "cn=admin,dc=test,dc=com" -w ldap-admin -f docker/ldap/sample-organization.ldif
+          command: |
+            while ! nc -vz localhost 389 2>/dev/null; do sleep 1; done
+            ldapadd -cxD "cn=admin,dc=test,dc=com" -w ldap-admin -f docker/ldap/sample-organization.ldif
       - restore_cache:
           keys:
             - v1-test-{{ checksum "project.clj" }}
