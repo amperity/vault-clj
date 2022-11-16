@@ -31,7 +31,7 @@
              (str "binddn=cn=admin," ldap-domain)
              (str "bindpass=" admin-pass))
         (testing "login"
-          (reset! (:auth client) nil)
+          (reset! (:auth client) {})
           (let [response (ldap/login client login-user login-pass)
                 auth-info (vault/auth-info client)]
             (is (string? (:client-token response)))
