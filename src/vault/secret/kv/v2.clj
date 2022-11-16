@@ -504,20 +504,19 @@
         [::data mount path]
         (fn update-secret
           [secret]
-          (when-not secret
-            (throw (ex-not-found mount path)))
-          (-> secret
-              (merge (select-keys opts
-                                  [:max-versions
-                                   :cas-required
-                                   :delete-version-after]))
-              (cond->
-                (:custom-metadata opts)
-                (assoc :custom-metadata
-                       (-> (:custom-metadata opts)
-                           (u/stringify-keys)
-                           (update-vals str)
-                           (json/write-str)))))))))
+          (when secret
+            (-> secret
+                (merge (select-keys opts
+                                    [:max-versions
+                                     :cas-required
+                                     :delete-version-after]))
+                (cond->
+                  (:custom-metadata opts)
+                  (assoc :custom-metadata
+                         (-> (:custom-metadata opts)
+                             (u/stringify-keys)
+                             (update-vals str)
+                             (json/write-str))))))))))
 
 
   (patch-metadata!
@@ -596,6 +595,15 @@
      ::lease/key cache-key
      ::lease/duration (long ttl)
      ::lease/expires-at (.plusSeconds (u/now) (long ttl))}))
+
+
+(defn- wrap-not-found
+  "Handle an API exception and wrap 404s as a standard not-found exception.
+  Other exceptions are returned as-is."
+  [mount path ex]
+  (if (http/not-found? ex)
+    (ex-not-found mount path (ex-data ex))
+    ex))
 
 
 (extend-type HTTPClient
@@ -702,7 +710,8 @@
           :body (json/write-str
                   {:options (select-keys opts [:cas])
                    :data data})
-          :handle-response parse-secret-metadata}))))
+          :handle-response parse-secret-metadata
+          :handle-error (partial wrap-not-found mount path)}))))
 
 
   (delete-secret!
@@ -776,7 +785,8 @@
                (parse-secret-metadata)
                (vary-meta assoc
                           ::mount mount
-                          ::path path)))})))
+                          ::path path)))
+         :handle-error (partial wrap-not-found mount path)})))
 
 
   (write-metadata!
@@ -809,4 +819,5 @@
                      (cond->
                        (seq (:custom-metadata opts))
                        (assoc :custom_metadata
-                              (u/stringify-keys (:custom-metadata opts))))))}))))
+                              (u/stringify-keys (:custom-metadata opts))))))
+         :handle-error (partial wrap-not-found mount path)}))))
