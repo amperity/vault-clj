@@ -31,6 +31,7 @@
     default.")
 
   (generate-credentials!
+    [client role-name]
     [client role-name opts]
     "Generate a new set of dynamic credentials based on the named role.
 
@@ -77,37 +78,39 @@
 
 
   (generate-credentials!
-    [client role-name opts]
-    (let [mount (::mount client default-mount)
-          api-path (u/join-path mount "creds" role-name)
-          cache-key [::role mount role-name]]
-      (if-let [data (and (not (:refresh? opts))
-                         (lease/find-data (:leases client) cache-key))]
-        ;; Re-use cached secret.
-        (http/cached-response client data)
-        ;; No cached value available, call API.
-        (http/call-api
-          client :get api-path
-          {:handle-response
-           (fn handle-response
-             [body]
-             (let [lease (http/lease-info body)
-                   data (-> (get body "data")
-                            (u/keywordize-keys)
-                            (vary-meta assoc
-                                       ::mount mount
-                                       ::role role-name))]
-               (when lease
-                 (letfn [(rotate!
-                           []
-                           (generate-credentials!
-                             client role-name
-                             (assoc opts :refresh? true)))]
-                   (lease/put!
-                     (:leases client)
-                     (-> lease
-                         (assoc ::lease/key cache-key)
-                         (lease/renewable-lease opts)
-                         (lease/rotatable-lease opts rotate!))
-                     data)))
-               (vary-meta data merge lease)))})))))
+    ([client role-name]
+     (generate-credentials! client role-name {}))
+    ([client role-name opts]
+     (let [mount (::mount client default-mount)
+           api-path (u/join-path mount "creds" role-name)
+           cache-key [::role mount role-name]]
+       (if-let [data (and (not (:refresh? opts))
+                          (lease/find-data (:leases client) cache-key))]
+         ;; Re-use cached secret.
+         (http/cached-response client data)
+         ;; No cached value available, call API.
+         (http/call-api
+           client :get api-path
+           {:handle-response
+            (fn handle-response
+              [body]
+              (let [lease (http/lease-info body)
+                    data (-> (get body "data")
+                             (u/keywordize-keys)
+                             (vary-meta assoc
+                                        ::mount mount
+                                        ::role role-name))]
+                (when lease
+                  (letfn [(rotate!
+                            []
+                            (generate-credentials!
+                              client role-name
+                              (assoc opts :refresh? true)))]
+                    (lease/put!
+                      (:leases client)
+                      (-> lease
+                          (assoc ::lease/key cache-key)
+                          (lease/renewable-lease opts)
+                          (lease/rotatable-lease opts rotate!))
+                      data)))
+                (vary-meta data merge lease)))}))))))

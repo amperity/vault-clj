@@ -165,6 +165,13 @@ jobs:
           keys:
             - v1-test-{{ checksum "project.clj" }}
             - v1-test-
+      - run:
+          name: Test database credentials
+          command: lein test :only vault.secret.database-test
+          environment:
+            VAULT_POSTGRES_ADMIN_USER: postgres
+            VAULT_POSTGRES_ADMIN_PASS: hunter2
+            VAULT_POSTGRES_ROLE: postgres
 
 
 # Workflow definitions
