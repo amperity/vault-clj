@@ -26,9 +26,9 @@
           (is (nil? (::userpass/mount client)))
           (assert-authenticated-map response)
           (is (= (:client-token response)
-                 (::auth/client-token auth-info)))
-          (is (not= (::auth/client-token original-auth-info)
-                    (::auth/client-token auth-info)))))
+                 (::auth/token auth-info)))
+          (is (not= (::auth/token original-auth-info)
+                    (::auth/token auth-info)))))
       (testing "with alternate mount"
         (cli "auth" "enable" "-path=auth-test" "userpass")
         (cli "write" "auth/auth-test/users/baz" "password=qux")
@@ -37,4 +37,4 @@
           (is (= "auth-test" (::userpass/mount client')))
           (assert-authenticated-map response)
           (is (= (:client-token response)
-                 (::auth/client-token (vault/auth-info client')))))))))
+                 (::auth/token (vault/auth-info client')))))))))

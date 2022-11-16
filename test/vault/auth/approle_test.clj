@@ -14,7 +14,7 @@
   (is (string? (:accessor auth)))
   (is (string? (:client-token auth)))
   (is (map? (:metadata auth)))
-  (is (coll? (:token-policies auth))))
+  (is (coll? (:policies auth))))
 
 
 (deftest ^:integration http-api
@@ -51,9 +51,9 @@
               auth-info (vault/auth-info client)]
           (assert-authenticated-map response)
           (is (= (:client-token response)
-                 (::auth/client-token auth-info)))
-          (is (not= (::auth/client-token original-auth-info)
-                    (::auth/client-token auth-info))))))
+                 (::auth/token auth-info)))
+          (is (not= (::auth/token original-auth-info)
+                    (::auth/token auth-info))))))
     (testing "with alternate mount"
       (cli "auth" "enable" "-path=auth-test" "approle")
       (let [client' (approle/with-mount (test-client) "auth-test")
@@ -66,6 +66,6 @@
         (is (= "auth-test" (::approle/mount client')))
         (assert-authenticated-map response)
         (is (= (:client-token response)
-               (::auth/client-token auth-info)))
-        (is (not= (::auth/client-token original-auth-info)
-                  (::auth/client-token auth-info)))))))
+               (::auth/token auth-info)))
+        (is (not= (::auth/token original-auth-info)
+                  (::auth/token auth-info)))))))

@@ -20,7 +20,7 @@
 (deftest call-api
   (let [client {:address "https://vault.test:8200"
                 :flow f/sync-handler
-                :auth (atom {::auth/client-token "t0p-53cr5t"})}]
+                :auth (atom {::auth/token "t0p-53cr5t"})}]
     (testing "with bad arguments"
       (with-redefs [http-client/request (fn [_ _]
                                           (is false "should not be called"))]
@@ -117,17 +117,17 @@
     (testing "with bad input"
       (is (thrown-with-msg? IllegalArgumentException #"Client authentication must be a map"
             (proto/authenticate! client [])))
-      (is (thrown-with-msg? IllegalArgumentException #"containing a client-token"
+      (is (thrown-with-msg? IllegalArgumentException #"containing an auth token"
             (proto/authenticate! client {}))))
     (testing "with token string"
       (is (identical? client (proto/authenticate! client "t0p-53cr3t")))
-      (is (= {::auth/client-token "t0p-53cr3t"} (proto/auth-info client))))
+      (is (= {::auth/token "t0p-53cr3t"} (proto/auth-info client))))
     (testing "with auth info"
       (is (identical? client (proto/authenticate!
                                client
                                {:client-token "t0p-53cr3t"
                                 :ttl 12345})))
-      (is (= {::auth/client-token "t0p-53cr3t"}
+      (is (= {::auth/token "t0p-53cr3t"}
              (proto/auth-info client))))))
 
 

@@ -21,7 +21,7 @@
   "Produce a map of options to pass to the HTTP client from the provided
   method, API path, and other request parameters."
   [client method path params]
-  (let [token (::auth/client-token @(:auth client))]
+  (let [token (::auth/token @(:auth client))]
     (->
       (:http-opts client)
       (assoc :accept :json)
@@ -220,8 +220,9 @@
 
 
 (defn ^:no-doc shape-auth
-  "Coerce a map of non-namespaced token information from `create-token!` or
-  `lookup-token` into the authentication map shape."
+  "Coerce a map of token information into the authentication map shape. This
+  generally comes from `create-token!`, `lookup-token`, or various auth method
+  login http responses."
   [auth]
   (let [lease-duration (or (::auth/lease-duration auth)
                            (:lease-duration auth))
@@ -239,10 +240,10 @@
                              (.plusSeconds ^Instant start lease-duration)))))]
     (into {}
           (filter (comp some? val))
-          {::auth/accessor (or (::auth/accessor auth)
+          {::auth/token (or (::auth/token auth)
+                            (:client-token auth))
+           ::auth/accessor (or (::auth/accessor auth)
                                (:accessor auth))
-           ::auth/client-token (or (::auth/client-token auth)
-                                   (:client-token auth))
            ::auth/display-name (or (::auth/display-name auth)
                                    (:display-name auth))
            ::auth/lease-duration lease-duration
@@ -292,11 +293,11 @@
   (authenticate!
     [this auth-info]
     (let [auth-info (if (string? auth-info)
-                      {::auth/client-token auth-info}
+                      {::auth/token auth-info}
                       (shape-auth auth-info))]
-      (when-not (and (map? auth-info) (::auth/client-token auth-info))
+      (when-not (and (map? auth-info) (::auth/token auth-info))
         (throw (IllegalArgumentException.
-                 "Client authentication must be a map of information containing a client-token.")))
+                 "Client authentication must be a map of information containing an auth token.")))
       (reset! auth auth-info)
       this)))
 

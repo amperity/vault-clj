@@ -8,12 +8,12 @@
 
 ;; ## Data Specs
 
+;; Authentication token string.
+(s/def ::token string?)
+
+
 ;; Token accessor id string.
 (s/def ::accessor string?)
-
-
-;; Authentication token string.
-(s/def ::client-token string?)
 
 
 ;; Display name for the token.
@@ -50,8 +50,8 @@
 
 ;; Full auth information map.
 (s/def ::info
-  (s/keys :opt [::accessor
-                ::client-token
+  (s/keys :opt [::token
+                ::accessor
                 ::display-name
                 ::lease-duration
                 ::policies

@@ -73,7 +73,7 @@
     - otherwise, the currently-authenticated token"))
 
 
-(defn update-auth!
+(defn resolve-auth!
   "Look up the currently-authenticated token, merging updated information into
   the client's auth info. Returns the updated auth data."
   [client]
