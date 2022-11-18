@@ -63,13 +63,12 @@ jobs:
           keys:
             - v1-test-{{ checksum "project.clj" }}
             - v1-test-
-      - run: lein deps
+      - run: bin/test check
+      - run: bin/test unit
       - save_cache:
           key: v1-test-{{ checksum "project.clj" }}
           paths:
             - ~/.m2
-      - run: lein check
-      - run: lein test
 
   integration:
     executor: clojure
@@ -80,7 +79,7 @@ jobs:
           keys:
             - v1-test-{{ checksum "project.clj" }}
             - v1-test-
-      - run: lein test :integration
+      - run: bin/test integration
 
   coverage:
     executor: clojure
@@ -94,7 +93,7 @@ jobs:
             - v1-test-
       - run:
           name: Generate test coverage
-          command: lein with-profile +test cloverage --codecov
+          command: bin/test coverage
       - save_cache:
           paths:
             - ~/.m2
@@ -143,7 +142,7 @@ jobs:
             - v1-test-
       - run:
           name: Test LDAP auth
-          command: lein test :only vault.auth.ldap-test
+          command: bin/test :focus vault.auth.ldap-test
           environment:
             VAULT_LDAP_DOMAIN: dc=test,dc=com
             VAULT_LDAP_ADMIN_PASS: ldap-admin
@@ -167,7 +166,7 @@ jobs:
             - v1-test-
       - run:
           name: Test database credentials
-          command: lein test :only vault.secret.database-test
+          command: bin/test :focus vault.secret.database-test
           environment:
             VAULT_POSTGRES_ADMIN_USER: postgres
             VAULT_POSTGRES_ADMIN_PASS: hunter2

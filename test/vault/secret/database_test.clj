@@ -13,7 +13,7 @@
       (is (= "test-mount" (::database/mount (database/with-mount client "test-mount")))))))
 
 
-(deftest ^:integration http-api
+(deftest ^:service-required http-api
   (let [db-host (or (System/getenv "VAULT_POSTGRES_HOST") "localhost:5432")
         db-name (or (System/getenv "VAULT_POSTGRES_DATABASE") "postgres")
         admin-user (or (System/getenv "VAULT_POSTGRES_ADMIN_USER") "postgres")

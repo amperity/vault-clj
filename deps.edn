@@ -1,16 +1,51 @@
 {:paths ["src"]
- :deps {org.clojure/clojure {:mvn/version "1.10.3"}
-        org.clojure/data.json {:mvn/version "2.4.0"}
-        org.clojure/tools.logging {:mvn/version "1.1.0"}
-        com.stuartsierra/component {:mvn/version "1.0.0"}
-        http-kit/http-kit {:mvn/version "2.5.3"}}
- :aliases {:dev
-           {:extra-deps {ch.qos.logback/logback-classic {:mvn/version "1.2.5"}}}
-           :repl
-           {:extra-paths ["dev"]
-            :extra-deps {org.clojure/tools.namespace {:mvn/version "1.1.0"}}
-            :jvm-opts ["-Dclojure.main.report=stderr"
-                       "-Dvault.log.appender=repl"]}
-           :test
-           ;; TODO: add test deps and make test run :plugins [[lein-cloverage "1.2.1"]]
-           {:jvm-opts ["-Dclojure.main.report=stderr"]}}}
+
+ :deps
+ {org.clojure/clojure {:mvn/version "1.11.1"}
+  org.clojure/data.json {:mvn/version "2.4.0"}
+  org.clojure/tools.logging {:mvn/version "1.2.4"}
+  http-kit/http-kit {:mvn/version "2.7.0-alpha1"}}
+
+ :aliases
+ {:dev
+  {:extra-deps {com.amperity/dialog {:mvn/version "1.0.1"}}
+   :jvm-opts ["-XX:-OmitStackTraceInFastThrow"
+              "-Dclojure.main.report=stderr"]}
+
+  :repl
+  {:extra-paths ["dev" "test"]
+   :extra-deps {org.clojure/tools.namespace {:mvn/version "1.1.0"}
+                mvxcvi/puget {:mvn/version "1.3.0"}}
+   :jvm-opts ["-Ddialog.profile=repl"]
+   :main-opts ["-e" "(require,'puget.printer)"
+               "-e" "(clojure.main/repl,:init,#(do,(require,'vault.repl),(in-ns,'vault.repl)),:print,puget.printer/cprint)"]}
+
+  :check
+  {:extra-deps {io.github.athos/clj-check {:git/sha "0ca84df1357d71429243b99908303f45a934654c"}}
+   :main-opts ["-m" "clj-check.check"]}
+
+  :test
+  {:extra-paths ["test"]
+   :extra-deps {lambdaisland/kaocha {:mvn/version "1.71.1119"}}
+   :jvm-opts ["-Ddialog.profile=test"]
+   :main-opts ["-m" "kaocha.runner"]}
+
+  :coverage
+  {:extra-paths ["test"]
+   :extra-deps {cloverage/cloverage {:mvn/version "RELEASE"}}
+   :jvm-opts ["-Ddialog.profile=test"]
+   :main-opts ["-m" "cloverage.coverage"
+               "--src-ns-path" "src"
+               "--test-ns-path" "test"]}
+
+  :hiera
+  {:deps {io.github.greglook/clj-hiera {:git/tag "2.0.0", :git/sha "b14e514"}}
+   :exec-fn hiera.main/graph
+   :exec-args {:cluster-depth 2
+               :ignore #{vault.util}}}
+
+  :build
+  {:deps {org.clojure/clojure {:mvn/version "1.11.1"}
+          org.clojure/tools.build {:mvn/version "0.8.4"}
+          slipset/deps-deploy {:mvn/version "0.2.0"}}
+   :ns-default build}}}

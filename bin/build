@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# vim: ft=bash
+
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+if [[ $1 = clean ]]; then
+    rm -rf target
+elif [[ $1 = hiera ]]; then
+    shift
+    exec clojure -X:hiera graph "$@"
+else
+    exec clojure -T:build "$@"
+fi

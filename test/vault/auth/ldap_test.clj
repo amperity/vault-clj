@@ -15,7 +15,7 @@
       (is (= "test-mount" (::ldap/mount (ldap/with-mount client "test-mount")))))))
 
 
-(deftest ^:integration http-api
+(deftest ^:service-required http-api
   (let [ldap-url (or (System/getenv "VAULT_LDAP_URL") "localhost:389")
         ldap-domain (or (System/getenv "VAULT_LDAP_DOMAIN") "dc=test,dc=com")
         admin-pass (System/getenv "VAULT_LDAP_ADMIN_PASS")

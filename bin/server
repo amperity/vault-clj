@@ -84,7 +84,5 @@ while ! nc -z "${VAULT_HOST}" "${VAULT_PORT}" 2> /dev/null; do
     fi
 done
 
-# TODO: enable various engines?
-
 log "${YELLOW}Server ready - interrupt to shut down."
 wait
