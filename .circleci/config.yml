@@ -142,7 +142,7 @@ jobs:
             - v1-test-
       - run:
           name: Test LDAP auth
-          command: bin/test :focus vault.auth.ldap-test
+          command: bin/test --focus vault.auth.ldap-test
           environment:
             VAULT_LDAP_DOMAIN: dc=test,dc=com
             VAULT_LDAP_ADMIN_PASS: ldap-admin
@@ -166,7 +166,7 @@ jobs:
             - v1-test-
       - run:
           name: Test database credentials
-          command: bin/test :focus vault.secret.database-test
+          command: bin/test --focus vault.secret.database-test
           environment:
             VAULT_POSTGRES_ADMIN_USER: postgres
             VAULT_POSTGRES_ADMIN_PASS: hunter2
