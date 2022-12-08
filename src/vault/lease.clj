@@ -4,7 +4,10 @@
   (:require
     [clojure.spec.alpha :as s]
     [clojure.tools.logging :as log]
-    [vault.util :as u]))
+    [vault.util :as u])
+  (:import
+    clojure.lang.Agent
+    java.util.concurrent.ExecutorService))
 
 
 ;; ## Data Specs
@@ -60,16 +63,26 @@
 (s/def ::rotate-within nat-int?)
 
 
-;; Functions to call with updated lease information after a successful renewal.
-(s/def ::on-renew (s/coll-of fn?))
+;; Function to call with lease info after a successful renewal.
+;; - :client
+;; - :lease
+;; - :data
+(s/def ::on-renew fn?)
 
 
-;; Functions to call with updated secret data after a successful rotation.
-(s/def ::on-rotate (s/coll-of fn?))
+;; Function to call with lease info after a successful rotation.
+;; - :client
+;; - :lease
+;; - :data
+(s/def ::on-rotate fn?)
 
 
-;; Functions to call with any exceptions thrown during periodic maintenance.
-(s/def ::on-error (s/coll-of fn?))
+;; Function to call with any exceptions thrown during periodic maintenance.
+;; - :client
+;; - :lease
+;; - :data
+;; - :error
+(s/def ::on-error fn?)
 
 
 ;; Full lease information map.
@@ -137,10 +150,10 @@
           (assoc ::renew-increment (:renew-increment opts))
 
           (:on-renew opts)
-          (update ::on-renew (fnil conj #{}) (:on-renew opts))
+          (assoc ::on-renew (:on-renew opts))
 
           (:on-error opts)
-          (update ::on-error (fnil conj #{}) (:on-error opts))))
+          (assoc ::on-error (:on-error opts))))
     lease))
 
 
@@ -172,10 +185,10 @@
                ::rotate-within (:rotate-within opts 60))
         (cond->
           (:on-rotate opts)
-          (update ::on-rotate (fnil conj #{}) (:on-rotate opts))
+          (assoc ::on-rotate (:on-rotate opts))
 
           (:on-error opts)
-          (update ::on-error (fnil conj #{}) (:on-error opts))))
+          (assoc ::on-error (:on-error opts))))
     lease))
 
 
@@ -273,18 +286,22 @@
        (expires-within? lease (::rotate-within lease 0))))
 
 
-(defn- run-callbacks!
-  "Invoke the collection of callback functions with the provided argument
-  value, ignoring any errors."
-  [callbacks x]
-  (run!
-    (fn invoke
-      [f]
-      (try
-        (f x)
-        (catch Exception _
-          nil)))
-    callbacks))
+(defn- invoke-callback
+  "Invoke a callback function with the lease information."
+  ([cb-key client lease]
+   (invoke-callback cb-key client lease nil nil))
+  ([cb-key client lease data]
+   (invoke-callback cb-key client lease data nil))
+  ([cb-key client lease data error]
+   (when-let [callback (get lease cb-key)]
+     (let [executor (or (:callback-executor client)
+                        Agent/soloExecutor)
+           runnable #(callback
+                       {:client client
+                        :lease (dissoc lease ::data)
+                        :data (or data (::data lease))
+                        :error error})]
+       (.submit ^ExecutorService executor ^Runnable runnable)))))
 
 
 (defn- renew!
@@ -292,13 +309,13 @@
   succeeded, false if not. The renewal function will be called with the lease
   and should synchronously return updated lease info. The lease store should be
   updated as a side-effect."
-  [renew-fn lease]
+  [client lease renew-fn]
   (try
     (let [result (renew-fn lease)]
-      (run-callbacks! (::on-renew lease) result)
+      (invoke-callback ::on-renew client result)
       true)
     (catch Exception ex
-      (run-callbacks! (::on-error lease) ex)
+      (invoke-callback ::on-error client lease nil ex)
       false)))
 
 
@@ -307,30 +324,30 @@
   succeeded, false if not. The rotation function will be called with no
   arguments and should synchronously return a result or throw an error. The
   lease store should be updated as a side-effect."
-  [lease]
+  [client lease]
   (try
     (let [rotate-fn (::rotate-fn lease)
           result (rotate-fn)]
-      (run-callbacks! (::on-rotate lease) result)
+      (invoke-callback ::on-rotate client lease result)
       true)
     (catch Exception ex
-      (run-callbacks! (::on-error lease) ex)
+      (invoke-callback ::on-error client lease nil ex)
       false)))
 
 
 (defn- maintain-lease!
   "Maintain a single secret lease as appropriate. Returns a keyword indicating
   the action and final state of the lease."
-  [lease renew-fn]
+  [client lease renew-fn]
   (try
     (cond
       (renew? lease)
-      (if (renew! renew-fn lease)
+      (if (renew! client lease renew-fn)
         :renew-ok
         :renew-fail)
 
       (rotate? lease)
-      (if (rotate! lease)
+      (if (rotate! client lease)
         :rotate-ok
         :rotate-fail)
 
@@ -341,26 +358,28 @@
       :active)
     (catch Exception ex
       (log/error ex "Unhandled error while maintaining lease" (::id lease))
+      (invoke-callback ::on-error client lease nil ex)
       :error)))
 
 
 (defn maintain!
   "Maintain all the leases in the store, blocking until complete."
-  [store renew-fn]
-  (doseq [[lease-id lease] @store]
-    (case (maintain-lease! lease renew-fn)
-      ;; After successful renewal, set a backoff before we try to renew again.
-      :renew-ok
-      (let [after (.plusSeconds (u/now) (::renew-backoff lease 60))]
-        (swap! store assoc-in [lease-id ::renew-after] after))
+  [client renew-fn]
+  (when-let [store (:leases client)]
+    (doseq [[lease-id lease] @store]
+      (case (maintain-lease! client lease renew-fn)
+        ;; After successful renewal, set a backoff before we try to renew again.
+        :renew-ok
+        (let [after (.plusSeconds (u/now) (::renew-backoff lease 60))]
+          (swap! store assoc-in [lease-id ::renew-after] after))
 
-      ;; After rotating, remove the old lease.
-      :rotate-ok
-      (swap! store dissoc lease-id)
+        ;; After rotating, remove the old lease.
+        :rotate-ok
+        (swap! store dissoc lease-id)
 
-      ;; Remove expired leases.
-      :expired
-      (swap! store dissoc lease-id)
+        ;; Remove expired leases.
+        :expired
+        (swap! store dissoc lease-id)
 
-      ;; In other cases, there's no action to take.
-      nil)))
+        ;; In other cases, there's no action to take.
+        nil))))

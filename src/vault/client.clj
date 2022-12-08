@@ -15,7 +15,11 @@
     [vault.lease :as lease]
     [vault.sys.leases :as sys.leases])
   (:import
-    java.net.URI))
+    java.net.URI
+    (java.util.concurrent
+      ScheduledExecutorService
+      ScheduledThreadPoolExecutor
+      TimeUnit)))
 
 
 ;; ## Protocol Methods
@@ -42,85 +46,67 @@
   (proto/authenticate! client auth-info))
 
 
-;; ## Timer Logic
+;; ## Maintenance Task
 
-(defn- tick
-  "Perform the maintenance expected during a single tick of the timer loop."
-  [client]
-  (auth/maintain!
-    (:auth client)
-    #(f/call-sync auth.token/renew-token! client {}))
-  (lease/maintain!
-    (:leases client)
-    #(f/call-sync sys.leases/renew-lease!
-                  client
-                  (::lease/id %)
-                  (::lease/renew-increment %))))
-
-
-(defn- timer-loop
-  "Constructs a new runnable looping function which performs the timer logic
-  every `period` milliseconds. If the `jitter` property is set, the sleep cycle
-  will vary randomly by up to `jitter` percent in length (meaning in the
-  range `[p, p+(j*p)]`).
-
-  The loop can be terminated by interrupting the thread."
+(defn- maintenance-task
+  "Construct a new runnable task to perform client authentication and lease
+  maintenance work."
   ^Runnable
-  [client period jitter]
-  (fn runnable
+  [client]
+  (fn tick
     []
     (try
-      (while (not (Thread/interrupted))
-        (Thread/sleep (+ period (rand-int (long (* jitter period)))))
-        (try
-          (tick client)
-          (catch InterruptedException ex
-            (throw ex))
-          (catch Exception ex
-            (log/error ex "Unhandled error while running timer!"))))
+      (auth/maintain!
+        (:auth client)
+        #(f/call-sync auth.token/renew-token! client {}))
+      (lease/maintain!
+        (:leases client)
+        #(f/call-sync sys.leases/renew-lease!
+                      client
+                      (::lease/id %)
+                      (::lease/renew-increment %)))
       (catch InterruptedException _
-        nil))))
+        nil)
+      (catch Exception ex
+        (log/error ex "Unhandled error while running maintenance task!")))))
 
-
-(defn- start-thread!
-  "Constructs and starts a new timer thread to maintain the given client. The
-  returned thread will be in daemon mode."
-  [client period]
-  (log/infof "Starting vault timer thread with period of %d ms" period)
-  (doto (Thread. (timer-loop client period 0.10)
-                 "vault-client-timer")
-    (.setDaemon true)
-    (.start)))
-
-
-(defn- stop-thread!
-  "Stops a running timer thread cleanly if possible."
-  [^Thread thread]
-  (when (.isAlive thread)
-    (log/debug "Stopping timer thread" (.getName thread))
-    (.interrupt thread)
-    (.join thread 1000)))
-
-
-;; ## Component Lifecycle
 
 (defn start
-  "Start the Vault component, returning an updated version with a timer
-  thread."
+  "Start the Vault component, returning an updated version with a periodic
+  maintenance task.
+
+  Behavior may be controlled with the following keys on the client:
+  - `:maintenance-period`
+    How frequently to check the client auth token and leased secrets for
+    renewal or rotation. Defaults to every 10 seconds.
+  - `:maintenance-executor`
+    Custom scheduled executor service to use for executing maintenance tasks.
+    Defaults to a single-threaded executor.
+  - `:callback-executor`
+    Custom executor service to use for executing lease callbacks. Defaults to
+    the Clojure agent send-off pool."
   [client]
-  (when-let [thread (::timer client)]
-    (stop-thread! thread))
-  (let [period (* 1000 (:timer-period client 10))
-        thread (start-thread! client period)]
-    (assoc client ::timer thread)))
+  (when-let [task (:maintenance-task client)]
+    (future-cancel task))
+  (let [period (:maintenance-period client 10)
+        executor (or (:maintenance-executor client)
+                     (ScheduledThreadPoolExecutor. 1))]
+    (log/info "Scheduling vault maintenance task to run every" period "seconds")
+    (assoc client
+           :maintenance-executor executor
+           :maintenance-task (.scheduleAtFixedRate
+                               ^ScheduledExecutorService executor
+                               (maintenance-task client)
+                               period period TimeUnit/SECONDS))))
 
 
 (defn stop
   "Stop the given Vault client. Returns a stopped version of the component."
   [client]
-  (when-let [thread (::timer client)]
-    (stop-thread! thread))
-  (dissoc client ::timer))
+  (when-let [task (:maintenance-task client)]
+    (log/debug "Canceling vault maintenance task")
+    (future-cancel task))
+  (dissoc client :maintenance-task))
 
 
 ;; ## Client Construction

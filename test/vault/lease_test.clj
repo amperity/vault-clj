@@ -10,18 +10,15 @@
 
 (deftest spec-validation
   (testing "on-renew"
-    (is (s/valid? ::lease/on-renew []))
-    (is (s/valid? ::lease/on-renew [inc]))
+    (is (s/valid? ::lease/on-renew identity))
     (is (not (s/valid? ::lease/on-renew "foo")))
     (is (not (s/valid? ::lease/on-renew [123]))))
   (testing "on-rotate"
-    (is (s/valid? ::lease/on-rotate []))
-    (is (s/valid? ::lease/on-rotate [inc]))
+    (is (s/valid? ::lease/on-rotate identity))
     (is (not (s/valid? ::lease/on-rotate "foo")))
     (is (not (s/valid? ::lease/on-rotate [123]))))
   (testing "on-error"
-    (is (s/valid? ::lease/on-error []))
-    (is (s/valid? ::lease/on-error [inc]))
+    (is (s/valid? ::lease/on-error identity))
     (is (not (s/valid? ::lease/on-error "foo")))
     (is (not (s/valid? ::lease/on-error [123]))))
   (testing "info map"
@@ -215,8 +212,8 @@
               ::lease/renewable? true
               ::lease/renew-within 300
               ::lease/renew-increment 3600
-              ::lease/on-renew #{prn}
-              ::lease/on-error #{prn}}
+              ::lease/on-renew prn
+              ::lease/on-error prn}
              (lease/renewable-lease
                {::lease/id "foo/bar"
                 ::lease/renewable? true}
@@ -255,8 +252,8 @@
         (is (= {::lease/id "foo/bar"
                 ::lease/rotate-fn rotate-fn
                 ::lease/rotate-within 300
-                ::lease/on-rotate #{prn}
-                ::lease/on-error #{prn}}
+                ::lease/on-rotate prn
+                ::lease/on-error prn}
                (lease/rotatable-lease
                  {::lease/id "foo/bar"}
                  {:rotate? true
@@ -282,7 +279,7 @@
           renew-fn (fn [_] (swap! renew-calls inc))]
       (swap! store assoc lease-id lease)
       (u/with-now (Instant/parse "2022-09-22T03:00:00Z")
-        (is (nil? (lease/maintain! store renew-fn))))
+        (is (nil? (lease/maintain! {:leases store} renew-fn))))
       (is (zero? @renew-calls)
           "should not call renew-fn")
       (is (= lease (first (vals @store)))
@@ -298,7 +295,7 @@
           renew-fn (fn [_] (swap! renew-calls inc))]
       (swap! store assoc lease-id lease)
       (u/with-now (Instant/parse "2022-09-22T08:59:50Z")
-        (is (nil? (lease/maintain! store renew-fn))))
+        (is (nil? (lease/maintain! {:leases store} renew-fn))))
       (is (zero? @renew-calls)
           "should not call renew-fn")
       (is (= lease (first (vals @store)))
@@ -316,7 +313,7 @@
           renew-fn (fn [_] (swap! renew-calls inc))]
       (swap! store assoc lease-id lease)
       (u/with-now (Instant/parse "2022-09-22T09:27:00Z")
-        (is (nil? (lease/maintain! store renew-fn))))
+        (is (nil? (lease/maintain! {:leases store} renew-fn))))
       (is (zero? @renew-calls)
           "should not call renew-fn")
       (is (= lease (first (vals @store)))
@@ -331,9 +328,9 @@
                    ::lease/renewable? true
                    ::lease/renew-within 60
                    ::lease/expires-at (Instant/parse "2022-09-22T09:30:00Z")
-                   ::lease/on-renew #{(make-cb :a) (make-cb :b)}
-                   ::lease/on-rotate #{(make-cb :c) (make-cb :d)}
-                   ::lease/on-error #{(make-cb :err)}
+                   ::lease/on-renew (make-cb :renew)
+                   ::lease/on-rotate (make-cb :rotate)
+                   ::lease/on-error (make-cb :err)
                    ::lease/data {:foo 123}}
             renew-fn (fn [_]
                        (lease/update!
@@ -342,7 +339,7 @@
                           ::lease/expires-at (Instant/parse "2022-09-22T10:30:00Z")}))]
         (swap! store assoc lease-id lease)
         (u/with-now (Instant/parse "2022-09-22T09:29:10Z")
-          (is (nil? (lease/maintain! store renew-fn))))
+          (is (nil? (lease/maintain! {:leases store} renew-fn))))
         (let [lease' (first (vals @store))]
           (is (= (Instant/parse "2022-09-22T10:30:00Z")
                  (::lease/expires-at lease'))
@@ -350,7 +347,7 @@
           (is (= (Instant/parse "2022-09-22T09:30:10Z")
                  (::lease/renew-after lease'))
               "should set lease renewal backoff"))
-        (is (= #{:a :b} @callbacks)
+        (is (= #{:renew} @callbacks)
             "should invoke on-renew callbacks")))
     (testing "with failed renewal"
       (let [store (lease/new-store)
@@ -361,14 +358,14 @@
                    ::lease/renewable? true
                    ::lease/renew-within 60
                    ::lease/expires-at (Instant/parse "2022-09-22T09:30:00Z")
-                   ::lease/on-renew #{(make-cb :a) (make-cb :b)}
-                   ::lease/on-rotate #{(make-cb :c) (make-cb :d)}
-                   ::lease/on-error #{(make-cb :err)}
+                   ::lease/on-renew (make-cb :renew)
+                   ::lease/on-rotate (make-cb :rotate)
+                   ::lease/on-error (make-cb :err)
                    ::lease/data {:foo 123}}
             renew-fn (fn [_] (throw (RuntimeException. "BOOM")))]
         (swap! store assoc lease-id lease)
         (u/with-now (Instant/parse "2022-09-22T09:29:10Z")
-          (is (nil? (lease/maintain! store renew-fn))))
+          (is (nil? (lease/maintain! {:leases store} renew-fn))))
         (is (= lease (first (vals @store)))
             "should leave lease unchanged in store")
         (is (= #{:err} @callbacks)
@@ -383,20 +380,20 @@
                    ::lease/rotate-within 60
                    ::lease/rotate-fn (constantly true)
                    ::lease/expires-at (Instant/parse "2022-09-22T09:30:00Z")
-                   ::lease/on-renew #{(make-cb :a) (make-cb :b)}
-                   ::lease/on-rotate #{(make-cb :c) (make-cb :d)}
-                   ::lease/on-error #{(make-cb :err)}
+                   ::lease/on-renew (make-cb :renew)
+                   ::lease/on-rotate (make-cb :rotate)
+                   ::lease/on-error (make-cb :err)
                    ::lease/data {:foo 123}}
             renew-calls (atom 0)
             renew-fn (fn [_] (swap! renew-calls inc))]
         (swap! store assoc lease-id lease)
         (u/with-now (Instant/parse "2022-09-22T09:29:10Z")
-          (is (nil? (lease/maintain! store renew-fn))))
+          (is (nil? (lease/maintain! {:leases store} renew-fn))))
         (is (zero? @renew-calls)
             "should not call renew-fn")
         (is (empty? @store)
             "should remove old lease from store")
-        (is (= #{:c :d} @callbacks)
+        (is (= #{:rotate} @callbacks)
             "should invoke on-rotate callbacks")))
     (testing "with failed rotation"
       (let [store (lease/new-store)
@@ -407,15 +404,15 @@
                    ::lease/rotate-within 60
                    ::lease/rotate-fn (fn [] (throw (RuntimeException. "BOOM")))
                    ::lease/expires-at (Instant/parse "2022-09-22T09:30:00Z")
-                   ::lease/on-renew #{(make-cb :a) (make-cb :b)}
-                   ::lease/on-rotate #{(make-cb :c) (make-cb :d)}
-                   ::lease/on-error #{(make-cb :err)}
+                   ::lease/on-renew (make-cb :renew)
+                   ::lease/on-rotate (make-cb :rotate)
+                   ::lease/on-error (make-cb :err)
                    ::lease/data {:foo 123}}
             renew-calls (atom 0)
             renew-fn (fn [_] (swap! renew-calls inc))]
         (swap! store assoc lease-id lease)
         (u/with-now (Instant/parse "2022-09-22T09:29:10Z")
-          (is (nil? (lease/maintain! store renew-fn))))
+          (is (nil? (lease/maintain! {:leases store} renew-fn))))
         (is (zero? @renew-calls)
             "should not call renew-fn")
         (is (= lease (first (vals @store)))
@@ -434,7 +431,7 @@
           renew-fn (fn [_] (swap! renew-calls inc))]
       (swap! store assoc lease-id lease)
       (u/with-now (Instant/parse "2022-09-22T12:00:00Z")
-        (is (nil? (lease/maintain! store renew-fn))))
+        (is (nil? (lease/maintain! {:leases store} renew-fn))))
       (is (zero? @renew-calls)
           "should not call renew-fn")
       (is (empty? @store)
@@ -451,7 +448,7 @@
           renew-fn (fn [_] (swap! renew-calls inc))]
       (swap! store assoc lease-id lease)
       (with-redefs [lease/renew? (fn [_] (throw (RuntimeException. "BOOM")))]
-        (is (nil? (lease/maintain! store renew-fn))))
+        (is (nil? (lease/maintain! {:leases store} renew-fn))))
       (is (zero? @renew-calls)
           "should not call renew-fn")
       (is (= lease (first (vals @store)))
