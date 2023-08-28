@@ -75,7 +75,7 @@
 (defn- form-failure
   "Handle a failure response from the API. Returns the exception which should
   be yielded by the response."
-  [status headers body]
+  [path status headers body]
   (let [parsed (when-not (str/blank? body)
                  (json/read-str body))
         request-id (get parsed "request_id")
@@ -94,13 +94,14 @@
         (seq errors)
         (assoc :vault.client/errors errors))
       (as-> data
-        (ex-info (if (seq errors)
-                   (str "Vault API errors: " (str/join ", " errors))
-                   (str "Vault HTTP error: "
-                        (case (int status)
-                          400 "bad request"
-                          404 "not found"
-                          status)))
+        (ex-info (str "Error while resolving " path ": "
+                      (if (seq errors)
+                        (str "Vault API errors: " (str/join ", " errors))
+                        (str "Vault HTTP error: "
+                             (case (int status)
+                               400 "bad request"
+                               404 "not found"
+                               status))))
                  data)))))
 
 
@@ -124,7 +125,7 @@
 
             (callback
               [{:keys [opts status headers body error]}]
-              (let [{::keys [state redirects]} opts]
+              (let [{::keys [state redirects retries]} opts]
                 (try
                   (if error
                     ;; TODO: shape exception?
@@ -168,10 +169,19 @@
                              ::redirects (inc redirects)
                              :url location})))
 
+                      ;; Retry some network errors
+                      (and (<= 502 status 504)
+                           (< retries 2))
+                      (do
+                        (Thread/sleep 500)
+                        (make-request
+                          {::state state
+                           ::retries (inc retries)}))
+
                       ;; Otherwise, this was a failure response.
                       :else
                       (let [handle-error (:handle-error params identity)
-                            result (handle-error (form-failure status headers body))]
+                            result (handle-error (form-failure path status headers body))]
                         (if (instance? Throwable result)
                           (f/on-error! handler state result)
                           (f/on-success! handler state result)))))
@@ -188,7 +198,8 @@
         (fn call
           [state]
           (make-request {::state state
-                         ::redirects 0}))))))
+                         ::redirects 0
+                         ::retries 0}))))))
 
 
 (defn ^:no-doc cached-response
@@ -266,6 +277,41 @@
   (let [data (ex-data ex)]
     (and (empty? (:vault.client/errors data))
          (= 404 (:vault.client/status data)))))
+
+
+(defn generate-rotatable-credentials!
+  "Common logic for generating credentials which can be rotated in the future."
+  [client {:keys [http-method api-path cache-key] :as request} opts]
+  (if-let [data (and (not (:refresh? opts))
+                     (lease/find-data (:leases client) cache-key))]
+    ;; Re-use cached secret.
+    (cached-response client data)
+    ;; No cached value available, call API.
+    (call-api
+      client http-method api-path
+      {:handle-response
+       (fn handle-response
+         [body]
+         (let [lease (lease-info body)
+               data (-> (get body "data")
+                        (u/keywordize-keys)
+                        (vary-meta merge
+                                   (:response-additional-meta opts)))]
+           (when lease
+             (letfn [(rotate!
+                       []
+                       (generate-rotatable-credentials!
+                         client
+                         request
+                         (assoc opts :refresh? true)))]
+               (lease/put!
+                 (:leases client)
+                 (-> lease
+                     (assoc ::lease/key cache-key)
+                     (lease/renewable-lease opts)
+                     (lease/rotatable-lease opts rotate!))
+                 data)))
+           (vary-meta data merge lease)))})))
 
 
 ;; ## HTTP Client

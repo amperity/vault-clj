@@ -5,7 +5,7 @@
  :deps {amperity/vault-clj {:local/root "."}}
  :tasks {:requires ([vault.core :as vault]
                     [vault.client.http]
-                    [vault.secrets.kvv2 :as kvv2])
+                    [vault.secrets.kv.v2 :as kv2])
          :init (do
                  (def vault-addr (or (System/getenv "VAULT_ADDR") "http://localhost:8200"))
                  (def vault-token (or (System/getenv "VAULT_TOKEN")))
@@ -25,5 +25,5 @@
                             (let [client (vault/new-client vault-addr)
                                   credentials (vault-credentials vault-auth vault-token)]
                               (vault/authenticate! client vault-auth credentials)
-                              (println (kvv2/read-secret client "DocSearch" "stage/app"))))}}}
+                              (println (kv2/read-secret client "DocSearch" "stage/app"))))}}}
 

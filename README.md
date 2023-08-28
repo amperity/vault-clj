@@ -25,13 +25,13 @@ Leiningen, add the following dependency to your project definition:
 
 ## Local Development
 
-Most of the code should be able to be exercised locally. See the [development
-doc](doc/development.md) for more detailed instructions.
+Most of the code can be exercised locally. See the [development doc](doc/development.md)
+for more detailed instructions.
 
 
 ## License
 
-Copyright © 2016-2022 Amperity, Inc
+Copyright © 2016-2023 Amperity, Inc
 
 Distributed under the Apache License, Version 2.0. See the LICENSE file
 for more information.

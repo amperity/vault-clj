@@ -29,6 +29,7 @@
     token info.")
 
   (unwrap
+    [client]
     [client token-id]
     "Returns the original response inside the given wrapping token.")
 
@@ -70,12 +71,17 @@
 
 
   (unwrap
-    [client token-id]
-    (http/call-api
-      client :post "sys/wrapping/unwrap"
-      {:content-type :json
-       :body {:token token-id}
-       :handle-response u/kebabify-body-data}))
+    ([client]
+     (http/call-api
+       client :post "sys/wrapping/unwrap"
+       {:content-type :json
+        :handle-response u/kebabify-body-auth}))
+    ([client token-id]
+     (http/call-api
+       client :post "sys/wrapping/unwrap"
+       {:content-type :json
+        :body {:token token-id}
+        :handle-response u/kebabify-body-auth})))
 
 
   (wrap

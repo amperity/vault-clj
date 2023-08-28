@@ -13,10 +13,12 @@
     [vault.client.mock :as mock]
     [vault.client.proto :as proto]
     [vault.lease :as lease]
-    [vault.sys.leases :as sys.leases])
+    [vault.sys.leases :as sys.leases]
+    [vault.sys.wrapping :as sys.wrapping])
   (:import
     java.net.URI
     (java.util.concurrent
+      ExecutorService
       ScheduledExecutorService
       ScheduledThreadPoolExecutor
       TimeUnit)))
@@ -60,7 +62,7 @@
         (:auth client)
         #(f/call-sync auth.token/renew-token! client {}))
       (lease/maintain!
-        (:leases client)
+        client
         #(f/call-sync sys.leases/renew-lease!
                       client
                       (::lease/id %)
@@ -106,7 +108,13 @@
   (when-let [task (:maintenance-task client)]
     (log/debug "Canceling vault maintenance task")
     (future-cancel task))
-  (dissoc client :maintenance-task))
+  (when-let [maintenance-executor (:maintenance-executor client)]
+    (log/debug "Shutting down vault maintenance executor")
+    (.shutdownNow ^ExecutorService maintenance-executor))
+  (when-let [callback-executor (:callback-executor client)]
+    (log/debug "Shutting down Vault callback executor")
+    (.shutdownNow ^ExecutorService callback-executor))
+  (dissoc client :maintenance-task :maintenance-executor :callback-executor))
 
 
 ;; ## Client Construction
@@ -130,7 +138,7 @@
 
 (defn config-client
   "Configure a client from the environment if possible. Returns the initialized
-  client component, or throws an exception."
+  client, or throws an exception."
   []
   (let [address (or (System/getProperty "vault.addr")
                     (System/getenv "VAULT_ADDR")
@@ -143,4 +151,17 @@
         client (new-client address)]
     (when-not (str/blank? token)
       (proto/authenticate! client token))
+    client))
+
+
+(defn config-wrapped-client
+  "Construct a new client for the URI address and authenticate it with a
+  wrapped single-use token. Returns the initialized client, or throws an
+  exception."
+  [address token]
+  (let [client (new-client address)
+        _ (proto/authenticate! client token)
+        result (sys.wrapping/unwrap client)]
+    (proto/authenticate! client (:client-token result))
+    (auth.token/resolve-auth! client)
     client))

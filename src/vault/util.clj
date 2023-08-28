@@ -147,7 +147,7 @@
 (defn join-path
   "Join a number of path segments together with slashes, after trimming them."
   [& parts]
-  (str/join "/" (map trim-path parts)))
+  (trim-path (str/join "/" (map trim-path parts))))
 
 
 ;; ## Time

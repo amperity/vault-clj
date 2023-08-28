@@ -3,6 +3,7 @@
 
   Reference: https://www.vaultproject.io/api-docs/auth/token"
   (:require
+    [vault.auth :as auth]
     [vault.client.flow :as f]
     [vault.client.http :as http]
     [vault.client.mock :as mock]
@@ -78,7 +79,7 @@
   the client's auth info. Returns the updated auth data."
   [client]
   (let [auth-info (f/call-sync lookup-token client {})]
-    (proto/authenticate! client auth-info)
+    (proto/authenticate! client (assoc auth-info ::auth/token (:id auth-info)))
     (proto/auth-info client)))
 
 
@@ -126,6 +127,23 @@
   ,,,)
 
 
+(defn- create-token*
+  "Internal implementation of common token creation logic."
+  [client path params]
+  (let [wrap-ttl (:wrap-ttl params)]
+    (http/call-api
+      client :post path
+      {:content-type :json
+       :headers (when wrap-ttl
+                  {"X-Vault-Wrap-TTL" wrap-ttl})
+       :handle-response (if wrap-ttl
+                          (fn handle-wrapped-response
+                            [body]
+                            (u/kebabify-keys (get body "wrap_info")))
+                          u/kebabify-body-auth)
+       :body (u/snakify-keys (dissoc params :wrap-ttl))})))
+
+
 ;; ## HTTP Client
 
 (extend-type HTTPClient
@@ -134,29 +152,17 @@
 
   (create-token!
     [client params]
-    (http/call-api
-      client :post "auth/token/create"
-      {:content-type :json
-       :body (u/snakify-keys params)
-       :handle-response u/kebabify-body-auth}))
+    (create-token* client "auth/token/create" params))
 
 
   (create-orphan-token!
     [client params]
-    (http/call-api
-      client :post "auth/token/create-orphan"
-      {:content-type :json
-       :body (u/snakify-keys params)
-       :handle-response u/kebabify-body-auth}))
+    (create-token* client "auth/token/create-orphan" params))
 
 
   (create-role-token!
     [client role-name params]
-    (http/call-api
-      client :post (u/join-path "auth/token/create" role-name)
-      {:content-type :json
-       :body (u/snakify-keys params)
-       :handle-response u/kebabify-body-auth}))
+    (create-token* client (u/join-path "auth/token/create" role-name) params))
 
 
   (lookup-token

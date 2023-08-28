@@ -1,10 +1,8 @@
-(ns vault.secret.database
-  "The database secrets engine is used to manage dynamically-issued credentials
-  for users of a database backend such as mysql, postgresql, mongodb, etc. The
-  vault server uses a privileged 'root' user to create new users with randomized
-  passwords on-demand for callers.
+(ns vault.secret.aws
+  "The AWS secrets engine generates AWS access credentials dynamically based on
+  IAM policies.
 
-  Reference: https://www.vaultproject.io/api-docs/secret/databases"
+  Reference: https://www.vaultproject.io/api-docs/secret/aws"
   (:require
     [vault.client.http :as http]
     [vault.util :as u])
@@ -14,14 +12,14 @@
 
 (def default-mount
   "Default mount point to use if one is not provided."
-  "database")
+  "aws")
 
 
 ;; ## API Protocol
 
 (defprotocol API
-  "The database secrets engine is used to manage dynamic users in a backing
-  database system."
+  "The AWS secrets engine generates AWS access credentials dynamically based on
+  IAM policies."
 
   (with-mount
     [client mount]
@@ -29,10 +27,10 @@
     mount instead of the default. Passing `nil` will reset the client to the
     default.")
 
-  (generate-credentials!
-    [client role-name]
-    [client role-name opts]
-    "Generate a new set of dynamic credentials based on the named role.
+  (generate-user-credentials!
+    [client user-name]
+    [client user-name opts]
+    "Generate a new set of dynamic IAM credentials based on the named user.
 
     Options:
     - `:refresh?`
@@ -60,6 +58,28 @@
       rotated.
     - `:on-error`
       A function to call with any exceptions encountered while renewing or
+      rotating the credentials.")
+
+  (generate-role-credentials!
+    [client role-name]
+    [client role-name opts]
+    "Generate a new set of dynamic IAM credentials based on the named role.
+
+    Options:
+    - `:refresh?`
+      Always make a call for fresh data, even if a cached secret lease is
+      available.
+    - `:rotate?`
+      If true, attempt to read a new set of credentials when they can no longer
+      be renewed. (Default: false)
+    - `:rotate-within`
+      Rotate the secret when within this many seconds of the lease expiry.
+      (Default: 60)
+    - `:on-rotate`
+      A function to call with the new credentials after they have been
+      rotated.
+    - `:on-error`
+      A function to call with any exceptions encountered while generating or
       rotating the credentials."))
 
 
@@ -76,12 +96,28 @@
       (dissoc client ::mount)))
 
 
-  (generate-credentials!
+  (generate-user-credentials!
+    ([client user-name]
+     (generate-user-credentials! client user-name {}))
+    ([client user-name opts]
+     (let [mount (::mount client default-mount)
+           api-path (u/join-path mount "creds" user-name)
+           cache-key [::user mount user-name]]
+       (http/generate-rotatable-credentials!
+         client
+         {:http-method :get
+          :api-path api-path
+          :cache-key cache-key}
+         (assoc opts
+                :response-additional-meta {::mount mount
+                                           ::user user-name})))))
+
+  (generate-role-credentials!
     ([client role-name]
-     (generate-credentials! client role-name {}))
+     (generate-role-credentials! client role-name {}))
     ([client role-name opts]
      (let [mount (::mount client default-mount)
-           api-path (u/join-path mount "creds" role-name)
+           api-path (u/join-path mount "sts" role-name)
            cache-key [::role mount role-name]]
        (http/generate-rotatable-credentials!
          client
@@ -89,5 +125,7 @@
           :api-path api-path
           :cache-key cache-key}
          (assoc opts
+                ;; STS credentials are not renewable
+                :renew? false
                 :response-additional-meta {::mount mount
                                            ::role role-name}))))))

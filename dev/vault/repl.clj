@@ -14,6 +14,7 @@
     [vault.client.http :as http]
     [vault.client.mock :as mock]
     [vault.lease :as lease]
+    [vault.secret.aws :as aws]
     [vault.secret.database :as database]
     [vault.secret.kv.v1 :as kv1]
     [vault.secret.kv.v2 :as kv2]
