@@ -1,4 +1,0 @@
-vault.core/new-client
-vault.client.http/http-client
-vault.client.mock/mock-client
-vault.client.mock/load-fixtures
