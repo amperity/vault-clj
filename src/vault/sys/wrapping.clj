@@ -75,13 +75,15 @@
      (http/call-api
        client :post "sys/wrapping/unwrap"
        {:content-type :json
-        :handle-response u/kebabify-body-auth}))
+        :handle-response (some-fn u/kebabify-body-auth
+                                  u/kebabify-body-data)}))
     ([client token-id]
      (http/call-api
        client :post "sys/wrapping/unwrap"
        {:content-type :json
         :body {:token token-id}
-        :handle-response u/kebabify-body-auth})))
+        :handle-response (some-fn u/kebabify-body-auth
+                                  u/kebabify-body-data)})))
 
 
   (wrap
