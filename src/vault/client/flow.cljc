@@ -8,11 +8,14 @@
   `completable-future-handler`). This also allows for extensions to other
   frameworks like Manifold and the injection of observability tracing."
   (:refer-clojure :exclude [await])
-  (:import
-    (java.util.concurrent
-      CompletableFuture
-      TimeUnit
-      TimeoutException)))
+  #?@(:bb
+      []
+      :clj
+      [(:import
+         (java.util.concurrent
+           CompletableFuture
+           TimeUnit
+           TimeoutException))]))
 
 
 (defprotocol Handler
@@ -161,46 +164,51 @@
 
 ;; ## Completable Future Handler
 
-(deftype CompletableFutureHandler
-  []
+#?(:bb
+   nil
 
-  Handler
+   :clj
+   (do
+     (deftype CompletableFutureHandler
+       []
 
-  (call
-    [_ _ f]
-    (let [state (CompletableFuture.)]
-      (f state)
-      state))
+       Handler
 
-
-  (on-success!
-    [_ state data]
-    (.complete ^CompletableFuture state data))
-
-
-  (on-error!
-    [_ state ex]
-    (.completeExceptionally ^CompletableFuture state ex))
+       (call
+         [_ _ f]
+         (let [state (CompletableFuture.)]
+           (f state)
+           state))
 
 
-  (await
-    [_ result]
-    (.get ^CompletableFuture result))
+       (on-success!
+         [_ state data]
+         (.complete ^CompletableFuture state data))
 
 
-  (await
-    [_ result timeout-ms timeout-val]
-    (try
-      (.get ^CompletableFuture result timeout-ms TimeUnit/MILLISECONDS)
-      (catch TimeoutException _
-        timeout-val))))
+       (on-error!
+         [_ state ex]
+         (.completeExceptionally ^CompletableFuture state ex))
 
 
-(alter-meta! #'->CompletableFutureHandler assoc :private true)
+       (await
+         [_ result]
+         (.get ^CompletableFuture result))
 
 
-(def completable-future-handler
-  "The completable future handler will immediately return a `CompletableFuture`
-  value to the caller. The future will asynchronously yield either the response
-  data (on success) or an exception (on error)."
-  (->CompletableFutureHandler))
+       (await
+         [_ result timeout-ms timeout-val]
+         (try
+           (.get ^CompletableFuture result timeout-ms TimeUnit/MILLISECONDS)
+           (catch TimeoutException _
+             timeout-val))))
+
+
+     (alter-meta! #'->CompletableFutureHandler assoc :private true)
+
+
+     (def completable-future-handler
+       "The completable future handler will immediately return a `CompletableFuture`
+       value to the caller. The future will asynchronously yield either the response
+       data (on success) or an exception (on error)."
+       (->CompletableFutureHandler))))

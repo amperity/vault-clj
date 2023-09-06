@@ -3,27 +3,23 @@
 {:min-bb-version "0.5.1"
  :paths ["script"]
  :deps {amperity/vault-clj {:local/root "."}}
- :tasks {:requires ([vault.core :as vault]
-                    [vault.client.http]
-                    [vault.secrets.kv.v2 :as kv2])
-         :init (do
-                 (def vault-addr (or (System/getenv "VAULT_ADDR") "http://localhost:8200"))
-                 (def vault-token (or (System/getenv "VAULT_TOKEN")))
-                 (def vault-auth (or (keyword (System/getenv "VAULT_AUTH")) :token))
-                 (defn vault-credentials
-                   "Return a crendentials object based on auth and token"
-                   [auth token]
-                   (case auth
-                     :token token
-                     :github {:token token})))
-         ;; Helpers}
-         vault-get {:doc "Get dev secrets from vault using github auth.
-                             export VAULT_TOKEN=login token or github-personal-token
-                             export VAULT_ADDR=....
-                             export VAULT_AUTH=token or 'github'"
-                    :task (do
-                            (let [client (vault/new-client vault-addr)
-                                  credentials (vault-credentials vault-auth vault-token)]
-                              (vault/authenticate! client vault-auth credentials)
-                              (println (kv2/read-secret client "DocSearch" "stage/app"))))}}}
+ :tasks {:requires ([vault.client :as vault]
+                    [vault.auth.github :as v.github]
+                    [vault.secret.kv.v2 :as v.kv])
+         :init (let [vault-addr (or (System/getenv "VAULT_ADDR") "http://localhost:8200")
+                     auth-method (or (keyword (System/getenv "VAULT_AUTH")) :token)
+                     auth-token (System/getenv "VAULT_TOKEN")]
+                 (def vault-client
+                   (vault/new-client vault-addr))
+                 (case auth-method
+                   :token
+                   (vault/authenticate! vault-client auth-token)
 
+                   :github
+                   (v.github/login vault-client auth-token)))
+         ;; Helpers
+         vault-get {:doc "Get dev secrets from vault using github auth.
+                             export VAULT_ADDR=\"https://...\"
+                             export VAULT_AUTH='token' or 'github'
+                             export VAULT_TOKEN=login token or github-personal-token"
+                    :task (println (v.kv/read-secret vault-client "foo/bar/baz"))}}}

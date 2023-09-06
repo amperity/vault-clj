@@ -3,4 +3,4 @@
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
-clj -M:dev:repl
+exec clj -M:dev:repl

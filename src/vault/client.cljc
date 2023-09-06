@@ -15,13 +15,17 @@
     [vault.lease :as lease]
     [vault.sys.leases :as sys.leases]
     [vault.sys.wrapping :as sys.wrapping])
-  (:import
-    java.net.URI
-    (java.util.concurrent
-      ExecutorService
-      ScheduledExecutorService
-      ScheduledThreadPoolExecutor
-      TimeUnit)))
+  #?(:bb
+     (:import
+       java.net.URI)
+     :clj
+     (:import
+       java.net.URI
+       (java.util.concurrent
+         ExecutorService
+         ScheduledExecutorService
+         ScheduledThreadPoolExecutor
+         TimeUnit))))
 
 
 ;; ## Protocol Methods
@@ -73,48 +77,52 @@
         (log/error ex "Unhandled error while running maintenance task!")))))
 
 
-(defn start
-  "Start the Vault component, returning an updated version with a periodic
-  maintenance task.
+#?(:bb nil
+   :clj
+   (defn start
+     "Start the Vault component, returning an updated version with a periodic
+          maintenance task.
 
-  Behavior may be controlled with the following keys on the client:
-  - `:maintenance-period`
-    How frequently to check the client auth token and leased secrets for
-    renewal or rotation. Defaults to every 10 seconds.
-  - `:maintenance-executor`
-    Custom scheduled executor service to use for executing maintenance tasks.
-    Defaults to a single-threaded executor.
-  - `:callback-executor`
-    Custom executor service to use for executing lease callbacks. Defaults to
-    the Clojure agent send-off pool."
-  [client]
-  (when-let [task (:maintenance-task client)]
-    (future-cancel task))
-  (let [period (:maintenance-period client 10)
-        executor (or (:maintenance-executor client)
-                     (ScheduledThreadPoolExecutor. 1))]
-    (log/info "Scheduling vault maintenance task to run every" period "seconds")
-    (assoc client
-           :maintenance-executor executor
-           :maintenance-task (.scheduleAtFixedRate
-                               ^ScheduledExecutorService executor
-                               (maintenance-task client)
-                               period period TimeUnit/SECONDS))))
+          Behavior may be controlled with the following keys on the client:
+          - `:maintenance-period`
+          How frequently to check the client auth token and leased secrets for
+          renewal or rotation. Defaults to every 10 seconds.
+          - `:maintenance-executor`
+          Custom scheduled executor service to use for executing maintenance tasks.
+          Defaults to a single-threaded executor.
+          - `:callback-executor`
+          Custom executor service to use for executing lease callbacks. Defaults to
+          the Clojure agent send-off pool."
+     [client]
+     (when-let [task (:maintenance-task client)]
+       (future-cancel task))
+     (let [period (:maintenance-period client 10)
+           executor (or (:maintenance-executor client)
+                        (ScheduledThreadPoolExecutor. 1))]
+       (log/info "Scheduling vault maintenance task to run every" period "seconds")
+       (assoc client
+              :maintenance-executor executor
+              :maintenance-task (.scheduleAtFixedRate
+                                  ^ScheduledExecutorService executor
+                                  (maintenance-task client)
+                                  period period TimeUnit/SECONDS)))))
 
 
-(defn stop
-  "Stop the given Vault client. Returns a stopped version of the component."
-  [client]
-  (when-let [task (:maintenance-task client)]
-    (log/debug "Canceling vault maintenance task")
-    (future-cancel task))
-  (when-let [maintenance-executor (:maintenance-executor client)]
-    (log/debug "Shutting down vault maintenance executor")
-    (.shutdownNow ^ExecutorService maintenance-executor))
-  (when-let [callback-executor (:callback-executor client)]
-    (log/debug "Shutting down Vault callback executor")
-    (.shutdownNow ^ExecutorService callback-executor))
-  (dissoc client :maintenance-task :maintenance-executor :callback-executor))
+#?(:bb nil
+   :clj
+   (defn stop
+     "Stop the given Vault client. Returns a stopped version of the component."
+     [client]
+     (when-let [task (:maintenance-task client)]
+       (log/debug "Canceling vault maintenance task")
+       (future-cancel task))
+     (when-let [maintenance-executor (:maintenance-executor client)]
+       (log/debug "Shutting down vault maintenance executor")
+       (.shutdownNow ^ExecutorService maintenance-executor))
+     (when-let [callback-executor (:callback-executor client)]
+       (log/debug "Shutting down Vault callback executor")
+       (.shutdownNow ^ExecutorService callback-executor))
+     (dissoc client :maintenance-task :maintenance-executor :callback-executor)))
 
 
 ;; ## Client Construction

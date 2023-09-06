@@ -4,9 +4,12 @@
   (:require
     [clojure.tools.logging :as log]
     [vault.util :as u])
-  (:import
-    clojure.lang.Agent
-    java.util.concurrent.ExecutorService))
+  #?@(:bb
+      []
+      :clj
+      [(:import
+         clojure.lang.Agent
+         java.util.concurrent.ExecutorService)]))
 
 
 ;; ## Data Specs
@@ -270,14 +273,16 @@
    (invoke-callback cb-key client lease data nil))
   ([cb-key client lease data error]
    (when-let [callback (get lease cb-key)]
-     (let [executor (or (:callback-executor client)
-                        Agent/soloExecutor)
+     (let [executor #?(:bb nil
+                       :clj (or (:callback-executor client)
+                                Agent/soloExecutor))
            runnable #(callback
                        {:client client
                         :lease (dissoc lease ::data)
                         :data (or data (::data lease))
                         :error error})]
-       (.submit ^ExecutorService executor ^Runnable runnable)))))
+       #?(:bb (runnable)
+          :clj (.submit ^ExecutorService executor ^Runnable runnable))))))
 
 
 (defn- renew!
