@@ -1,6 +1,5 @@
 (ns vault.lease-test
   (:require
-    [clojure.spec.alpha :as s]
     [clojure.test :refer [deftest testing is]]
     [vault.lease :as lease]
     [vault.util :as u])
@@ -9,28 +8,14 @@
 
 
 (deftest spec-validation
-  (testing "on-renew"
-    (is (s/valid? ::lease/on-renew identity))
-    (is (not (s/valid? ::lease/on-renew "foo")))
-    (is (not (s/valid? ::lease/on-renew [123]))))
-  (testing "on-rotate"
-    (is (s/valid? ::lease/on-rotate identity))
-    (is (not (s/valid? ::lease/on-rotate "foo")))
-    (is (not (s/valid? ::lease/on-rotate [123]))))
-  (testing "on-error"
-    (is (s/valid? ::lease/on-error identity))
-    (is (not (s/valid? ::lease/on-error "foo")))
-    (is (not (s/valid? ::lease/on-error [123]))))
-  (testing "info map"
-    (is (not (s/valid? ::lease/info nil)))
-    (is (not (s/valid? ::lease/info "foo")))
-    (is (s/valid? ::lease/info {}))
-    (is (s/valid? ::lease/info
-                  #::lease
-                  {:id "secret/foo/bar/123-456-789"
-                   :duration 600
-                   :renewable? false}))
-    (is (s/valid? ::lease/info {::foo 123}))))
+  (is (not (lease/valid? nil)))
+  (is (not (lease/valid? "foo")))
+  (is (lease/valid? {}))
+  (is (lease/valid? #::lease
+                    {:id "secret/foo/bar/123-456-789"
+                     :duration 600
+                     :renewable? false}))
+  (is (lease/valid? {::foo 123})))
 
 
 (deftest helper-predicates

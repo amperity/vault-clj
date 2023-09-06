@@ -2,7 +2,6 @@
   "High-level namespace for tracking and maintaining leases on dynamic secrets
   read by a vault client."
   (:require
-    [clojure.spec.alpha :as s]
     [clojure.tools.logging :as log]
     [vault.util :as u])
   (:import
@@ -12,95 +11,72 @@
 
 ;; ## Data Specs
 
-;; Unique lease identifier.
-(s/def ::id string?)
+(def ^:private lease-spec
+  "Specification for lease data maps."
+  {;; Unique lease identifier.
+   ::id string?
+
+   ;; A cache lookup key for identifying this lease to future calls.
+   ::key some?
+
+   ;; How long the lease is valid for, in seconds.
+   ::duration nat-int?
+
+   ;; Instant in time the lease expires at.
+   ::expires-at inst?
+
+   ;; Secret data map.
+   ::data map?
+
+   ;; Can this lease be renewed to extend its validity?
+   ::renewable? boolean?
+
+   ;; How many seconds to attempt to add to the lease duration when renewing.
+   ::renew-increment pos-int?
+
+   ;; Try to renew this lease when the current time is within this many seconds of
+   ;; the `expires-at` deadline.
+   ::renew-within pos-int?
+
+   ;; Wait at least this many seconds between successful renewals of this lease.
+   ::renew-backoff nat-int?
+
+   ;; Time after which this lease can be attempted to be renewed.
+   ::renew-after inst?
+
+   ;; A no-argument function to call to rotate this lease. This should return true
+   ;; if the rotation succeeded, else false.
+   ::rotate-fn fn?
+
+   ;; Try to read a new secret when the current time is within this many seconds
+   ;; of the `expires-at` deadline.
+   ::rotate-within nat-int?
+
+   ;; Function to call with lease info after a successful renewal.
+   ;; - :client
+   ;; - :lease
+   ;; - :data
+   ::on-renew fn?
+
+   ;; Function to call with lease info after a successful rotation.
+   ;; - :client
+   ;; - :lease
+   ;; - :data
+   ::on-rotate fn?
 
 
-;; A cache lookup key for identifying this lease to future calls.
-(s/def ::key some?)
+   ;; Function to call with any exceptions thrown during periodic maintenance.
+   ;; - :client
+   ;; - :lease
+   ;; - :data
+   ;; - :error
+   ::on-error fn?})
 
 
-;; How long the lease is valid for, in seconds.
-(s/def ::duration nat-int?)
-
-
-;; Instant in time the lease expires at.
-(s/def ::expires-at inst?)
-
-
-;; Secret data map.
-(s/def ::data map?)
-
-
-;; Can this lease be renewed to extend its validity?
-(s/def ::renewable? boolean?)
-
-
-;; How many seconds to attempt to add to the lease duration when renewing.
-(s/def ::renew-increment pos-int?)
-
-
-;; Try to renew this lease when the current time is within this many seconds of
-;; the `expires-at` deadline.
-(s/def ::renew-within pos-int?)
-
-
-;; Wait at least this many seconds between successful renewals of this lease.
-(s/def ::renew-backoff nat-int?)
-
-
-;; Time after which this lease can be attempted to be renewed.
-(s/def ::renew-after inst?)
-
-
-;; A no-argument function to call to rotate this lease. This should return true
-;; if the rotation succeeded, else false.
-(s/def ::rotate-fn fn?)
-
-
-;; Try to read a new secret when the current time is within this many seconds
-;; of the `expires-at` deadline.
-(s/def ::rotate-within nat-int?)
-
-
-;; Function to call with lease info after a successful renewal.
-;; - :client
-;; - :lease
-;; - :data
-(s/def ::on-renew fn?)
-
-
-;; Function to call with lease info after a successful rotation.
-;; - :client
-;; - :lease
-;; - :data
-(s/def ::on-rotate fn?)
-
-
-;; Function to call with any exceptions thrown during periodic maintenance.
-;; - :client
-;; - :lease
-;; - :data
-;; - :error
-(s/def ::on-error fn?)
-
-
-;; Full lease information map.
-(s/def ::info
-  (s/keys :opt [::id
-                ::key
-                ::duration
-                ::expires-at
-                ::data
-                ::renewable?
-                ::renew-after
-                ::renew-within
-                ::renew-backoff
-                ::rotate-fn
-                ::rotate-within
-                ::on-renew
-                ::on-rotate
-                ::on-error]))
+(defn valid?
+  "True if the lease information map conforms to the spec."
+  [lease]
+  (u/validate lease-spec lease))
 
 
 ;; ## General Functions
@@ -194,14 +170,14 @@
 
 ;; ## Lease Tracking
 
-(s/def ::store
-  (s/map-of ::id ::info))
-
-
 (defn- valid-store?
   "Checks a store state for validity."
   [state]
-  (s/valid? ::store state))
+  (every?
+    (fn valid-entry?
+      [[id info]]
+      (and (string? id) (valid? info)))
+    state))
 
 
 (defn new-store

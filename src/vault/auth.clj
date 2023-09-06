@@ -1,74 +1,55 @@
 (ns vault.auth
   "High-level namespace for client authentication."
   (:require
-    [clojure.spec.alpha :as s]
     [clojure.tools.logging :as log]
     [vault.util :as u]))
 
 
 ;; ## Data Specs
 
-;; Authentication token string.
-(s/def ::token string?)
+(def ^:private auth-spec
+  "Specification for authentication data maps."
+  {;; Authentication token string.
+   ::token string?
 
+   ;; Token accessor id string.
+   ::accessor string?
 
-;; Token accessor id string.
-(s/def ::accessor string?)
+   ;; Display name for the token.
+   ::display-name string?
 
+   ;; Number of seconds the token lease is valid for.
+   ::lease-duration nat-int?
 
-;; Display name for the token.
-(s/def ::display-name string?)
+   ;; Set of policies applied to the token.
+   ::policies
+   (fn valid-policies?
+     [policies]
+     (and (set? policies) (every? string? policies)))
 
+   ;; Whether the token is an orphan.
+   ::orphan? boolean?
 
-;; Number of seconds the token lease is valid for.
-(s/def ::lease-duration nat-int?)
+   ;; Whether the token is renewable.
+   ::renewable? boolean?
 
+   ;; Instant after which the token can be renewed again.
+   ::renew-after inst?
 
-;; Set of policies applied to the token.
-(s/def ::policies (s/coll-of string? :kind set?))
+   ;; Instant the token was created.
+   ::created-at inst?
 
+   ;; Instant the token expires.
+   ::expires-at inst?})
 
-;; Whether the token is an orphan.
-(s/def ::orphan? boolean?)
-
-
-;; Whether the token is renewable.
-(s/def ::renewable? boolean?)
-
-
-;; Instant after which the token can be renewed again.
-(s/def ::renew-after inst?)
-
-
-;; Instant the token was created.
-(s/def ::created-at inst?)
-
-
-;; Instant the token expires.
-(s/def ::expires-at inst?)
-
-
-;; Full auth information map.
-(s/def ::info
-  (s/keys :opt [::token
-                ::accessor
-                ::display-name
-                ::lease-duration
-                ::policies
-                ::orphan?
-                ::renewable?
-                ::renew-after
-                ::created-at
-                ::expires-at]))
-
-
-;; ## General Functions
 
 (defn valid?
   "True if the auth information map conforms to the spec."
   [auth]
-  (s/valid? ::info auth))
+  (u/validate auth-spec auth))
 
+
+;; ## General Functions
 
 (defn expires-within?
   "True if the auth will expire within `ttl` seconds."

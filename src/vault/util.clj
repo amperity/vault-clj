@@ -20,6 +20,24 @@
     m))
 
 
+(defn validate
+  "Validate whether a map of data adheres to the validators set for the
+  individual keys. Returns true if the map is valid, false otherwise. All keys
+  are treated as optional, and any additional keys are not checked."
+  [spec m]
+  (and (map? m)
+       (reduce-kv
+         (fn check-key
+           [_ k v]
+           (if-let [pred (get spec k)]
+             (if (pred v)
+               true
+               (reduced false))
+             true))
+         true
+         m)))
+
+
 ;; ## Keywords
 
 (defn walk-keys
