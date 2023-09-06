@@ -13,4 +13,9 @@
              vault.util u}}
 
   :unresolved-symbol
-  {:exclude [(vault.integration/with-dev-server [client])]}}}
+  {:exclude [(vault.integration/with-dev-server [client])]}}
+
+ ;; Can only lint clj because kondo doesn't understand the :bb platform
+ ;; https://github.com/clj-kondo/clj-kondo/issues/1154
+ :cljc
+ {:features #{:clj}}}
