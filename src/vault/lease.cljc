@@ -281,7 +281,7 @@
                         :lease (dissoc lease ::data)
                         :data (or data (::data lease))
                         :error error})]
-       #?(:bb (runnable)
+       #?(:bb (future (runnable))
           :clj (.submit ^ExecutorService executor ^Runnable runnable))))))
 
 
