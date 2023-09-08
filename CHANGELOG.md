@@ -8,10 +8,12 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 
 ...
 
+
 ## [1.1.3] - 2022-05-31
 
 ### Changed
 - Updated dependency versions.
+
 
 ## [1.1.2] - 2022-02-01
 
@@ -46,6 +48,7 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
   [#58](https://github.com/amperity/vault-clj/pull/58)
 - Minor fix for broken authenticate request handling
 
+
 ## [1.0.5] - 2021-08-19
 
 ### Changed
@@ -54,11 +57,13 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 - Fixed broken functionality in [1.0.4] mainly around json parsing.
   [#55](https://github.com/amperity/vault-clj/pull/55)
 
+
 ## [1.0.4] - 2021-07-19
 
 ### Changed
 - Update dep clj-http to http-kit, add [babashka](https://github.com/babashka/babashka) support
   [#54](https://github.com/amperity/vault-clj/pull/54)
+
 
 ## [1.0.3] - 2021-04-26
 
@@ -66,11 +71,13 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 - Fix authenticate logging for syntax replacement
   [#51](https://github.com/amperity/vault-clj/pull/51)
 
+
 ## [1.0.2] - 2021-03-31
 
 ### Changed
 - Add aws-iam authentication support
   [#50](https://github.com/amperity/vault-clj/pull/50)
+
 
 ## [1.0.1] - 2021-01-04
 
