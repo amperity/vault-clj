@@ -6,7 +6,9 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 
 ## [Unreleased]
 
-...
+This is a **major release** which completely rewrites the library code. New
+releases will be under the `com.amperity/vault-clj` coordinate. See the
+[Upgrading from 1.x](doc/upgrading-1x.md) document for details on the changes.
 
 
 ## [1.1.3] - 2022-05-31
