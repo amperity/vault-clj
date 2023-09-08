@@ -74,6 +74,9 @@ bin/build jar
 # install to local repo
 bin/build install
 
+# prepare the next release
+bin/build prep-release
+
 # deploy to Clojars
 bin/build deploy
 ```

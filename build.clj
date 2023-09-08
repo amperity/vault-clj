@@ -1,8 +1,12 @@
 (ns build
   "Build instructions for vault-clj."
   (:require
+    [clojure.java.io :as io]
+    [clojure.string :as str]
     [clojure.tools.build.api :as b]
-    [deps-deploy.deps-deploy :as d]))
+    [deps-deploy.deps-deploy :as d])
+  (:import
+    java.time.LocalDate))
 
 
 (def basis (b/create-basis {:project "deps.edn"}))
@@ -19,11 +23,34 @@
   "Compute the version string using the provided options."
   [opts]
   (str major-version
-       "." (b/git-count-revs nil)
+       "."
+       (cond-> (parse-long (b/git-count-revs nil))
+         (:next opts)
+         (inc))
        (when-let [qualifier (:qualifier opts)]
          (str "-" qualifier))
        (when (:snapshot opts)
          (str "-SNAPSHOT"))))
+
+
+(defn- update-changelog
+  "Stamp the CHANGELOG file with the new version."
+  [version]
+  (let [file (io/file "CHANGELOG.md")
+        today (LocalDate/now)
+        changelog (slurp file)]
+    (when (str/includes? changelog "## [Unreleased]\n\n...\n")
+      (binding [*out* *err*]
+        (println "Changelog does not appear to have been updated with changes, aborting")
+        (System/exit 3)))
+    (-> changelog
+        (str/replace #"## \[Unreleased\]"
+                     (str "## [Unreleased]\n\n...\n\n\n"
+                          "## [" version "] - " today))
+        (str/replace #"\[Unreleased\]: (\S+/compare)/(\S+)\.\.\.HEAD"
+                     (str "[Unreleased]: $1/" version "...HEAD\n"
+                          "[" version "]: $1/$2..." version))
+        (->> (spit file)))))
 
 
 ;; ## Tasks
@@ -32,6 +59,21 @@
   "Remove compiled artifacts."
   [_]
   (b/delete {:path "target"}))
+
+
+(defn prep-release
+  "Prepare the repository for release."
+  [opts]
+  (let [status (b/git-process {:git-args "status --porcelain --untracked-files=no"})]
+    (when-not (str/blank? status)
+      (binding [*out* *err*]
+        (println "Uncommitted changes in local repository, aborting")
+        (System/exit 2))))
+  (let [new-version (get-version (assoc opts :next true))
+        _ (update-changelog new-version)
+        commit-out (b/git-process {:git-args ["commit" "-am" (str "Release version " new-version)]})
+        tag-out (b/git-process {:git-args ["tag" new-version "-s" "-m" (str "Release " new-version)]})]
+    (println "Prepared release for" new-version)))
 
 
 (defn pom
