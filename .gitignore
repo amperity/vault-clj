@@ -1,17 +1,15 @@
-/target
-/classes
-/checkouts
-pom.xml
-pom.xml.asc
-*.jar
-*.class
-/.lein-*
-/.nrepl-port
-/.clj-kondo/.cache
+# Development Tools
 /Library
+.calva
+.clj-kondo/.cache
+.cpcache
 .idea/
 *.iml
-
-.calva
 .lsp
-.cpcache
+.nrepl-port
+
+# Build Artifacts
+/target
+*.asc
+*.class
+*.jar

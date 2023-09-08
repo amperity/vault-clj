@@ -9,7 +9,7 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 ...
 
 
-## [2.0.559-rc1] - 2023-09-08
+## [2.0.560] - 2023-09-08
 
 This is a **major release** which completely rewrites the library code. New
 releases will be under the `com.amperity/vault-clj` coordinate. See the
@@ -342,8 +342,8 @@ With this version, the project has been forked to the Amperity organization.
 - Initial library implementation.
 
 
-[Unreleased]: https://github.com/amperity/vault-clj/compare/2.0.559-rc1...HEAD
-[2.0.559-rc1]: https://github.com/amperity/vault-clj/compare/1.1.3...2.0.559-rc1
+[Unreleased]: https://github.com/amperity/vault-clj/compare/2.0.560...HEAD
+[2.0.560]: https://github.com/amperity/vault-clj/compare/1.1.3...2.0.560
 [1.1.3]: https://github.com/amperity/vault-clj/compare/1.1.2...1.1.3
 [1.1.2]: https://github.com/amperity/vault-clj/compare/1.1.1...1.1.2
 [1.1.1]: https://github.com/amperity/vault-clj/compare/1.1.0...1.1.1

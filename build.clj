@@ -57,8 +57,9 @@
 
 (defn clean
   "Remove compiled artifacts."
-  [_]
-  (b/delete {:path "target"}))
+  [opts]
+  (b/delete {:path "target"})
+  opts)
 
 
 (defn prep-release
@@ -79,14 +80,22 @@
 (defn pom
   "Write out a pom.xml file for the project."
   [opts]
-  (let [version (get-version opts)]
+  (let [version (get-version opts)
+        commit-sha (b/git-process {:git-args "rev-parse HEAD"})
+        pom-file (b/pom-path
+                   {:class-dir class-dir
+                    :lib lib-name})]
     (b/write-pom
       {:basis basis
        :lib lib-name
        :version version
+       :src-pom "doc/pom.xml"
        :src-dirs src-dirs
-       :class-dir class-dir})
-    (assoc opts :version version)))
+       :class-dir class-dir
+       :scm {:tag commit-sha}})
+    (assoc opts
+           :version version
+           :pom-file pom-file)))
 
 
 (defn jar
@@ -109,7 +118,7 @@
 (defn install
   "Install a JAR into the local Maven repository."
   [opts]
-  (let [opts (jar opts)]
+  (let [opts (-> opts clean jar)]
     (b/install
       {:basis basis
        :lib lib-name
@@ -122,10 +131,11 @@
 (defn deploy
   "Deploy the JAR to Clojars."
   [opts]
-  (let [opts (jar opts)]
+  (let [opts (-> opts clean jar)]
     (d/deploy
       (assoc opts
              :installer :remote
              :sign-releases? true
+             :pom-file (:pom-file opts)
              :artifact (:jar-file opts)))
     opts))
