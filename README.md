@@ -1,21 +1,14 @@
 vault-clj
 =========
 
-[![CircleCI](https://circleci.com/gh/amperity/vault-clj.svg?style=shield&circle-token=874076b19570f775bb30fbb0eaa1e605116facf5)](https://circleci.com/gh/amperity/vault-clj)
+[![CircleCI](https://dl.circleci.com/status-badge/img/gh/amperity/vault-clj/tree/main.svg?style=shield)](https://dl.circleci.com/status-badge/redirect/gh/amperity/vault-clj/tree/main)
 [![codecov](https://codecov.io/gh/amperity/vault-clj/branch/main/graph/badge.svg)](https://codecov.io/gh/amperity/vault-clj)
+[![Clojars Project](https://img.shields.io/clojars/v/com.amperity/vault-clj.svg)](https://clojars.org/com.amperity/vault-clj)
 [![cljdoc](https://cljdoc.org/badge/com.amperity/vault-clj)](https://cljdoc.org/d/com.amperity/vault-clj/CURRENT)
 
-A Clojure library for interacting with the [Vault](https://vaultproject.io/)
+A Clojure library for interacting with the Hashicorp [Vault](https://vaultproject.io/)
 secret management system. Most of the non-administrative API is implemented,
-including the token authentication backend.
-
-
-## Installation
-
-Library releases are published on Clojars. To use the latest version with
-Leiningen, add the following dependency to your project definition:
-
-[![Clojars Project](http://clojars.org/com.amperity/vault-clj/latest-version.svg)](http://clojars.org/com.amperity/vault-clj)
+including the token authentication backend. Library releases are published on Clojars.
 
 
 ## Usage
