@@ -33,6 +33,19 @@ The two previously implemented secrets engines have moved slightly:
 - `vault.secrets.kvv1` is now `vault.secret.kv.v1`
 - `vault.secrets.kvv2` is now `vault.secret.kv.v2`
 
+For the KV secrets engines, previously a `list-secrets` call would return a
+vector of the keys at that prefix directly. Now, these methods return a map
+with a `:keys` vector entry if there are secrets present, matching the actual
+API response shape.
+
+### Mounts
+
+In 1.x, reading a secret from a customized mount required embedding the mount
+prefix in the secret path at read time. Now, each secret engine provides a
+`with-mount` method which returns an updated client which will perform reads
+against the specified mount. This lets customization happen at configuration
+time and decouples the code using the client from knowledge of the mount path.
+
 
 ## Authentication
 
