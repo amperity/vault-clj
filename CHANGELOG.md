@@ -6,7 +6,14 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 
 ## [Unreleased]
 
-...
+### Changed
+- The way the client handles "meta info" has changed to become more
+  comprehensive, to reduce repetition and ensure the info is available to
+  the flow controller.
+
+### Added
+- The `kv.v1` and `kv.v2` secret engines attach metadata to `:not-found` values
+  if they support metadata, similar to normal responses.
 
 
 ## [2.0.560] - 2023-09-08
