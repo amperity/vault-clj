@@ -51,7 +51,8 @@
           api-path (u/join-path "auth" mount "login" username)]
       (http/call-api
         client :post api-path
-        {:content-type :json
+        {:info {::mount mount, ::username username}
+         :content-type :json
          :body {:password password}
          :handle-response u/kebabify-body-auth
          :on-success (fn update-auth

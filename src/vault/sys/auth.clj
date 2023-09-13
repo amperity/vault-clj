@@ -120,7 +120,8 @@
     [client path params]
     (http/call-api
       client :post (u/join-path "sys/auth" path)
-      {:content-type :json
+      {:info {::path path, ::type (:type params)}
+       :content-type :json
        :body (u/snakify-keys params)}))
 
 
@@ -128,19 +129,21 @@
     [client path]
     (http/call-api
       client :delete (u/join-path "sys/auth" path)
-      {}))
+      {:info {::path path}}))
 
 
   (read-method-tuning
     [client path]
     (http/call-api
       client :get (u/join-path "sys/auth" path "tune")
-      {:handle-response u/kebabify-body-data}))
+      {:info {::path path}
+       :handle-response u/kebabify-body-data}))
 
 
   (tune-method!
     [client path params]
     (http/call-api
       client :post (u/join-path "sys/auth" path "tune")
-      {:content-type :json
+      {:info {::path path}
+       :content-type :json
        :body (u/snakify-keys params)})))

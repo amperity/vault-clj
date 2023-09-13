@@ -124,7 +124,8 @@
           api-path (u/join-path "auth" mount "role" role-name)]
       (http/call-api
         client :post api-path
-        {:content-type :json
+        {:info {::mount mount, ::role role-name}
+         :content-type :json
          :body (-> opts
                    (select-keys [:bind-secret-id
                                  :secret-id-bound-cidrs
@@ -149,7 +150,8 @@
           api-path (u/join-path "auth" mount "role")]
       (http/call-api
         client :list api-path
-        {:handle-response u/kebabify-body-data})))
+        {:info {::mount mount}
+         :handle-response u/kebabify-body-data})))
 
 
   (read-role
@@ -158,7 +160,8 @@
           api-path (u/join-path "auth" mount "role" role-name)]
       (http/call-api
         client :get api-path
-        {:handle-response u/kebabify-body-data})))
+        {:info {::mount mount, ::role role-name}
+         :handle-response u/kebabify-body-data})))
 
 
   (read-role-id
@@ -167,7 +170,8 @@
           api-path (u/join-path "auth" mount "role" role-name "role-id")]
       (http/call-api
         client :get api-path
-        {:handle-response u/kebabify-body-data})))
+        {:info {::mount mount, ::role role-name}
+         :handle-response u/kebabify-body-data})))
 
 
   (generate-secret-id!
@@ -178,7 +182,8 @@
            api-path (u/join-path "auth" mount "role" role-name "secret-id")]
        (http/call-api
          client :post api-path
-         {:content-type :json
+         {:info {::mount mount, ::role role-name}
+          :content-type :json
           :body (-> opts
                     (select-keys [:metadata
                                   :cidr-list
@@ -193,7 +198,8 @@
           api-path (u/join-path "auth" mount "login")]
       (http/call-api
         client :post api-path
-        {:content-type :json
+        {:info {::mount mount}
+         :content-type :json
          :body {:role_id role-id
                 :secret_id secret-id}
          :handle-response u/kebabify-body-auth

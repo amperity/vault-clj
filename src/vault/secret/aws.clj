@@ -104,13 +104,11 @@
            api-path (u/join-path mount "creds" user-name)
            cache-key [::user mount user-name]]
        (http/generate-rotatable-credentials!
-         client
-         {:http-method :get
-          :api-path api-path
+         client :get api-path
+         {:info {::mount mount, ::user user-name}
           :cache-key cache-key}
-         (assoc opts
-                :response-additional-meta {::mount mount
-                                           ::user user-name})))))
+         opts))))
+
 
   (generate-role-credentials!
     ([client role-name]
@@ -120,12 +118,9 @@
            api-path (u/join-path mount "sts" role-name)
            cache-key [::role mount role-name]]
        (http/generate-rotatable-credentials!
-         client
-         {:http-method :get
-          :api-path api-path
+         client :get api-path
+         {:info {::mount mount, ::role role-name}
           :cache-key cache-key}
          (assoc opts
                 ;; STS credentials are not renewable
-                :renew? false
-                :response-additional-meta {::mount mount
-                                           ::role role-name}))))))
+                :renew? false))))))
