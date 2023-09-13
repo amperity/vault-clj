@@ -6,7 +6,10 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 
 ## [Unreleased]
 
-...
+### Changed
+- The default logic in the HTTP client no longer automatically retries 5xx
+  responses; this needs to be handled by the control flow to avoid blocking
+  http-kit's callback thread.
 
 
 ## [2.0.560] - 2023-09-08
