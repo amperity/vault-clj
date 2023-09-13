@@ -53,7 +53,7 @@
 (defn- form-success
   "Handle a successful response from the API. Returns the data which should be
   yielded by the response."
-  [status headers body handle-response]
+  [status headers body info handle-response]
   (let [parsed (when-not (str/blank? body)
                  (json/read-str body))
         request-id (get parsed "request_id")
@@ -61,10 +61,15 @@
     (some->
       parsed
       (handle-response)
-      (vary-meta assoc
-                 :vault.client/status status
-                 :vault.client/headers headers)
       (cond->
+        info
+        (vary-meta merge info)
+
+        true
+        (vary-meta assoc
+                   :vault.client/status status
+                   :vault.client/headers headers)
+
         request-id
         (vary-meta assoc :vault.client/request-id request-id)
 
@@ -75,15 +80,16 @@
 (defn- form-failure
   "Handle a failure response from the API. Returns the exception which should
   be yielded by the response."
-  [path status headers body]
+  [path status headers info body]
   (let [parsed (when-not (str/blank? body)
                  (json/read-str body))
         request-id (get parsed "request_id")
         warnings (get parsed "warnings")
         errors (get parsed "errors")]
     (->
-      {:vault.client/status status
-       :vault.client/headers headers}
+      info
+      (assoc :vault.client/status status
+             :vault.client/headers headers)
       (cond->
         request-id
         (assoc :vault.client/request-id request-id)
@@ -116,7 +122,8 @@
   (when (str/blank? path)
     (throw (IllegalArgumentException. "Cannot make API call on blank path")))
   (let [handler (:flow client)
-        request (prepare-request client method path params)]
+        request (prepare-request client method path params)
+        info (:info params)]
     (letfn [(make-request
               [extra]
               (http/request
@@ -128,14 +135,14 @@
               (let [{::keys [state redirects retries]} opts]
                 (try
                   (if error
-                    ;; TODO: shape exception?
+                    ;; Call error handler.
                     (f/on-error! handler state error)
                     ;; Handle response from the API based on status code.
                     (cond
                       ;; Successful response, parse body and return result.
                       (<= 200 status 299)
                       (let [handle-response (:handle-response params default-handle-response)
-                            data (form-success status headers body handle-response)]
+                            data (form-success status headers body info handle-response)]
                         (when-let [on-success (:on-success params)]
                           (on-success data))
                         (f/on-success! handler state data))
@@ -151,8 +158,9 @@
                             state
                             (ex-info (str "Vault API responded with " status
                                           " redirect without Location header")
-                                     {:vault.client/status status
-                                      :vault.client/headers headers}))
+                                     (assoc info
+                                            :vault.client/status status
+                                            :vault.client/headers headers)))
 
                           (< 2 redirects)
                           (f/on-error!
@@ -160,8 +168,9 @@
                             state
                             (ex-info (str "Aborting Vault API request after " redirects
                                           " redirects")
-                                     {:vault.client/status status
-                                      :vault.client/headers headers}))
+                                     (assoc info
+                                            :vault.client/status status
+                                            :vault.client/headers headers)))
 
                           :else
                           (make-request
@@ -181,7 +190,8 @@
                       ;; Otherwise, this was a failure response.
                       :else
                       (let [handle-error (:handle-error params identity)
-                            result (handle-error (form-failure path status headers body))]
+                            ex (form-failure path status headers info body)
+                            result (handle-error ex)]
                         (if (instance? Throwable result)
                           (f/on-error! handler state result)
                           (f/on-success! handler state result)))))
@@ -191,7 +201,8 @@
       ;; Kick off the request.
       (f/call
         handler
-        (merge {:vault.client/method method
+        (merge info
+               {:vault.client/method method
                 :vault.client/path path}
                (when-let [query (:query-params params)]
                  {:vault.client/query query}))
@@ -205,9 +216,9 @@
 (defn ^:no-doc cached-response
   "Return a response without calling the API. Uses the client's flow handler
   to prepare and return the cached secret data."
-  [client data]
+  [client info data]
   (let [handler (:flow client)
-        info {:vault.client/cached? true}
+        info (assoc info :vault.client/cached? true)
         data (vary-meta data merge info)]
     (f/call
       handler
@@ -279,35 +290,35 @@
          (= 404 (:vault.client/status data)))))
 
 
-(defn generate-rotatable-credentials!
+(defn ^:no-doc generate-rotatable-credentials!
   "Common logic for generating credentials which can be rotated in the future."
-  [client {:keys [http-method api-path cache-key] :as request} opts]
+  [client method path params opts]
   (if-let [data (and (not (:refresh? opts))
-                     (lease/find-data (:leases client) cache-key))]
+                     (lease/find-data (:leases client)
+                                      (:cache-key params)))]
     ;; Re-use cached secret.
-    (cached-response client data)
+    (cached-response client (:info params) data)
     ;; No cached value available, call API.
     (call-api
-      client http-method api-path
-      {:handle-response
+      client method path
+      {:info (:info params)
+       :handle-response
        (fn handle-response
          [body]
          (let [lease (lease-info body)
                data (-> (get body "data")
                         (u/keywordize-keys)
-                        (vary-meta merge
-                                   (:response-additional-meta opts)))]
+                        (vary-meta merge (:info params)))]
            (when lease
              (letfn [(rotate!
                        []
                        (generate-rotatable-credentials!
-                         client
-                         request
+                         client method path params
                          (assoc opts :refresh? true)))]
                (lease/put!
                  (:leases client)
                  (-> lease
-                     (assoc ::lease/key cache-key)
+                     (assoc ::lease/key (:cache-key params))
                      (lease/renewable-lease opts)
                      (lease/rotatable-lease opts rotate!))
                  data)))
