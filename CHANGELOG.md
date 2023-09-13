@@ -7,9 +7,14 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 ## [Unreleased]
 
 ### Changed
+- The default logic in the HTTP client no longer automatically retries 5xx
+  responses; this needs to be handled by the control flow to avoid blocking
+  http-kit's callback thread.
+  [#101](https://github.com/amperity/vault-clj/pull/101)
 - The way the client handles "meta info" has changed to become more
   comprehensive, to reduce repetition and ensure the info is available to
   the flow controller.
+  [#102](https://github.com/amperity/vault-clj/pull/102)
 
 ### Added
 - The `kv.v1` and `kv.v2` secret engines attach metadata to `:not-found` values

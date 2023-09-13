@@ -132,7 +132,7 @@
 
             (callback
               [{:keys [opts status headers body error]}]
-              (let [{::keys [state redirects retries]} opts]
+              (let [{::keys [state redirects]} opts]
                 (try
                   (if error
                     ;; Call error handler.
@@ -178,15 +178,6 @@
                              ::redirects (inc redirects)
                              :url location})))
 
-                      ;; Retry some network errors
-                      (and (<= 502 status 504)
-                           (< retries 2))
-                      (do
-                        (Thread/sleep 500)
-                        (make-request
-                          {::state state
-                           ::retries (inc retries)}))
-
                       ;; Otherwise, this was a failure response.
                       :else
                       (let [handle-error (:handle-error params identity)
@@ -209,8 +200,7 @@
         (fn call
           [state]
           (make-request {::state state
-                         ::redirects 0
-                         ::retries 0}))))))
+                         ::redirects 0}))))))
 
 
 (defn ^:no-doc cached-response
