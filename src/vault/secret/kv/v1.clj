@@ -11,6 +11,7 @@
     [vault.lease :as lease]
     [vault.util :as u])
   (:import
+    clojure.lang.IObj
     vault.client.http.HTTPClient
     vault.client.mock.MockClient))
 
@@ -179,7 +180,8 @@
           path (u/trim-path path)]
       (http/call-api
         client :get (u/join-path mount path)
-        {:query-params {:list true}
+        {:info {::mount mount, ::path path}
+         :query-params {:list true}
          :handle-response
          (fn handle-response
            [body]
@@ -197,25 +199,23 @@
     ([client path opts]
      (let [mount (::mount client default-mount)
            path (u/trim-path path)
+           info {::mount mount, ::path path}
            cache-key [::secret mount path]
            cached (when-not (:refresh? opts)
                     (lease/find-data (:leases client) cache-key))]
        (if cached
-         (http/cached-response client cached)
+         (http/cached-response client info cached)
          (http/call-api
            client :get (u/join-path mount path)
-           {:handle-response
+           {:info info
+            :handle-response
             (fn handle-response
               [body]
               (let [lease (synthesize-lease
                             (http/lease-info body)
                             cache-key
                             (:ttl opts))
-                    data (-> (get body "data")
-                             (u/keywordize-keys)
-                             (vary-meta assoc
-                                        ::mount mount
-                                        ::path path))]
+                    data (u/keywordize-keys (get body "data"))]
                 (when lease
                   (lease/invalidate! (:leases client) cache-key)
                   (lease/put! (:leases client) lease data))
@@ -224,8 +224,10 @@
             (fn handle-error
               [ex]
               (if (http/not-found? ex)
-                (if (contains? opts :not-found)
-                  (:not-found opts)
+                (if-let [[_ not-found] (find opts :not-found)]
+                  (if (instance? IObj not-found)
+                    (vary-meta not-found merge (ex-data ex))
+                    not-found)
                   (ex-info (str "No kv-v1 secret found at " mount ":" path)
                            (ex-data ex)))
                 ex))})))))
@@ -239,7 +241,8 @@
       (lease/invalidate! (:leases client) cache-key)
       (http/call-api
         client :post (u/join-path mount path)
-        {:content-type :json
+        {:info {::mount mount, ::path path}
+         :content-type :json
          :body (u/stringify-keys data)})))
 
 
@@ -251,4 +254,4 @@
       (lease/invalidate! (:leases client) cache-key)
       (http/call-api
         client :delete (u/join-path mount path)
-        {}))))
+        {:info {::mount mount, ::path path}}))))

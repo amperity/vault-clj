@@ -12,6 +12,7 @@
     [vault.lease :as lease]
     [vault.util :as u])
   (:import
+    clojure.lang.IObj
     java.time.Instant
     vault.client.http.HTTPClient
     vault.client.mock.MockClient))
@@ -172,6 +173,9 @@
 
 (defn- ex-not-found
   "Construct a new not-found exception for the given mount and path."
+  ([ex]
+   (let [data (ex-data ex)]
+     (ex-not-found (::mount data) (::path data) data)))
   ([mount path]
    (ex-not-found mount path nil))
   ([mount path data]
@@ -600,9 +604,9 @@
 (defn- wrap-not-found
   "Handle an API exception and wrap 404s as a standard not-found exception.
   Other exceptions are returned as-is."
-  [mount path ex]
+  [ex]
   (if (http/not-found? ex)
-    (ex-not-found mount path (ex-data ex))
+    (ex-not-found ex)
     ex))
 
 
@@ -623,7 +627,8 @@
           path (u/trim-path path)]
       (http/call-api
         client :list (u/join-path mount "metadata" path)
-        {:handle-response
+        {:info {::mount mount, ::path path}
+         :handle-response
          (fn handle-response
            [body]
            (u/kebabify-keys (get body "data")))
@@ -640,16 +645,21 @@
     ([client path opts]
      (let [mount (::mount client default-mount)
            path (u/trim-path path)
+           version (:version opts)
+           info (cond-> {::mount mount, ::path path}
+                  version
+                  (assoc ::version version))
            cache-key [::secret mount path]
            cached (when-not (:refresh? opts)
                     (lease/find-data (:leases client) cache-key))]
        (if (and cached
-                (or (nil? (:version opts))
-                    (= (:version opts) (::version (meta cached)))))
-         (http/cached-response client cached)
+                (or (nil? version)
+                    (= version (::version (meta cached)))))
+         (http/cached-response client info cached)
          (http/call-api
            client :get (u/join-path mount "data" path)
-           {:query-params (if-let [version (:version opts)]
+           {:info info
+            :query-params (if version
                             {:version version}
                             {})
             :handle-response
@@ -662,10 +672,7 @@
                                  (update-keys qualify-keyword))
                     data (-> (get-in body ["data" "data"])
                              (u/keywordize-keys)
-                             (vary-meta merge
-                                        metadata
-                                        {::mount mount
-                                         ::path path}))]
+                             (vary-meta merge metadata))]
                 (when lease
                   (lease/invalidate! (:leases client) cache-key)
                   (lease/put! (:leases client) lease data))
@@ -674,9 +681,11 @@
             (fn handle-error
               [ex]
               (if (http/not-found? ex)
-                (if (contains? opts :not-found)
-                  (:not-found opts)
-                  (ex-not-found mount path (ex-data ex)))
+                (if-let [[_ not-found] (find opts :not-found)]
+                  (if (instance? IObj not-found)
+                    (vary-meta not-found merge (ex-data ex))
+                    not-found)
+                  (ex-not-found ex))
                 ex))})))))
 
 
@@ -690,7 +699,8 @@
        (lease/invalidate! (:leases client) cache-key)
        (http/call-api
          client :post (u/join-path mount "data" path)
-         {:content-type :json
+         {:info {::mount mount, ::path path}
+          :content-type :json
           :body {:options (select-keys opts [:cas])
                  :data (u/stringify-keys data)}
           :handle-response parse-secret-metadata}))))
@@ -706,12 +716,13 @@
        (lease/invalidate! (:leases client) cache-key)
        (http/call-api
          client :patch (u/join-path mount "data" path)
-         {:headers {"content-type" "application/merge-patch+json"}
+         {:info {::mount mount, ::path path}
+          :headers {"content-type" "application/merge-patch+json"}
           :body (json/write-str
                   {:options (select-keys opts [:cas])
                    :data data})
           :handle-response parse-secret-metadata
-          :handle-error (partial wrap-not-found mount path)}))))
+          :handle-error wrap-not-found}))))
 
 
   (delete-secret!
@@ -722,7 +733,7 @@
       (lease/invalidate! (:leases client) cache-key)
       (http/call-api
         client :delete (u/join-path mount "data" path)
-        {})))
+        {:info {::mount mount, ::path path}})))
 
 
   (destroy-secret!
@@ -733,7 +744,7 @@
       (lease/invalidate! (:leases client) cache-key)
       (http/call-api
         client :delete (u/join-path mount "metadata" path)
-        {})))
+        {:info {::mount mount, ::path path}})))
 
 
   (delete-versions!
@@ -744,7 +755,8 @@
       (lease/invalidate! (:leases client) cache-key)
       (http/call-api
         client :post (u/join-path mount "delete" path)
-        {:content-type :json
+        {:info {::mount mount, ::path path, ::versions versions}
+         :content-type :json
          :body {:versions versions}})))
 
 
@@ -756,7 +768,8 @@
       (lease/invalidate! (:leases client) cache-key)
       (http/call-api
         client :post (u/join-path mount "undelete" path)
-        {:content-type :json
+        {:info {::mount mount, ::path path, ::versions versions}
+         :content-type :json
          :body {:versions versions}})))
 
 
@@ -768,7 +781,8 @@
       (lease/invalidate! (:leases client) cache-key)
       (http/call-api
         client :post (u/join-path mount "destroy" path)
-        {:content-type :json
+        {:info {::mount mount, ::path path, ::versions versions}
+         :content-type :json
          :body {:versions versions}})))
 
 
@@ -778,15 +792,9 @@
           path (u/trim-path path)]
       (http/call-api
         client :get (u/join-path mount "metadata" path)
-        {:handle-response
-         (fn handle-response
-           [body]
-           (-> body
-               (parse-secret-metadata)
-               (vary-meta assoc
-                          ::mount mount
-                          ::path path)))
-         :handle-error (partial wrap-not-found mount path)})))
+        {:info {::mount mount, ::path path}
+         :handle-response parse-secret-metadata
+         :handle-error wrap-not-found})))
 
 
   (write-metadata!
@@ -795,7 +803,8 @@
           path (u/trim-path path)]
       (http/call-api
         client :post (u/join-path mount "metadata" path)
-        {:content-type :json
+        {:info {::mount mount, ::path path}
+         :content-type :json
          :body (-> opts
                    (dissoc :custom-metadata)
                    (u/snakify-keys)
@@ -811,7 +820,8 @@
           path (u/trim-path path)]
       (http/call-api
         client :patch (u/join-path mount "metadata" path)
-        {:headers {"content-type" "application/merge-patch+json"}
+        {:info {::mount mount, ::path path}
+         :headers {"content-type" "application/merge-patch+json"}
          :body (json/write-str
                  (-> opts
                      (dissoc :custom-metadata)
@@ -820,4 +830,4 @@
                        (seq (:custom-metadata opts))
                        (assoc :custom_metadata
                               (u/stringify-keys (:custom-metadata opts))))))
-         :handle-error (partial wrap-not-found mount path)}))))
+         :handle-error wrap-not-found}))))

@@ -147,15 +147,16 @@
       (assoc client ::mount mount)
       (dissoc client ::mount)))
 
+
   (read-key
     [client key-name]
     (let [mount (::mount client default-mount)]
       (http/call-api
         client :get (u/join-path mount "keys" key-name)
-        {:content-type :json
-         :handle-response (fn handle-response
-                            [body]
-                            (u/kebabify-keys (get body "data")))})))
+        {::info {::mount mount, ::key key-name}
+         :content-type :json
+         :handle-response u/kebabify-body-data})))
+
 
   (rotate-key!
     ([client key-name]
@@ -164,16 +165,20 @@
      (let [mount (::mount client default-mount)]
        (http/call-api
          client :post (u/join-path mount "keys" key-name "rotate")
-         {:content-type :json
+         {:info {::mount mount, ::key key-name}
+          :content-type :json
           :body opts}))))
+
 
   (update-key-configuration!
     [client key-name opts]
     (let [mount (::mount client default-mount)]
       (http/call-api
         client :post (u/join-path mount "keys" key-name "config")
-        {:content-type :json
+        {:info {::mount mount, ::key key-name}
+         :content-type :json
          :body opts})))
+
 
   (encrypt-data!
     ([client key-name plaintext]
@@ -182,11 +187,11 @@
      (let [mount (::mount client default-mount)]
        (http/call-api
          client :post (u/join-path mount "encrypt" key-name)
-         {:content-type :json
+         {:info {::mount mount, ::key key-name}
+          :content-type :json
           :body (assoc opts :plaintext plaintext)
-          :handle-response (fn handle-response
-                             [body]
-                             (u/kebabify-keys (get body "data")))}))))
+          :handle-response u/kebabify-body-data}))))
+
 
   (decrypt-data!
     ([client key-name ciphertext]
@@ -195,8 +200,7 @@
      (let [mount (::mount client default-mount)]
        (http/call-api
          client :post (u/join-path mount "decrypt" key-name)
-         {:content-type :json
+         {:info {::mount mount, ::key key-name}
+          :content-type :json
           :body (u/stringify-keys (assoc opts :ciphertext ciphertext))
-          :handle-response (fn handle-response
-                             [body]
-                             (u/kebabify-keys (get body "data")))})))))
+          :handle-response u/kebabify-body-data})))))
