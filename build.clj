@@ -12,7 +12,7 @@
 (def basis (b/create-basis {:project "deps.edn"}))
 
 (def lib-name 'com.amperity/vault-clj)
-(def major-version "2.0")
+(def major-version "2.1")
 
 (def src-dirs ["src"])
 (def target-dir "target")
@@ -59,6 +59,13 @@
   "Remove compiled artifacts."
   [opts]
   (b/delete {:path "target"})
+  opts)
+
+
+(defn print-version
+  "Print the current version number."
+  [opts]
+  (println (get-version opts))
   opts)
 
 
@@ -125,17 +132,28 @@
        :version (:version opts)
        :jar-file (:jar-file opts)
        :class-dir class-dir})
+    (println "Installed version" (:version opts) "to local repository")
     opts))
 
 
 (defn deploy
   "Deploy the JAR to Clojars."
   [opts]
-  (let [opts (-> opts clean jar)]
-    (d/deploy
-      (assoc opts
-             :installer :remote
-             :sign-releases? true
-             :pom-file (:pom-file opts)
-             :artifact (:jar-file opts)))
+  (let [opts (-> opts clean jar)
+        proceed? (or (:force opts)
+                     (do
+                       (printf "About to deploy version %s to Clojars - proceed? [yN] "
+                               (:version opts))
+                       (flush)
+                       (= "y" (str/lower-case (read-line)))))]
+    (if proceed?
+      (d/deploy
+        (assoc opts
+               :installer :remote
+               :sign-releases? true
+               :pom-file (:pom-file opts)
+               :artifact (:jar-file opts)))
+      (binding [*out* *err*]
+        (println "Aborting deploy")
+        (System/exit 1)))
     opts))
