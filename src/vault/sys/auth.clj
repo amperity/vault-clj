@@ -1,5 +1,5 @@
 (ns vault.sys.auth
-  "The /sys/auth endpoint is used to list, create, update, and delete auth
+  "The `/sys/auth` endpoint is used to list, create, update, and delete auth
   methods. Auth methods convert user or machine-supplied information into a
   token which can be used for all future requests.
 
@@ -30,11 +30,17 @@
     Returns nil.
 
     Parameters:
-    - `:type`
+
+    - `:type` (string)
+
       Name of the authentication method type, such as \"github\" or \"token\".
-    - `:description` (optional)
+
+    - `:description` (optional, string)
+
       Human-friendly description of the auth method.
-    - `:config` (optional)
+
+    - `:config` (optional, map)
+
       Configuration options for this auth method.
 
     See the Vault API docs for details.")
@@ -51,7 +57,7 @@
   (tune-method!
     [client path params]
     "Tune the configuration parameters for the auth method at the path. Returns
-    nil.
+    `nil`.
 
     See the Vault API docs for available parameters."))
 

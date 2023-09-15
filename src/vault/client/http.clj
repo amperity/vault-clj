@@ -123,7 +123,11 @@
     (throw (IllegalArgumentException. "Cannot make API call on blank path")))
   (let [handler (:flow client)
         request (prepare-request client method path params)
-        info (:info params)]
+        info (merge (:info params)
+                    {:vault.client/method method
+                     :vault.client/path path}
+                    (when-let [query (not-empty (:query-params params))]
+                      {:vault.client/query query}))]
     (letfn [(make-request
               [extra]
               (http/request
@@ -191,12 +195,7 @@
                     (f/on-error! handler state ex)))))]
       ;; Kick off the request.
       (f/call
-        handler
-        (merge info
-               {:vault.client/method method
-                :vault.client/path path}
-               (when-let [query (:query-params params)]
-                 {:vault.client/query query}))
+        handler info
         (fn call
           [state]
           (make-request {::state state
@@ -357,14 +356,19 @@
 
 
 (defn http-client
-  "Constructs a new HTTP Vault client.
+  "Create a new HTTP Vault client. The address should be an `http://` or
+  `https://` URL.
 
-  Client behavior may be controlled with the options:
+  Options:
 
-  - `:flow`
-    Custom control flow handler for requests. Defaults to `sync-handler`.
-  - `:http-opts`
-    Additional options to pass to `http` requests."
+  - `:flow` ([[vault.client.flow/Handler]])
+
+    Custom control flow handler to use with the client. Defaults to
+    [[vault.client.flow/sync-handler]].
+
+  - `:http-opts` (map)
+
+    Additional options to pass to all HTTP requests."
   [address & {:as opts}]
   (when-not (and (string? address)
                  (or (str/starts-with? address "http://")

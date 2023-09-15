@@ -83,18 +83,23 @@ nil
 
 ;; Let's store a new secret, which returns information about the result:
 => (kv/write-secret! client "foo/bar" {:alpha "abc", :num 123, :kw :xyz})
-{:created-time #inst "2023-09-06T18:49:14.728549Z"
+{:created-time #inst "2023-09-14T06:57:25.330167Z"
  :destroyed false
  :version 1}
 
-;; Most client responses contain metadata about the underlying HTTP request:
+;; Client responses contain metadata about the underlying HTTP request:
 => (meta *1)
-{:vault.client/status 200
- :vault.client/request-id "6ad4fed6-21bc-c4c1-57cb-84def9ff7303"
- :vault.client/headers {:date "Wed, 06 Sep 2023 18:49:14 GMT"
+{:vault.client/method :post
+ :vault.client/path "secret/data/foo/bar"
+ :vault.client/status 200
+ :vault.client/request-id "77f12c57-cb10-f0a7-939d-c05a7c7a1bde"
+ :vault.client/headers {:cache-control "no-store"
                         :content-length "276"
                         :content-type "application/json"
-                        :cache-control "no-store"}}
+                        :date "Thu, 14 Sep 2023 06:57:25 GMT"
+                        :strict-transport-security "max-age=31536000; includeSubDomains"}
+ :vault.secret.kv.v2/mount "secret"
+ :vault.secret.kv.v2/path "foo/bar"}
 
 ;; Now we can see our secret in the listing:
 => (kv/list-secrets client "")
@@ -103,7 +108,7 @@ nil
 => (kv/list-secrets client "foo/")
 {:keys ["bar"]}
 
-;; Let's read the secret data back! There's one gotcha here, which is that
+;; Let's read the secret data back. There's one gotcha here, which is that
 ;; Vault serializes secret data to JSON, so our keyword value has been
 ;; stringified during the round-trip:
 => (kv/read-secret client "foo/bar")
@@ -111,15 +116,21 @@ nil
 
 ;; As before, the response has metadata about the client call and this time,
 ;; the secret itself:
-{:vault.client/status 200
- :vault.client/request-id "65eefa88-7cba-3345-0e11-f203c632d066"
- :vault.client/headers {,,,}
+{:vault.client/method :get
+ :vault.client/path "secret/data/foo/bar"
+ :vault.client/status 200
+ :vault.client/request-id "c664637a-6042-d694-18e4-f49de23431c3"
+ :vault.client/headers {:cache-control "no-store"
+                        :content-length "333"
+                        :content-type "application/json"
+                        :date "Thu, 14 Sep 2023 06:59:07 GMT"
+                        :strict-transport-security "max-age=31536000; includeSubDomains"}
+ :vault.secret.kv.v2/created-time #inst "2023-09-14T06:57:25.330167Z"
+ :vault.secret.kv.v2/custom-metadata nil
+ :vault.secret.kv.v2/destroyed false
  :vault.secret.kv.v2/mount "secret"
  :vault.secret.kv.v2/path "foo/bar"
- :vault.secret.kv.v2/version 1
- :vault.secret.kv.v2/created-time #inst "2023-09-06T18:49:14.728549Z"
- :vault.secret.kv.v2/custom-metadata nil
- :vault.secret.kv.v2/destroyed false}
+ :vault.secret.kv.v2/version 1}
 ```
 
 Each secrets engine defines its own protocol, so refer to their documentation

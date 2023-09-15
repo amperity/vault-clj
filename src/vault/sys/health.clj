@@ -1,5 +1,5 @@
 (ns vault.sys.health
-  "The /sys/health endpoint is used to check the health status of Vault.
+  "The `/sys/health` endpoint is used to check the health status of Vault.
 
   Reference: https://www.vaultproject.io/api-docs/system/health"
   (:require
@@ -18,7 +18,7 @@
 
   (read-health
     [client params]
-    "Returns the health status of Vault."))
+    "Return the health status of Vault."))
 
 
 ;; ## Mock Client

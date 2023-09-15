@@ -1,12 +1,6 @@
 (ns vault.client.flow
   "A _control flow handler_ defines a collection of functions which determine
-  how requests and responses are handled through the vault client.
-
-  The goal of this is to enable the consumer to decide whether they want the
-  simplicity of synchronous (blocking) calls to Vault (via `sync-handler`), or
-  the flexibility of async calls (via `promise-handler` or
-  `completable-future-handler`). This also allows for extensions to other
-  frameworks like Manifold and the injection of observability tracing."
+  how requests and responses are handled through the Vault client."
   (:refer-clojure :exclude [await])
   #?@(:bb
       []
@@ -157,8 +151,10 @@
 (def promise-handler
   "The promise handler will immediately return a `promise` value to the caller.
   The promise will asynchronously yield either the response data (on success)
-  or an exception (on error). Note that dereferencing the promise will _return_
-  the error instead of throwing it, unless `await` is used."
+  or an exception (on error).
+
+  Note that dereferencing the promise will _return_ the error instead of
+  throwing it, unless `await` is used."
   (->PromiseHandler))
 
 

@@ -1,5 +1,5 @@
 (ns vault.auth.userpass
-  "The /auth/userpass endpoint manages username & password authentication
+  "The `/auth/userpass` endpoint manages username & password authentication
   functionality.
 
   Reference: https://www.vaultproject.io/api-docs/auth/userpass"
@@ -31,7 +31,7 @@
     "Login with the username and password. This method uses the
     `/auth/userpass/login/:username` endpoint.
 
-    Returns the `auth` map from the login endpoint and also updates the auth
+    Returns the `auth` map from the login endpoint and updates the auth
     information in the client, including the new client token."))
 
 

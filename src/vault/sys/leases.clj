@@ -1,5 +1,5 @@
 (ns vault.sys.leases
-  "The /sys/leases endpoint is used to view and manage leases in Vault.
+  "The `/sys/leases` endpoint is used to view and manage leases in Vault.
 
   Reference: https://www.vaultproject.io/api-docs/system/leases"
   (:require

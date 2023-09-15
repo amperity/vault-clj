@@ -30,8 +30,7 @@
   Vault. V2 of the engine enables secret versioning and metadata capabilities.
 
   All of the methods in this protocol expect `path` to be relative to the
-  secret engine mount point, which defaults to `secret/`. To specify a
-  different mount, use `with-mount`."
+  secret engine mount point. To specify a custom mount, use `with-mount`."
 
   (with-mount
     [client mount]
@@ -44,7 +43,7 @@
     "List the secret names located under a path prefix location. Returns a map
     with a `:keys` vector of name strings, where further folders are suffixed
     with `/`. The path must be a folder; calling this method on a file or a
-    prefix which does not exist will return nil.")
+    prefix which does not exist will return `nil`.")
 
   (read-secret
     [client path]
@@ -54,21 +53,29 @@
     returned value will have the additional information about the secret, such
     as the version, attached as metadata.
 
-    Note that Vault internally stores data as JSON, so not all Clojure types
-    will round-trip successfully!
-
     Options:
-    - `:version`
+
+    - `:version` (integer)
+
       Read a specific version of the secret. Defaults to the latest version.
-    - `:not-found`
+
+    - `:not-found` (any)
+
       If no secret exists at the given path or version, return this value
       instead of throwing an exception.
-    - `:refresh?`
+
+    - `:refresh?` (boolean)
+
       Always make a read for fresh data, even if a cached secret is
       available.
-    - `:ttl`
+
+    - `:ttl` (integer)
+
       Cache the data read for the given number of seconds. A value of zero or
-      less will disable caching.")
+      less will disable caching.
+
+    Note that Vault internally stores data as JSON, so not all Clojure types
+    will round-trip successfully!")
 
   (write-secret!
     [client path data]
@@ -76,14 +83,16 @@
     "Store data at the provided path, creating a new version of the secret.
     Returns the secret metadata.
 
-    Note that Vault internally stores data as JSON, so not all Clojure types
-    will round-trip successfully!
-
     Options:
-    - `:cas`
-      In order for a write to be successful, this must be set to the current
-      version of the secret. If cas is set to 0, the write will only be allowed
-      if the key doesn't exist.")
+
+    - `:cas` (integer)
+
+      If set, the write will only succeed if the current version of the secret
+      matches this value. If set to `0`, it will only succeed if the key doesn't
+      exist.
+
+    Note that Vault internally stores data as JSON, so not all Clojure types
+    will round-trip successfully!")
 
   (patch-secret!
     [client path data]
@@ -92,29 +101,32 @@
     be deleted nor destroyed. A new version will be created upon successfully
     applying a patch with the provided data. Returns the secret metadata.
 
-    Note that Vault internally stores data as JSON, so not all Clojure types
-    will round-trip successfully!
-
     Options:
-    - `:cas`
-      In order for a write to be successful, this must be set to the current
-      version of the secret. If cas is set to 0, the write will only be allowed
-      if the key doesn't exist.")
+
+    - `:cas` (integer)
+
+      If set, the update will only succeed if the current version of the secret
+      matches this value.
+
+    Note that Vault internally stores data as JSON, so not all Clojure types
+    will round-trip successfully!")
 
   (delete-secret!
     [client path]
-    "Delete the latest version of the secret at the provided path, if any. Returns nil.
+    "Delete the latest version of the secret at the provided path, if any.
+    Returns `nil`.
 
-    This is a soft-delete that may later be reverted with `undelete-versions!`.")
+    This is a soft-delete that may later be reverted with [[undelete-versions!]].")
 
   (destroy-secret!
     [client path]
     "Permanently delete the secret metadata and all version data for the given
-    path. All version history will be removed. Returns nil.")
+    path. All version history will be removed. Returns `nil`.")
 
   (delete-versions!
     [client path versions]
-    "Issue a soft delete of the specified versions of the secret. Returns nil.
+    "Issue a soft delete of the specified versions of the secret. Returns
+    `nil`.
 
     This marks the versions as deleted and will stop them from being returned
     from reads, but the underlying data will not be removed. A delete can be
@@ -122,14 +134,14 @@
 
   (undelete-versions!
     [client path versions]
-    "Undelete the data for the provided versions of the secret. Returns nil.
+    "Undelete the data for the provided versions of the secret. Returns `nil`.
 
     This restores the data, allowing it to be returned on get requests.")
 
   (destroy-versions!
     [client path versions]
     "Permanently remove the data for the provided secret and version numbers.
-    Returns nil.")
+    Returns `nil`.")
 
   (read-metadata
     [client path]
@@ -138,29 +150,37 @@
 
   (write-metadata!
     [client path opts]
-    "Update the metadata of a secret at the specified path. Returns nil. This
+    "Update the metadata of a secret at the specified path. Returns `nil`. This
     does not create a new version.
 
     Options:
-    - `:max-versions`
+
+    - `:max-versions` (integer)
+
       Number of versions to keep per key. Once the secret has more than the
       configured allowed versions, the oldest version will be permanently
       deleted.
-    - `:cas-required`
+
+    - `:cas-required` (boolean)
+
       If true, the key will require the cas parameter to be set on all write requests.
-    - `:delete-version-after`
+
+    - `:delete-version-after` (string)
+
       Duration string specifying the time after which all new versions written
       to this secret should be deleted. Accepts Go duration format strings.
-    - `:custom-metadata`
+
+    - `:custom-metadata` (map)
+
       Map of arbitrary string-to-string valued user-provided metadata meant to
       describe the secret.")
 
   (patch-metadata!
     [client path opts]
     "Patch the existing metadata for the secret at the provided location.
-    Returns nil.
+    Returns `nil`.
 
-    See `write-metadata!` for options."))
+    See [[write-metadata!]] for options."))
 
 
 ;; ## Mock Client

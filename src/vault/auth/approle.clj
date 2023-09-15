@@ -1,5 +1,5 @@
 (ns vault.auth.approle
-  "The /auth/approle endpoint manages approle role-id & secret-id authentication functionality.
+  "The `/auth/approle` endpoint manages approle role-id & secret-id authentication functionality.
 
   Reference: https://www.vaultproject.io/api-docs/auth/approle"
   (:require
@@ -16,7 +16,7 @@
 
 
 (defprotocol API
-  "The AppRole auth endpoints manage role_id and secret_id authentication."
+  "The approle auth endpoints manage role_id and secret_id authentication."
 
   (with-mount
     [client mount]
@@ -26,84 +26,120 @@
 
   (configure-role!
     [client role-name opts]
-    "Creates a new AppRole or updates an existing AppRole.
-
-    When creating or updating an AppRole, there must be at least one option supplied.
-
-    This method uses the `/auth/approle/role/:role_name` endpoint.
-    For additional information see https://www.vaultproject.io/api-docs/auth/approle#create-update-approle
+    "Create a new role or update an existing role. At least one option must be
+    specified. This method uses the `/auth/approle/role/:role_name` endpoint.
 
     Options:
+
     - `:bind-secret-id` (boolean)
-      If a `secret-id` is required to be presented when logging in with this role.
+
+      If a `secret-id` is required to be presented when logging in with this
+      role.
+
     - `:secret-id-bound-cidrs` (collection)
-      Collection of CIDR blocks. When set, specifies blocks of IP addresses which can perform the login operation.
+
+      Collection of CIDR blocks. When set, specifies blocks of IP addresses
+      which can perform the login operation.
+
     - `:secret-id-num-uses` (integer)
+
       The number of times any single `secret-id` can be used to fetch a token
-      from this AppRole, after which the `secret-id` will expire. Specify 0 for unlimited uses.
-    - `:secret-id-ttl` (string)'
-      Duration in either an integer number of seconds (3600) or an integer time unit (60m)
-      after which any `secret-id` expires.
+      from this approle, after which the `secret-id` will expire. Specify `0` for
+      unlimited uses.
+
+    - `:secret-id-ttl` (string)
+
+      Duration in either an integer number of seconds (`3600`) or a string time
+      unit (`60m`) after which any `secret-id` expires.
+
     - `:local-secret-ids` (boolean)
+
       If set, the secret IDs generated using this role will be cluster local.
-      This can only be set during role creation and once set, it can't be reset later.
+      This can only be set during role creation and once set, it can't be reset
+      later.
+
     - `:token-ttl` (integer or string)
+
       The incremental lifetime for generated tokens.
+
     - `:token-max-ttl` (integer or string)
-      The maximum lifetime for generated tokens. 
-    - `:token-policies` (collection or comma-delimited string)
+
+      The maximum lifetime for generated tokens.
+
+    - `:token-policies` (collection)
+
       List of policies to encode onto generated tokens.
-    - `:token-bound-cidrs` (collection or comma-delimited string)
-      List of CIDR blocks; if set, specifies blocks of IP addresses which can authenticate successfully.
+
+    - `:token-bound-cidrs` (collection)
+
+      List of CIDR blocks; if set, specifies blocks of IP addresses which can
+      authenticate successfully.
+
     - `:token-explicit-max-ttl` (integer or string)
+
       If set, will encode an explicit hard cap for token life.
+
     - `:token-no-default-policy` (boolean)
-      If set, the default policy will not be set on generated tokens, otherwise it
-      will be added to the policies set in `:token-policies`.
+
+      If set, the default policy will not be set on generated tokens, otherwise
+      it will be added to the policies set in `:token-policies`.
+
     - `:token-num-uses` (integer)
-      The maximum amount of times a generated token may be used. Specify 0 for unlimited uses.
+
+      The maximum amount of times a generated token may be used. Specify `0`
+      for unlimited uses.
+
     - `:token-period` (integer or string)
+
       The period to set on a token.
+
     - `:token-type` (string)
+
       The type of token that should be generated.")
 
   (list-roles
     [client]
-    "Returns a list of the existing AppRoles.
-    This method uses the `/auth/applrole/role` endpoint.")
+    "Return a list of the existing roles. This method uses the
+    `/auth/approle/role` endpoint.")
 
   (read-role
     [client role-name]
-    "Reads the properities associated with an AppRole.
-    This method uses the `/auth/approle/role/:role_name` endpoint.")
+    "Read the properities associated with an approle. This method uses the
+    `/auth/approle/role/:role_name` endpoint.")
 
   (read-role-id
     [client role-name]
-    "Reads the `role-id` of an exiting role name.
-    This method uses the `/auth/approle/role/:role_name/role-id` endpont.")
+    "Read the `role-id` of an exiting role. This method uses the
+    `/auth/approle/role/:role_name/role-id` endpont.")
 
   (generate-secret-id!
     [client role-name]
     [client role-name opts]
-    "Generates and issues a new `secret-id` for an existing role.
-    This method uses the `/auth/approle/role/:role_name/secret-id` endpoint.
+    "Generate a new `secret-id` for an existing role. This method uses the
+    `/auth/approle/role/:role_name/secret-id` endpoint.
 
     Options:
+
     - `:metadata` (string)
+
       Metadata tied to the `secret-id`. This should be a JSON-formatted string
       containing key-value pairs. This metadata is logged in audit logs in plaintext.
+
     - `:cidr-list` (collection)
+
       Collection of CIDR blocks enforcing `secret-ids` to be used from specific IP addresses.
+
     - `:token-bound-cidrs` (collection)
+
       Collection of CIDR blocks; when set, specifies blocks of IP addresses that can use
       auth tokens generated by the `secret-id`.")
 
   (login
     [client role-id secret-id]
-    "Login using an AppRole role_id and secret_id.
-    This method uses the `/auth/approle/login` endpoint.
+    "Login using an approle `role-id` and `secret-id`. This method uses the
+    `/auth/approle/login` endpoint.
 
-    Returns the `auth` map from the login endpoint and also updates the auth
+    Returns the `auth` map from the login endpoint and updates the auth
     information in the client, including the new client token."))
 
 

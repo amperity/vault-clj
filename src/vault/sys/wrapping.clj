@@ -1,5 +1,5 @@
 (ns vault.sys.wrapping
-  "The /sys/wrapping endpoint is used to wrap secrets and lookup, rewrap, and
+  "The `/sys/wrapping` endpoint is used to wrap secrets and lookup, rewrap, and
   unwrap tokens.
 
   Reference:
@@ -21,24 +21,24 @@
 
   (lookup
     [client token-id]
-    "Returns the wrapping properties for the given token.")
+    "Read the wrapping properties for the given token.")
 
   (rewrap
     [client token-id]
-    "Rotates the given wrapping token and refreshes its TTL. Returns the new
-    token info.")
+    "Rotate the given wrapping token and refresh its TTL. Returns the new token
+    info.")
 
   (unwrap
     [client]
     [client token-id]
-    "Returns the original response inside the given wrapping token.")
+    "Read the original response inside the given wrapping token.")
 
   (wrap
     [client data ttl]
-    "Wraps the given map of data inside a response-wrapped token with the
-    specified TTL. The TTL can be either an integer number of seconds or a
-    string duration of seconds (15s), minutes (20m), or hours (25h). Returns the
-    new token info."))
+    "Wrap the given map of data inside a response-wrapped token with the
+    specified time-to-live. The TTL can be either an integer number of seconds
+    or a string duration such as `15s`, `20m`, `25h`, etc. Returns the new
+    token info."))
 
 
 ;; ## HTTP Client

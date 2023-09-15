@@ -81,14 +81,17 @@
 
 
 (defn mock-client
-  "Constructs a new mock Vault client. Accepts a URI address for loading mock
-  data, or may be given a map of initial values to directly populate the
-  in-memory state.
+  "Create a new mock Vault client. The `init` argument may either be a map of
+  data to use for the internal state or a URI with the `mock:` scheme. A
+  `mock:-` value indicates an empty state, or it may be a path to a resource on
+  the classpath like `mock:path/to/data.edn`.
 
-  Client behavior may be controlled with options:
+  Options:
 
-  - `:flow`
-    Custom control flow handler for requests. Defaults to `sync-handler`."
+  - `:flow` ([[vault.client.flow/Handler]])
+
+    Custom control flow handler to use with the client. Defaults to
+    [[vault.client.flow/sync-handler]]."
   ([]
    (mock-client {}))
   ([init & {:as opts}]

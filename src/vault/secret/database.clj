@@ -35,30 +35,48 @@
     "Generate a new set of dynamic credentials based on the named role.
 
     Options:
-    - `:refresh?`
+
+    - `:refresh?` (boolean)
+
       Always make a call for fresh data, even if a cached secret lease is
       available.
-    - `:renew?`
+
+    - `:renew?` (boolean)
+
       If true, attempt to automatically renew the credentials lease when near
-      expiry. (Default: false)
-    - `:renew-within`
+      expiry. (Default: `false`)
+
+    - `:renew-within` (integer)
+
       Renew the secret when within this many seconds of the lease expiry.
-      (Default: 60)
-    - `:renew-increment`
+      (Default: `60`)
+
+    - `:renew-increment` (integer)
+
       How long to request credentials be renewed for, in seconds.
-    - `:on-renew`
+
+    - `:on-renew` (fn)
+
       A function to call with the updated lease information after the
       credentials have been renewed.
-    - `:rotate?`
+
+    - `:rotate?` (boolean)
+
       If true, attempt to read a new set of credentials when they can no longer
-      be renewed. (Default: false)
-    - `:rotate-within`
+      be renewed. (Default: `false`)
+
+    - `:rotate-within` (integer)
+
       Rotate the secret when within this many seconds of the lease expiry.
-      (Default: 60)
-    - `:on-rotate`
+      (Default: `60`)
+
+    - `:on-rotate` (fn)
+
       A function to call with the new credentials after they have been
       rotated.
-    - `:on-error`
+
+    - `:on-error` (fn)
+
       A function to call with any exceptions encountered while renewing or
       rotating the credentials."))
 

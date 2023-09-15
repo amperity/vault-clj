@@ -28,8 +28,7 @@
   Vault.
 
   All of the methods in this protocol expect `path` to be relative to the
-  secret engine mount point, which defaults to `secret/`. To specify a
-  different mount, use `with-mount`."
+  secret engine mount point. To specify a custom mount, use `with-mount`."
 
   (with-mount
     [client mount]
@@ -50,29 +49,35 @@
     "Read the secret at the provided path. Returns the secret data, if present.
     Throws an exception or returns the provided not-found value if not.
 
-    Note that Vault internally stores data as JSON, so not all Clojure types
-    will round-trip successfully!
-
     Options:
-    - `:not-found`
+
+    - `:not-found` (any)
+
       If no secret exists at the given path, return this value instead of
       throwing an exception.
-    - `:refresh?`
+
+    - `:refresh?` (boolean)
+
       Always make a read for fresh data, even if a cached secret is
       available.
-    - `:ttl`
+
+    - `:ttl` (integer)
+
       Cache the data read for the given number of seconds. Overrides the TTL
-      returned by Vault. A value of zero or less will disable caching.")
+      returned by Vault. A value of zero or less will disable caching.
+
+    Note that Vault internally stores data as JSON, so not all Clojure types
+    will round-trip successfully!")
 
   (write-secret!
     [client path data]
     "Store secret data at the provided path, overwriting any secret that was
-    previously stored there. Returns nil.
+    previously stored there. Returns nil. Writing a `:ttl` key as part of the
+    secret will control the pseudo lease duration returned when the secret is
+    read.
 
-    Writing a `:ttl` key as part of the secret will control the pseudo lease
-    duration returned when the secret is read. Note that Vault internally
-    stores data as JSON, so not all Clojure types will round-trip
-    successfully!")
+    Note that Vault internally stores data as JSON, so not all Clojure types
+    will round-trip successfully!")
 
   (delete-secret!
     [client path]

@@ -1,5 +1,5 @@
 (ns vault.sys.mounts
-  "The /sys/mounts endpoint is used to manage secrets engines in Vault.
+  "The `/sys/mounts` endpoint is used to manage secrets engines in Vault.
 
   Reference: https://www.vaultproject.io/api-docs/system/mounts"
   (:require
@@ -25,36 +25,45 @@
     can be accessed and configured via the specified path. Returns nil.
 
     Parameters:
-    - `:type`
+
+    - `:type` (string)
+
       The type of the backend, such as \"aws\" or \"openldap\".
-    - `:description (optional)
+
+    - `:description (optional, string)
+
       Human-friendly description of the mount.
-    - `:config` (optional)
+
+    - `:config` (optional, map)
+
       Configuration options for this mount.
-    - `:options` (optional)
+
+    - `:options` (optional, map)
+
       Mount type specific options that are passed to the backend.
 
     See the Vault API docs for details.")
 
   (disable-secrets!
     [client path]
-    "Disables the mount point specified by the given path.")
+    "Disable the mount point specified by the given path.")
 
   (read-secrets-configuration
     [client path]
-    "Returns the configuration of the secrets engine mounted at the given path.")
+    "Read the configuration of the secrets engine mounted at the given path.")
 
   (read-mount-configuration
     [client path]
-    "Returns the given mount's configuration.
+    "Read the given mount's configuration.
 
-    Unlike the `read-secrets-configuration` method, this will return the current
-    time in seconds for each TTL, which may be the system default or a
+    Unlike the [[read-secrets-configuration]] method, this will return the
+    current time in seconds for each TTL, which may be the system default or a
     mount-specific value.")
 
   (tune-mount-configuration!
     [client path params]
-    "Tune the configuration parameters for the given mount point. Returns nil.
+    "Tune the configuration parameters for the given mount point. Returns
+    `nil`.
 
     See the Vault API docs for available parameters."))
 

@@ -1,5 +1,5 @@
 (ns vault.auth.github
-  "The /auth/github endpoint manages GitHub authentication functionality.
+  "The `/auth/github` endpoint manages GitHub authentication functionality.
 
   Reference: https://www.vaultproject.io/api-docs/auth/github"
   (:require
@@ -29,7 +29,7 @@
     "Login using a GitHub access token. This method uses the
     `/auth/github/login` endpoint.
 
-    Returns the `auth` map from the login endpoint and also updates the auth
+    Returns the `auth` map from the login endpoint and updates the auth
     information in the client, including the new client token."))
 
 

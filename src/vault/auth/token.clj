@@ -1,5 +1,5 @@
 (ns vault.auth.token
-  "The /auth/token endpoint manages token-based authentication functionality.
+  "The `/auth/token` endpoint manages token-based authentication functionality.
 
   Reference: https://www.vaultproject.io/api-docs/auth/token"
   (:require

@@ -1,5 +1,4 @@
-Upgrading from 1.x
-==================
+# Upgrading from 1.x
 
 If you're upgrading from the 1.x major version, there are a number of
 differences to account for.

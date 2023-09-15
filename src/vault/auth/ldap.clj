@@ -1,5 +1,5 @@
 (ns vault.auth.ldap
-  "The /auth/ldap endpoint manages Lightweight Directory Access Protocol (LDAP)
+  "The `/auth/ldap` endpoint manages Lightweight Directory Access Protocol (LDAP)
   authentication functionality.
 
   Reference: https://www.vaultproject.io/api-docs/auth/ldap"
@@ -30,7 +30,7 @@
     "Login with the LDAP user's username and password. This method uses the
     `/auth/ldap/login/:username` endpoint.
 
-    Returns the `auth` map from the login endpoint and also updates the auth
+    Returns the `auth` map from the login endpoint and updates the auth
     information in the client, including the new client token."))
 
 

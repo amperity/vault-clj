@@ -31,14 +31,14 @@
 ;; ## Protocol Methods
 
 (defn client?
-  "True if the given value satisfies the client protocol."
+  "True if the value satisfies the client protocol."
   [x]
   (satisfies? proto/Client x))
 
 
 (defn auth-info
   "Return the client's current auth information, a map containing the
-  `:vault.auth/token` and other metadata keys from the `vault.auth`
+  `:vault.auth/token` and other metadata keys from the [[vault.auth]]
   namespace. Returns nil if the client is unauthenticated."
   [client]
   (proto/auth-info client))
@@ -80,19 +80,9 @@
 #?(:bb nil
    :clj
    (defn start
-     "Start the Vault component, returning an updated version with a periodic
-          maintenance task.
-
-          Behavior may be controlled with the following keys on the client:
-          - `:maintenance-period`
-          How frequently to check the client auth token and leased secrets for
-          renewal or rotation. Defaults to every 10 seconds.
-          - `:maintenance-executor`
-          Custom scheduled executor service to use for executing maintenance tasks.
-          Defaults to a single-threaded executor.
-          - `:callback-executor`
-          Custom executor service to use for executing lease callbacks. Defaults to
-          the Clojure agent send-off pool."
+     "Start the Vault client, returning an updated component with a periodic
+     maintenance task. See [[new-client]] for options which control maintenance
+     behavior."
      [client]
      (when-let [task (:maintenance-task client)]
        (future-cancel task))
@@ -111,7 +101,8 @@
 #?(:bb nil
    :clj
    (defn stop
-     "Stop the given Vault client. Returns a stopped version of the component."
+     "Stop the Vault client, canceling any existing maintenance task. Returns a
+     stopped version of the component."
      [client]
      (when-let [task (:maintenance-task client)]
        (log/debug "Canceling vault maintenance task")
@@ -129,7 +120,33 @@
 
 (defn new-client
   "Constructs a new Vault client from a URI address by dispatching on the
-  scheme. The client will be returned in an initialized but not started state."
+  scheme. The client will be returned in an initialized but not started state.
+
+  Options:
+
+  - `:flow` ([[vault.client.flow/Handler]])
+
+    Custom control flow handler to use with the client. Defaults to
+    [[vault.client.flow/sync-handler]].
+
+  - `:maintenance-period` (integer)
+
+    How frequently (in seconds) to check the client auth token and leased
+    secrets for renewal or rotation. Defaults to `10` seconds.
+
+  - `:maintenance-executor` (`ScheduledExecutorService`)
+
+    Custom executor to use for maintenance tasks. Defaults to a new
+    single-threaded executor.
+
+  - `:callback-executor` (`ExecutorService`)
+
+    Custom executor to use for lease callbacks. Defaults to the Clojure agent
+    send-off pool, same as `future` calls.
+
+  - `:http-opts` (map)
+
+    Additional options to pass to all HTTP requests."
   [address & {:as opts}]
   (let [uri (URI/create address)]
     (case (.getScheme uri)
@@ -146,8 +163,22 @@
 
 (defn config-client
   "Configure a client from the environment if possible. Returns the initialized
-  client, or throws an exception."
-  []
+  client, or throws an exception.
+
+  This looks for the following configuration, preferring JVM system properties
+  over environment variables:
+
+  - `VAULT_ADDR` / `vault.addr`
+
+    The URL of the vault server to connect to.
+
+  - `VAULT_TOKEN` / `vault.token`
+
+    A token to use directly for the client authentication. If neither are set,
+    this will also try the user's `~/.vault-token` file.
+
+  Accepts the same options as [[new-client]]."
+  [& {:as opts}]
   (let [address (or (System/getProperty "vault.addr")
                     (System/getenv "VAULT_ADDR")
                     "mock:-")
@@ -156,18 +187,20 @@
                   (let [token-file (io/file (System/getProperty "user.home") ".vault-token")]
                     (when (.exists token-file)
                       (str/trim (slurp token-file)))))
-        client (new-client address)]
+        client (new-client address opts)]
     (when-not (str/blank? token)
       (proto/authenticate! client token))
     client))
 
 
-(defn config-wrapped-client
+(defn unwrap-client
   "Construct a new client for the URI address and authenticate it with a
   wrapped single-use token. Returns the initialized client, or throws an
-  exception."
-  [address token]
-  (let [client (new-client address)
+  exception.
+
+  Accepts the same options as [[new-client]]."
+  [address token & {:as opts}]
+  (let [client (new-client address opts)
         _ (proto/authenticate! client token)
         result (sys.wrapping/unwrap client)]
     (proto/authenticate! client (:client-token result))

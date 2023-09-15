@@ -1,5 +1,4 @@
-Local Development
-=================
+# Local Development
 
 `vault-clj` uses Clojure's CLI tooling, `deps.edn`, and `tools.build` for
 development.

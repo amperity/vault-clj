@@ -1,5 +1,5 @@
 (ns vault.auth.kubernetes
-  "The /auth/kubernetes endpoint manages Kubernetes authentication
+  "The `/auth/kubernetes` endpoint manages Kubernetes authentication
   functionality.
 
   Reference: https://www.vaultproject.io/api-docs/auth/kubernetes"
@@ -31,7 +31,7 @@
     authenticating a service account. This method uses the
     `/auth/kubernetes/login` endpoint.
 
-    Returns the `auth` map from the login endpoint and also updates the auth
+    Returns the `auth` map from the login endpoint and updates the auth
     information in the client, including the new client token."))
 
 

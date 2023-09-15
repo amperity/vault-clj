@@ -15,10 +15,13 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
   comprehensive, to reduce repetition and ensure the info is available to
   the flow controller.
   [#102](https://github.com/amperity/vault-clj/pull/102)
+- `vault.client/config-wrapped-client` renamed to `unwrap-client`.
 
 ### Added
 - The `kv.v1` and `kv.v2` secret engines attach metadata to `:not-found` values
   if they support metadata, similar to normal responses.
+- `vault.client/config-client` accepts options for configuring the Vault
+  client, as in `new-client`.
 
 
 ## [2.0.560] - 2023-09-08
