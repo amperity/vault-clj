@@ -112,4 +112,4 @@
           (is (= 0 (:min-available-version key-info)))
           (is (= 2 (:min-encryption-version key-info)))
           (is (thrown-with-msg? Exception #"requested version for encryption is less than the minimum encryption key version"
-            (transit/encrypt-data! client "test" "gimme the old one" {:key-version 1}))))))))
+                (transit/encrypt-data! client "test" "gimme the old one" {:key-version 1}))))))))
