@@ -4,7 +4,6 @@
     [clojure.string :as str]
     [clojure.walk :as walk])
   (:import
-    java.security.MessageDigest
     java.time.Instant
     java.util.Base64))
 
@@ -158,16 +157,6 @@
      (if as-string?
        (String. bs "UTF-8")
        bs))))
-
-
-(defn sha-256
-  "Hash string data with the SHA-2 256 bit algorithm. Returns the digest as a
-  hex string."
-  [s]
-  (let [hasher (MessageDigest/getInstance "SHA-256")
-        str-bytes (.getBytes (str s) "UTF-8")]
-    (.update hasher str-bytes)
-    (hex-encode (.digest hasher))))
 
 
 ;; ## Paths

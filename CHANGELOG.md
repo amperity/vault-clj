@@ -35,6 +35,9 @@ should be minor.
 - `vault.client/config-client` accepts options for configuring the Vault
   client, as in `new-client`.
 
+### Removed
+- Removed the unused `vault.util/sha-256` function.
+
 
 ## [2.0.560] - 2023-09-08
 
