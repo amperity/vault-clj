@@ -18,6 +18,7 @@
     [vault.secret.database :as database]
     [vault.secret.kv.v1 :as kv1]
     [vault.secret.kv.v2 :as kv2]
+    [vault.secret.transit :as transit]
     [vault.sys.auth :as sys.auth]
     [vault.sys.health :as sys.health]
     [vault.util :as u]))
