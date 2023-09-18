@@ -4,7 +4,6 @@
     [clojure.string :as str]
     [clojure.walk :as walk])
   (:import
-    java.security.MessageDigest
     java.time.Instant
     java.util.Base64))
 
@@ -132,26 +131,32 @@
   (.encodeToString
     (Base64/getEncoder)
     ^bytes
-    (if (string? data)
+    (cond
+      (bytes? data)
+      data
+
+      (string? data)
       (.getBytes ^String data "UTF-8")
-      data)))
+
+      :else
+      (throw (IllegalArgumentException.
+               (str "Don't know how to base64-encode value with type: "
+                    (class data) " (expected a string or byte array)"))))))
 
 
 (defn base64-decode
-  "Decode the given base-64 string into byte data."
-  ^bytes
-  [data]
-  (.decode (Base64/getDecoder) (str data)))
-
-
-(defn sha-256
-  "Hash string data with the SHA-2 256 bit algorithm. Returns the digest as a
-  hex string."
-  [s]
-  (let [hasher (MessageDigest/getInstance "SHA-256")
-        str-bytes (.getBytes (str s) "UTF-8")]
-    (.update hasher str-bytes)
-    (hex-encode (.digest hasher))))
+  "Decode the given base-64 string into byte or string data."
+  ([data]
+   (base64-decode data false))
+  ([data as-string?]
+   (when-not (string? data)
+     (throw (IllegalArgumentException.
+              (str "Don't know how to base64-decode value with type: "
+                   (class data) " (expected a string)"))))
+   (let [bs (.decode (Base64/getDecoder) ^String data)]
+     (if as-string?
+       (String. bs "UTF-8")
+       bs))))
 
 
 ;; ## Paths

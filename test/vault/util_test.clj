@@ -76,12 +76,7 @@
           data (.getBytes good-news)]
       (is (= "R29vZCBuZXdzLCBldmVyeW9uZSE=" (u/base64-encode data)))
       (is (= "R29vZCBuZXdzLCBldmVyeW9uZSE=" (u/base64-encode good-news)))
-      (is (= good-news (String. (u/base64-decode "R29vZCBuZXdzLCBldmVyeW9uZSE="))))))
-  (testing "sha-256"
-    (is (= "dbd318c1c462aee872f41109a4dfd3048871a03dedd0fe0e757ced57dad6f2d7"
-           (u/sha-256 "foo bar baz")))
-    (is (= "64989ccbf3efa9c84e2afe7cee9bc5828bf0fcb91e44f8c1e591638a2c2e90e3"
-           (u/sha-256 "alpha beta gamma")))))
+      (is (= good-news (String. (u/base64-decode "R29vZCBuZXdzLCBldmVyeW9uZSE=")))))))
 
 
 (deftest paths

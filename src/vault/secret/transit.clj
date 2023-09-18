@@ -10,6 +10,7 @@
     [vault.client.http :as http]
     [vault.util :as u])
   (:import
+    java.time.Instant
     vault.client.http.HTTPClient))
 
 
@@ -33,10 +34,11 @@
   (rotate-key!
     [client key-name]
     [client key-name opts]
-    "Rotate the version of the named key. After rotation, new plaintext
-    requests will be encrypted with the new version of the key. To upgrade
-    ciphertext to be encrypted with the latest version of the key, use the
-    `rewrap` endpoint.
+    "Rotate the version of the named key. Returns the key information map.
+
+    After rotation, new encryption requests will use the new version of the
+    key. To upgrade existing ciphertext to be encrypted with the latest version
+    of the key, use `rewrap`.
 
     Options:
 
@@ -52,7 +54,8 @@
 
   (update-key-configuration!
     [client key-name opts]
-    "Update configuration values for a given key.
+    "Update configuration values for a given key. Returns the key information
+    map.
 
     Options:
 
@@ -86,25 +89,32 @@
       is provided, the period remains unchanged.")
 
   (encrypt-data!
-    [client key-name plaintext]
-    [client key-name plaintext opts]
-    "Encrypt the provided plaintext using the named key. Supports create and
-    update. If a user only has update permissions and the key does not exist,
-    an error will be returned.
+    [client key-name data]
+    [client key-name data opts]
+    "Encrypt data using the named key. Supports create and update. If a user
+    only has update permissions and the key does not exist, an error will be
+    returned.
 
-    `plaintext` must be sent as a base64 string.
+    In single-item mode, `data` may either be a string or a byte array, and
+    will be automatically base64-encoded. Returns a map with the `:ciphertext`
+    string and the `:key-version` used to encrypt it.
+
+    For batch operation, `data` should be a sequence of maps, each containing
+    their own `:plaintext` and optional `:context`, `:nonce`, and `:reference`
+    entries. Returns a vector of batch results, each with `:ciphertext`,
+    `:key-version`, and `:reference`.
 
     Options:
 
-    - `:associated-data` (string)
+    - `:associated-data` (string or bytes)
 
-      Associated data which won't be encrypted but will be authenticated. Must
-      be sent as base64.
+      Associated data which won't be encrypted but will be authenticated.
+      Automatically base64-encoded.
 
-    - `:context` (string)
+    - `:context` (string or bytes)
 
       The context for key derivation. Required if key derivation is enabled.
-      Must be sent as base64.
+      Automatically base64-encoded.
 
     - `:key-version` (integer)
 
@@ -113,18 +123,13 @@
 
     - `:nonce` (bytes)
 
-      The nonce to use for encryption. Must be sent as base64. Must be 96 bits
-      (12 bytes) long and may not be reused.
+      The nonce to use for encryption. This must be 96 bits (12 bytes) long and
+      may not be reused. Automatically base64-encoded.
 
     - `:reference` (string)
 
-      A string to help identify results when using `:batch-input`.
-
-    - `:batch-input` (coll)
-
-      Specifies a list of items to encrypt in a single batch. Output preserves
-      order of input. Will ignore top-level `:plaintext` and related fields if
-      set.
+      A string to help identify results when using batch mode. No effect in
+      single-item mode.
 
     - `:type` (string)
 
@@ -141,39 +146,66 @@
       not all members of a batch fail to encrypt.")
 
   (decrypt-data!
-    [client key-name ciphertext]
-    [client key-name ciphertext opts]
-    "Decrypt the ciphertext using the named key. Returns the plaintext string.
+    [client key-name data]
+    [client key-name data opts]
+    "Decrypt data using the named key.
+
+    In single-item mode, `data` should be the ciphertext string returned from
+    [[encrypt-data!]]. Returns a map with the `:plaintext` data decoded into a
+    byte array.
+
+    In batch mode, `data` should be a sequence of maps, each containing their
+    own `:ciphertext` and optional `:context`, `:nonce`, and `:reference`
+    entries. Returns a vector of batch results, each with `:plaintext` and
+    `:reference`.
 
     Options:
+
+    - `:as-string` (boolean)
+
+      Set to true to have the plaintext data decoded into a string instead of a
+      byte array.
 
     - `:associated-data` (string)
 
       Associated data to be authenticated (but not decrypted).
 
-    - `:context` (string)
+    - `:context` (string or bytes)
 
       The context for key derivation. Required if key derivation is enabled.
-      Must be sent as base64.
+      Automatically base64-encoded.
 
     - `:nonce` (bytes)
 
-      The nonce used for encryption. Must be sent as base64.
+      The nonce used for encryption. Automatically base64-encoded.
 
     - `:reference` (string)
 
-      A string to help identify results when using `:batch-input`.
-
-    - `:batch-input` (coll)
-
-      Specifies a list of items to decrypt in a single batch. Output preserves
-      order of input. Will ignore top-level `:ciphertext` and related fields if
-      set.
+      A string to help identify results when using batch mode. No effect in
+      single-item mode.
 
     - `:partial-failure-response-code` (integer)
 
       If set, will return this HTTP response code instead of a 400 if some but
       not all members of a batch fail to decrypt."))
+
+
+;; ## HTTP Client
+
+(defn- parse-key-info
+  "Parse the key information map returned by [[read-key]] and [[rotate-key!]]."
+  [body]
+  (let [data (u/kebabify-body-data body)
+        versions (into {}
+                       (map (fn parse-version
+                              [[version created-at]]
+                              [(or (parse-long (name version)) version)
+                               (try
+                                 (Instant/ofEpochSecond created-at)
+                                 (catch Exception _
+                                   created-at))]))
+                       (:keys data))]
+    (assoc data :keys versions)))
 
 
 (extend-type HTTPClient
@@ -194,7 +226,7 @@
         client :get (u/join-path mount "keys" key-name)
         {::info {::mount mount, ::key key-name}
          :content-type :json
-         :handle-response u/kebabify-body-data})))
+         :handle-response parse-key-info})))
 
 
   (rotate-key!
@@ -206,7 +238,8 @@
          client :post (u/join-path mount "keys" key-name "rotate")
          {:info {::mount mount, ::key key-name}
           :content-type :json
-          :body opts}))))
+          :body (u/snakify-keys opts)
+          :handle-response parse-key-info}))))
 
 
   (update-key-configuration!
@@ -216,30 +249,82 @@
         client :post (u/join-path mount "keys" key-name "config")
         {:info {::mount mount, ::key key-name}
          :content-type :json
-         :body opts})))
+         :body (u/snakify-keys opts)
+         :handle-response parse-key-info})))
 
 
   (encrypt-data!
-    ([client key-name plaintext]
-     (encrypt-data! client key-name plaintext nil))
-    ([client key-name plaintext opts]
-     (let [mount (::mount client default-mount)]
+    ([client key-name data]
+     (encrypt-data! client key-name data nil))
+    ([client key-name data opts]
+     (when-not (or (string? data) (bytes? data) (coll? data))
+       (throw (IllegalArgumentException.
+                (str "Expected data to be a string, bytes, or a batch collection; got: "
+                     (class data)))))
+     (let [mount (::mount client default-mount)
+           batch (when (coll? data)
+                   (mapv (fn prepare-batch
+                           [entry]
+                           (-> entry
+                               (select-keys [:plaintext :context :nonce :reference])
+                               (u/update-some :context u/base64-encode)
+                               (u/update-some :nonce u/base64-encode)
+                               (update :plaintext u/base64-encode)))
+                         data))]
        (http/call-api
          client :post (u/join-path mount "encrypt" key-name)
          {:info {::mount mount, ::key key-name}
           :content-type :json
-          :body (assoc opts :plaintext plaintext)
-          :handle-response u/kebabify-body-data}))))
+          :body (-> (if batch
+                      (assoc opts :batch-input batch)
+                      (assoc opts :plaintext (u/base64-encode data)))
+                    (u/update-some :associated-data u/base64-encode)
+                    (u/update-some :context u/base64-encode)
+                    (u/update-some :nonce u/base64-encode)
+                    (u/snakify-keys))
+          :handle-response (fn coerce-response
+                             [body]
+                             (let [data (u/kebabify-body-data body)]
+                               (or (:batch-results data)
+                                   data)))}))))
 
 
   (decrypt-data!
-    ([client key-name ciphertext]
-     (decrypt-data! client key-name ciphertext nil))
-    ([client key-name ciphertext opts]
-     (let [mount (::mount client default-mount)]
+    ([client key-name data]
+     (decrypt-data! client key-name data nil))
+    ([client key-name data opts]
+     (when-not (or (string? data) (coll? data))
+       (throw (IllegalArgumentException.
+                (str "Expected data to be a string or a batch collection; got: "
+                     (class data)))))
+     (let [mount (::mount client default-mount)
+           batch (when (coll? data)
+                   (mapv (fn prepare-batch
+                           [entry]
+                           (-> entry
+                               (select-keys [:ciphertext :context :nonce :reference])
+                               (u/update-some :context u/base64-encode)
+                               (u/update-some :nonce u/base64-encode)))
+                         data))
+           decode-plaintext (fn decode-plaintext
+                              [data]
+                              (u/update-some data :plaintext u/base64-decode (:as-string opts)))]
        (http/call-api
          client :post (u/join-path mount "decrypt" key-name)
          {:info {::mount mount, ::key key-name}
           :content-type :json
-          :body (u/stringify-keys (assoc opts :ciphertext ciphertext))
-          :handle-response u/kebabify-body-data})))))
+          :body (-> (if (string? data)
+                      (assoc opts :ciphertext data)
+                      (assoc opts :batch-input batch))
+                    (dissoc :as-string)
+                    (u/update-some :associated-data u/base64-encode)
+                    (u/update-some :context u/base64-encode)
+                    (u/update-some :nonce u/base64-encode)
+                    (u/snakify-keys))
+          :handle-response (fn coerce-response
+                             [body]
+                             (let [data (u/kebabify-body-data body)
+                                   batch (:batch-results data)]
+                               (if batch
+                                 (mapv decode-plaintext batch)
+                                 (decode-plaintext data))))})))))

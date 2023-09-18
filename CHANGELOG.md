@@ -6,6 +6,9 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 
 ## [Unreleased]
 
+This release contains a number of potentially breaking changes, though they
+should be minor.
+
 ### Changed
 - The default logic in the HTTP client no longer automatically retries 5xx
   responses; this needs to be handled by the control flow to avoid blocking
@@ -16,12 +19,24 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
   the flow controller.
   [#102](https://github.com/amperity/vault-clj/pull/102)
 - `vault.client/config-wrapped-client` renamed to `unwrap-client`.
+- The transit engine automatically base64-encodes inputs where necessary,
+  accepting both strings and bytes. Similarly, it will decode the decryption
+  results from base64 back into strings or bytes.
+- Batch-mode encryption and decryption in the transit engine is simpler to do
+  and based off the type of the input data argument.
+
+### Fixed
+- Several response shapes from the transit engine methods are correctly coerced
+  now.
 
 ### Added
 - The `kv.v1` and `kv.v2` secret engines attach metadata to `:not-found` values
   if they support metadata, similar to normal responses.
 - `vault.client/config-client` accepts options for configuring the Vault
   client, as in `new-client`.
+
+### Removed
+- Removed the unused `vault.util/sha-256` function.
 
 
 ## [2.0.560] - 2023-09-08
