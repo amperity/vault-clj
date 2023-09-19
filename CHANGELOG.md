@@ -28,6 +28,8 @@ should be minor.
 ### Fixed
 - Several response shapes from the transit engine methods are correctly coerced
   now.
+- HTTP clients no longer reveal sensitive internal state when printed or
+  stringified.
 
 ### Added
 - The `kv.v1` and `kv.v2` secret engines attach metadata to `:not-found` values

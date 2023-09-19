@@ -323,6 +323,17 @@
 (defrecord HTTPClient
   [flow auth leases address http-opts]
 
+  Object
+
+  (toString
+    [this]
+    (str "#<" (.getName (class this)) "@"
+         (Integer/toHexString (System/identityHashCode this))
+         " "
+         (or address "---")
+         ">"))
+
+
   proto/Client
 
   (auth-info
@@ -340,6 +351,13 @@
                  "Client authentication must be a map of information containing an auth token.")))
       (reset! auth auth-info)
       this)))
+
+
+;; Define a custom print method which doesn't expose sensitive internal state.
+(defmethod print-method HTTPClient
+  [client writer]
+  (binding [*out* writer]
+    (print (str client))))
 
 
 ;; ## Constructors
