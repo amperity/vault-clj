@@ -96,16 +96,19 @@ This is an example of building a more advanced control-flow handler which:
 
 
   (on-success!
-    [_ state data]
+    [_ state info data]
+    (trace/with-data (:span state)
+      (ken/annotate info))
     (d/success! (:result state) data))
 
 
   (on-error!
-    [_ state ex]
+    [_ state info ex]
     (trace/with-data (:span state)
       (ken/observe
         (assoc info
                :ken.event/label :vault.client/error
+               :ken.event/level :warn
                :ken.event/error ex)))
     (if (and (retryable? ex)
              (< (+ (System/nanoTime) (* retry-interval 1000 1000))

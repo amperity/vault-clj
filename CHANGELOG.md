@@ -34,6 +34,8 @@ should be minor.
   if they support metadata, similar to normal responses.
 - `vault.client/config-client` accepts options for configuring the Vault
   client, as in `new-client`.
+- Control flow handler callbacks accept result observability information
+  directly, in addition to it being passed as value metadata or exception data.
 
 ### Removed
 - Removed the unused `vault.util/sha-256` function.

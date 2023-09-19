@@ -23,12 +23,12 @@
     may contain additional observability information.")
 
   (on-success!
-    [handler state data]
+    [handler state info data]
     "Callback indicating a successful response with the given response data.
     Should modify the state; the result of this call is not used.")
 
   (on-error!
-    [handler state ex]
+    [handler state info ex]
     "Callback indicating a failure response with the given exception. Should
     modify the state; the result of this call is not used.")
 
@@ -82,12 +82,12 @@
 
 
   (on-success!
-    [_ state data]
+    [_ state _ data]
     (deliver state data))
 
 
   (on-error!
-    [_ state ex]
+    [_ state _ ex]
     (deliver state ex))
 
 
@@ -126,12 +126,12 @@
 
 
   (on-success!
-    [_ state data]
+    [_ state _ data]
     (deliver state data))
 
 
   (on-error!
-    [_ state ex]
+    [_ state _ ex]
     (deliver state ex))
 
 
@@ -178,12 +178,12 @@
 
 
        (on-success!
-         [_ state data]
+         [_ state _ data]
          (.complete ^CompletableFuture state data))
 
 
        (on-error!
-         [_ state ex]
+         [_ state _ ex]
          (.completeExceptionally ^CompletableFuture state ex))
 
 

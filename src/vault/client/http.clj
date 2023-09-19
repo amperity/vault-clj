@@ -51,64 +51,62 @@
 
 
 (defn- form-success
-  "Handle a successful response from the API. Returns the data which should be
-  yielded by the response."
+  "Handle a successful response from the API. Returns a pair with the collected
+  response information and the parsed result data."
   [status headers body info handle-response]
   (let [parsed (when-not (str/blank? body)
                  (json/read-str body))
         request-id (get parsed "request_id")
-        warnings (get parsed "warnings")]
-    (some->
-      parsed
-      (handle-response)
-      (cond->
-        info
-        (vary-meta merge info)
+        warnings (get parsed "warnings")
+        res-info (->
+                   info
+                   (assoc :vault.client/status status
+                          :vault.client/headers headers)
+                   (cond->
+                     request-id
+                     (assoc :vault.client/request-id request-id)
 
-        true
-        (vary-meta assoc
-                   :vault.client/status status
-                   :vault.client/headers headers)
-
-        request-id
-        (vary-meta assoc :vault.client/request-id request-id)
-
-        (seq warnings)
-        (vary-meta assoc :vault.client/warnings warnings)))))
+                     (seq warnings)
+                     (assoc :vault.client/warnings warnings)))
+        data (some->
+               parsed
+               (handle-response)
+               (vary-meta merge res-info))]
+    [res-info data]))
 
 
 (defn- form-failure
-  "Handle a failure response from the API. Returns the exception which should
-  be yielded by the response."
+  "Handle a failure response from the API. Returns a pair with the collected
+  response information and the exception which should be yielded."
   [path status headers info body]
   (let [parsed (when-not (str/blank? body)
                  (json/read-str body))
         request-id (get parsed "request_id")
         warnings (get parsed "warnings")
-        errors (get parsed "errors")]
-    (->
-      info
-      (assoc :vault.client/status status
-             :vault.client/headers headers)
-      (cond->
-        request-id
-        (assoc :vault.client/request-id request-id)
+        errors (get parsed "errors")
+        res-info (->
+                   info
+                   (assoc :vault.client/status status
+                          :vault.client/headers headers)
+                   (cond->
+                     request-id
+                     (assoc :vault.client/request-id request-id)
 
-        (seq warnings)
-        (assoc :vault.client/warnings warnings)
+                     (seq warnings)
+                     (assoc :vault.client/warnings warnings)
 
-        (seq errors)
-        (assoc :vault.client/errors errors))
-      (as-> data
-        (ex-info (str "Error while resolving " path ": "
-                      (if (seq errors)
-                        (str "Vault API errors: " (str/join ", " errors))
-                        (str "Vault HTTP error: "
-                             (case (int status)
-                               400 "bad request"
-                               404 "not found"
-                               status))))
-                 data)))))
+                     (seq errors)
+                     (assoc :vault.client/errors errors)))
+        message (if (seq errors)
+                  (format "Vault API error on %s (%s) %s"
+                          path status (str/join ", " errors))
+                  (format "Vault HTTP error on %s (%s)%s"
+                          path status
+                          (case (int status)
+                            400 " bad request"
+                            404 " not found"
+                            "")))]
+    [res-info (ex-info message res-info)]))
 
 
 (defn ^:no-doc call-api
@@ -140,41 +138,38 @@
                 (try
                   (if error
                     ;; Call error handler.
-                    (f/on-error! handler state error)
+                    (f/on-error! handler state info error)
                     ;; Handle response from the API based on status code.
                     (cond
                       ;; Successful response, parse body and return result.
                       (<= 200 status 299)
                       (let [handle-response (:handle-response params default-handle-response)
-                            data (form-success status headers body info handle-response)]
+                            [res-info data] (form-success status headers body info handle-response)]
                         (when-let [on-success (:on-success params)]
                           (on-success data))
-                        (f/on-success! handler state data))
+                        (f/on-success! handler state res-info data))
 
                       ;; Request was redirected by the server, which could mean
                       ;; we called a standby node on accident.
                       (or (= 303 status) (= 307 status))
-                      (let [location (get headers "Location")]
+                      (let [location (get headers "Location")
+                            res-info (assoc info
+                                            :vault.client/status status
+                                            :vault.client/headers headers)]
                         (cond
                           (nil? location)
                           (f/on-error!
-                            handler
-                            state
+                            handler state res-info
                             (ex-info (str "Vault API responded with " status
                                           " redirect without Location header")
-                                     (assoc info
-                                            :vault.client/status status
-                                            :vault.client/headers headers)))
+                                     res-info))
 
                           (< 2 redirects)
                           (f/on-error!
-                            handler
-                            state
+                            handler state res-info
                             (ex-info (str "Aborting Vault API request after " redirects
                                           " redirects")
-                                     (assoc info
-                                            :vault.client/status status
-                                            :vault.client/headers headers)))
+                                     res-info))
 
                           :else
                           (make-request
@@ -185,14 +180,14 @@
                       ;; Otherwise, this was a failure response.
                       :else
                       (let [handle-error (:handle-error params identity)
-                            ex (form-failure path status headers info body)
+                            [res-info ex] (form-failure path status headers info body)
                             result (handle-error ex)]
                         (if (instance? Throwable result)
-                          (f/on-error! handler state result)
-                          (f/on-success! handler state result)))))
+                          (f/on-error! handler state res-info result)
+                          (f/on-success! handler state res-info result)))))
                   (catch Exception ex
                     ;; Unhandled exception while processing response.
-                    (f/on-error! handler state ex)))))]
+                    (f/on-error! handler state info ex)))))]
       ;; Kick off the request.
       (f/call
         handler info
@@ -210,11 +205,10 @@
         info (assoc info :vault.client/cached? true)
         data (vary-meta data merge info)]
     (f/call
-      handler
-      info
+      handler info
       (fn cached
         [state]
-        (f/on-success! handler state data)))))
+        (f/on-success! handler state info data)))))
 
 
 (defn ^:no-doc lease-info

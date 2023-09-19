@@ -46,7 +46,7 @@
         (with-redefs [http-client/request (mock-request
                                             {:status 400
                                              :body "{\"errors\": []}"})]
-          (is (thrown-with-msg? Exception #"Vault HTTP error: bad request"
+          (is (thrown-with-msg? Exception #"Vault HTTP error on foo/bar \(400\) bad request"
                 (http/call-api client :get "foo/bar" {})))))
       (testing "and custom handling"
         (with-redefs [http-client/request (mock-request
