@@ -49,7 +49,8 @@
     (let [mount (::mount client default-mount)
           api-path (u/join-path "auth" mount "login")]
       (http/call-api
-        client :post api-path
+        client ::login
+        :post api-path
         {:info {::mount mount}
          :content-type :json
          :body {:token token}

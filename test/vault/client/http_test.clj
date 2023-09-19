@@ -25,35 +25,37 @@
       (with-redefs [http-client/request (fn [_ _]
                                           (is false "should not be called"))]
         (is (thrown-with-msg? IllegalArgumentException #"call on nil client"
-              (http/call-api nil :get "sys/health" {})))
+              (http/call-api nil :health :get "sys/health" {})))
+        (is (thrown-with-msg? IllegalArgumentException #"call without keyword label"
+              (http/call-api client nil :get "sys/health" {})))
         (is (thrown-with-msg? IllegalArgumentException #"call without keyword method"
-              (http/call-api client nil "sys/health" {})))
+              (http/call-api client :health nil "sys/health" {})))
         (is (thrown-with-msg? IllegalArgumentException #"call on blank path"
-              (http/call-api client :get "" {})))))
+              (http/call-api client :health :get "" {})))))
     (testing "with http call error"
       (with-redefs [http-client/request (mock-request
                                           {:error (RuntimeException. "HTTP BOOM")})]
         (is (thrown-with-msg? RuntimeException #"HTTP BOOM"
-              (http/call-api client :get "foo/bar" {})))))
+              (http/call-api client :foo :get "foo/bar" {})))))
     (testing "with unhandled error"
       (with-redefs [http-client/request (mock-request
                                           {:status 200
                                            :body "{uh oh]"})]
         (is (thrown-with-msg? Exception #"JSON error"
-              (http/call-api client :get "foo/bar" {})))))
+              (http/call-api client :foo :get "foo/bar" {})))))
     (testing "with error response"
       (testing "and default handling"
         (with-redefs [http-client/request (mock-request
                                             {:status 400
                                              :body "{\"errors\": []}"})]
           (is (thrown-with-msg? Exception #"Vault HTTP error on foo/bar \(400\) bad request"
-                (http/call-api client :get "foo/bar" {})))))
+                (http/call-api client :foo :get "foo/bar" {})))))
       (testing "and custom handling"
         (with-redefs [http-client/request (mock-request
                                             {:status 400
                                              :body "{\"errors\": []}"})]
           (is (= :ok (http/call-api
-                       client :get "foo/bar"
+                       client :foo :get "foo/bar"
                        {:handle-error (constantly :ok)}))))))
     (testing "with redirect"
       (testing "and no location header"
@@ -67,7 +69,7 @@
                                                 (throw (IllegalStateException.
                                                          "should not reach here"))))]
             (is (thrown-with-msg? Exception #"redirect without Location header"
-                  (http/call-api client :get "foo/bar" {}))))))
+                  (http/call-api client :foo :get "foo/bar" {}))))))
       (testing "too many times"
         (let [calls (atom 0)]
           (with-redefs [http-client/request (fn [req callback]
@@ -80,7 +82,7 @@
                                                            ::http/redirects (::http/redirects req)})
                                                 (throw (IllegalStateException. "should not reach here"))))]
             (is (thrown-with-msg? Exception #"Aborting Vault API request after 3 redirects"
-                  (http/call-api client :get "foo/bar" {}))))))
+                  (http/call-api client :foo :get "foo/bar" {}))))))
       (testing "successfully"
         (let [calls (atom 0)]
           (with-redefs [http-client/request (fn [req callback]
@@ -95,20 +97,20 @@
                                                            :status 204
                                                            :headers {}
                                                            ::http/redirects (::http/redirects req)})))]
-            (is (nil? (http/call-api client :get "foo/bar" {})))))))
+            (is (nil? (http/call-api client :foo :get "foo/bar" {})))))))
     (testing "with successful response"
       (testing "with default handling"
         (with-redefs [http-client/request (mock-request
                                             {:status 200
                                              :body ""})]
-          (is (nil? (http/call-api client :get "foo/bar" {})))))
+          (is (nil? (http/call-api client :foo :get "foo/bar" {})))))
       (testing "with custom handling"
         (with-redefs [http-client/request (mock-request
                                             {:status 200
                                              :body "{}"})]
           (is (= {:result true}
                  (http/call-api
-                   client :get "foo/bar"
+                   client :foo :get "foo/bar"
                    {:handle-response (constantly {:result true})}))))))))
 
 

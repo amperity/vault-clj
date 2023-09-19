@@ -102,7 +102,8 @@
            api-path (u/join-path mount "creds" role-name)
            cache-key [::role mount role-name]]
        (http/generate-rotatable-credentials!
-         client :get api-path
+         client ::generate-credentials!
+         :get api-path
          {:info {::mount mount, ::role role-name}
           :cache-key cache-key}
          opts)))))

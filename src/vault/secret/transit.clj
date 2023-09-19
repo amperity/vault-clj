@@ -223,7 +223,8 @@
     [client key-name]
     (let [mount (::mount client default-mount)]
       (http/call-api
-        client :get (u/join-path mount "keys" key-name)
+        client ::read-key
+        :get (u/join-path mount "keys" key-name)
         {::info {::mount mount, ::key key-name}
          :content-type :json
          :handle-response parse-key-info})))
@@ -235,7 +236,8 @@
     ([client key-name opts]
      (let [mount (::mount client default-mount)]
        (http/call-api
-         client :post (u/join-path mount "keys" key-name "rotate")
+         client ::rotate-key!
+         :post (u/join-path mount "keys" key-name "rotate")
          {:info {::mount mount, ::key key-name}
           :content-type :json
           :body (u/snakify-keys opts)
@@ -246,7 +248,8 @@
     [client key-name opts]
     (let [mount (::mount client default-mount)]
       (http/call-api
-        client :post (u/join-path mount "keys" key-name "config")
+        client ::update-key-configuration!
+        :post (u/join-path mount "keys" key-name "config")
         {:info {::mount mount, ::key key-name}
          :content-type :json
          :body (u/snakify-keys opts)
@@ -272,7 +275,8 @@
                                (update :plaintext u/base64-encode)))
                          data))]
        (http/call-api
-         client :post (u/join-path mount "encrypt" key-name)
+         client ::encrypt-data!
+         :post (u/join-path mount "encrypt" key-name)
          {:info {::mount mount, ::key key-name}
           :content-type :json
           :body (-> (if batch
@@ -310,7 +314,8 @@
                               [data]
                               (u/update-some data :plaintext u/base64-decode (:as-string opts)))]
        (http/call-api
-         client :post (u/join-path mount "decrypt" key-name)
+         client ::decrypt-data!
+         :post (u/join-path mount "decrypt" key-name)
          {:info {::mount mount, ::key key-name}
           :content-type :json
           :body (-> (if (string? data)

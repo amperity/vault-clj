@@ -55,7 +55,8 @@
   (lookup
     [client token-id]
     (http/call-api
-      client :post "sys/wrapping/lookup"
+      client ::lookup
+      :post "sys/wrapping/lookup"
       {:content-type :json
        :body {:token token-id}
        :handle-response u/kebabify-body-data}))
@@ -64,7 +65,8 @@
   (rewrap
     [client token-id]
     (http/call-api
-      client :post "sys/wrapping/rewrap"
+      client ::rewrap
+      :post "sys/wrapping/rewrap"
       {:content-type :json
        :body {:token token-id}
        :handle-response kebabify-body-wrap-info}))
@@ -73,13 +75,15 @@
   (unwrap
     ([client]
      (http/call-api
-       client :post "sys/wrapping/unwrap"
+       client ::unwrap
+       :post "sys/wrapping/unwrap"
        {:content-type :json
         :handle-response (some-fn u/kebabify-body-auth
                                   u/kebabify-body-data)}))
     ([client token-id]
      (http/call-api
-       client :post "sys/wrapping/unwrap"
+       client ::unwrap
+       :post "sys/wrapping/unwrap"
        {:content-type :json
         :body {:token token-id}
         :handle-response (some-fn u/kebabify-body-auth
@@ -91,7 +95,8 @@
     (when-not (map? data)
       (throw (IllegalArgumentException. "Data to wrap must be a map.")))
     (http/call-api
-      client :post "sys/wrapping/wrap"
+      client ::wrap
+      :post "sys/wrapping/wrap"
       {:headers {"X-Vault-Wrap-TTL" ttl}
        :content-type :json
        :body data

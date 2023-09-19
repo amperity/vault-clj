@@ -159,7 +159,8 @@
     (let [mount (::mount client default-mount)
           api-path (u/join-path "auth" mount "role" role-name)]
       (http/call-api
-        client :post api-path
+        client ::configure-role!
+        :post api-path
         {:info {::mount mount, ::role role-name}
          :content-type :json
          :body (-> opts
@@ -185,7 +186,8 @@
     (let [mount (::mount client default-mount)
           api-path (u/join-path "auth" mount "role")]
       (http/call-api
-        client :list api-path
+        client ::list-roles
+        :list api-path
         {:info {::mount mount}
          :handle-response u/kebabify-body-data})))
 
@@ -195,7 +197,8 @@
     (let [mount (::mount client default-mount)
           api-path (u/join-path "auth" mount "role" role-name)]
       (http/call-api
-        client :get api-path
+        client ::read-role
+        :get api-path
         {:info {::mount mount, ::role role-name}
          :handle-response u/kebabify-body-data})))
 
@@ -205,7 +208,8 @@
     (let [mount (::mount client default-mount)
           api-path (u/join-path "auth" mount "role" role-name "role-id")]
       (http/call-api
-        client :get api-path
+        client ::read-role-id
+        :get api-path
         {:info {::mount mount, ::role role-name}
          :handle-response u/kebabify-body-data})))
 
@@ -217,7 +221,8 @@
      (let [mount (::mount client default-mount)
            api-path (u/join-path "auth" mount "role" role-name "secret-id")]
        (http/call-api
-         client :post api-path
+         client ::generate-secret-id!
+         :post api-path
          {:info {::mount mount, ::role role-name}
           :content-type :json
           :body (-> opts
@@ -233,7 +238,8 @@
     (let [mount (::mount client default-mount)
           api-path (u/join-path "auth" mount "login")]
       (http/call-api
-        client :post api-path
+        client ::login
+        :post api-path
         {:info {::mount mount}
          :content-type :json
          :body {:role_id role-id

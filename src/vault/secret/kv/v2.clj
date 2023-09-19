@@ -646,7 +646,8 @@
     (let [mount (::mount client default-mount)
           path (u/trim-path path)]
       (http/call-api
-        client :list (u/join-path mount "metadata" path)
+        client ::list-secrets
+        :list (u/join-path mount "metadata" path)
         {:info {::mount mount, ::path path}
          :handle-response
          (fn handle-response
@@ -677,7 +678,8 @@
                     (= version (::version (meta cached)))))
          (http/cached-response client info cached)
          (http/call-api
-           client :get (u/join-path mount "data" path)
+           client ::read-secret
+           :get (u/join-path mount "data" path)
            {:info info
             :query-params (if version
                             {:version version}
@@ -718,7 +720,8 @@
            cache-key [::secret mount path]]
        (lease/invalidate! (:leases client) cache-key)
        (http/call-api
-         client :post (u/join-path mount "data" path)
+         client ::write-secret!
+         :post (u/join-path mount "data" path)
          {:info {::mount mount, ::path path}
           :content-type :json
           :body {:options (select-keys opts [:cas])
@@ -735,7 +738,8 @@
            cache-key [::secret mount path]]
        (lease/invalidate! (:leases client) cache-key)
        (http/call-api
-         client :patch (u/join-path mount "data" path)
+         client ::patch-secret!
+         :patch (u/join-path mount "data" path)
          {:info {::mount mount, ::path path}
           :headers {"content-type" "application/merge-patch+json"}
           :body (json/write-str
@@ -752,7 +756,8 @@
           cache-key [::secret mount path]]
       (lease/invalidate! (:leases client) cache-key)
       (http/call-api
-        client :delete (u/join-path mount "data" path)
+        client ::delete-secret!
+        :delete (u/join-path mount "data" path)
         {:info {::mount mount, ::path path}})))
 
 
@@ -763,7 +768,8 @@
           cache-key [::secret mount path]]
       (lease/invalidate! (:leases client) cache-key)
       (http/call-api
-        client :delete (u/join-path mount "metadata" path)
+        client ::destroy-secret!
+        :delete (u/join-path mount "metadata" path)
         {:info {::mount mount, ::path path}})))
 
 
@@ -774,7 +780,8 @@
           cache-key [::secret mount path]]
       (lease/invalidate! (:leases client) cache-key)
       (http/call-api
-        client :post (u/join-path mount "delete" path)
+        client ::delete-versions!
+        :post (u/join-path mount "delete" path)
         {:info {::mount mount, ::path path, ::versions versions}
          :content-type :json
          :body {:versions versions}})))
@@ -787,7 +794,8 @@
           cache-key [::secret mount path]]
       (lease/invalidate! (:leases client) cache-key)
       (http/call-api
-        client :post (u/join-path mount "undelete" path)
+        client ::undelete-versions!
+        :post (u/join-path mount "undelete" path)
         {:info {::mount mount, ::path path, ::versions versions}
          :content-type :json
          :body {:versions versions}})))
@@ -800,7 +808,8 @@
           cache-key [::secret mount path]]
       (lease/invalidate! (:leases client) cache-key)
       (http/call-api
-        client :post (u/join-path mount "destroy" path)
+        client ::destroy-versions!
+        :post (u/join-path mount "destroy" path)
         {:info {::mount mount, ::path path, ::versions versions}
          :content-type :json
          :body {:versions versions}})))
@@ -811,7 +820,8 @@
     (let [mount (::mount client default-mount)
           path (u/trim-path path)]
       (http/call-api
-        client :get (u/join-path mount "metadata" path)
+        client ::read-metadata
+        :get (u/join-path mount "metadata" path)
         {:info {::mount mount, ::path path}
          :handle-response parse-secret-metadata
          :handle-error wrap-not-found})))
@@ -822,7 +832,8 @@
     (let [mount (::mount client default-mount)
           path (u/trim-path path)]
       (http/call-api
-        client :post (u/join-path mount "metadata" path)
+        client ::write-metadata!
+        :post (u/join-path mount "metadata" path)
         {:info {::mount mount, ::path path}
          :content-type :json
          :body (-> opts
@@ -839,7 +850,8 @@
     (let [mount (::mount client default-mount)
           path (u/trim-path path)]
       (http/call-api
-        client :patch (u/join-path mount "metadata" path)
+        client ::patch-metadata!
+        :patch (u/join-path mount "metadata" path)
         {:info {::mount mount, ::path path}
          :headers {"content-type" "application/merge-patch+json"}
          :body (json/write-str

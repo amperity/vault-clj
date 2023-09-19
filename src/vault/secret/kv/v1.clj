@@ -184,7 +184,8 @@
     (let [mount (::mount client default-mount)
           path (u/trim-path path)]
       (http/call-api
-        client :get (u/join-path mount path)
+        client ::list-secrets
+        :get (u/join-path mount path)
         {:info {::mount mount, ::path path}
          :query-params {:list true}
          :handle-response
@@ -211,7 +212,8 @@
        (if cached
          (http/cached-response client info cached)
          (http/call-api
-           client :get (u/join-path mount path)
+           client ::read-secret
+           :get (u/join-path mount path)
            {:info info
             :handle-response
             (fn handle-response
@@ -245,7 +247,8 @@
           cache-key [::secret mount path]]
       (lease/invalidate! (:leases client) cache-key)
       (http/call-api
-        client :post (u/join-path mount path)
+        client ::write-secret!
+        :post (u/join-path mount path)
         {:info {::mount mount, ::path path}
          :content-type :json
          :body (u/stringify-keys data)})))
@@ -258,5 +261,6 @@
           cache-key [::secret mount path]]
       (lease/invalidate! (:leases client) cache-key)
       (http/call-api
-        client :delete (u/join-path mount path)
+        client ::delete-secret!
+        :delete (u/join-path mount path)
         {:info {::mount mount, ::path path}}))))

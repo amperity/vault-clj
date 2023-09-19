@@ -113,7 +113,8 @@
   (list-methods
     [client]
     (http/call-api
-      client :get "sys/auth"
+      client ::list-methods
+      :get "sys/auth"
       {:handle-response
        (fn handle-response
          [body]
@@ -125,7 +126,8 @@
   (enable-method!
     [client path params]
     (http/call-api
-      client :post (u/join-path "sys/auth" path)
+      client ::enable-method!
+      :post (u/join-path "sys/auth" path)
       {:info {::path path, ::type (:type params)}
        :content-type :json
        :body (u/snakify-keys params)}))
@@ -134,14 +136,16 @@
   (disable-method!
     [client path]
     (http/call-api
-      client :delete (u/join-path "sys/auth" path)
+      client ::disable-method!
+      :delete (u/join-path "sys/auth" path)
       {:info {::path path}}))
 
 
   (read-method-tuning
     [client path]
     (http/call-api
-      client :get (u/join-path "sys/auth" path "tune")
+      client ::read-method-tuning
+      :get (u/join-path "sys/auth" path "tune")
       {:info {::path path}
        :handle-response u/kebabify-body-data}))
 
@@ -149,7 +153,8 @@
   (tune-method!
     [client path params]
     (http/call-api
-      client :post (u/join-path "sys/auth" path "tune")
+      client ::tune-method!
+      :post (u/join-path "sys/auth" path "tune")
       {:info {::path path}
        :content-type :json
        :body (u/snakify-keys params)})))

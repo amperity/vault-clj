@@ -44,7 +44,8 @@
   (read-lease
     [client lease-id]
     (http/call-api
-      client :put "sys/leases/lookup"
+      client ::read-lease
+      :put "sys/leases/lookup"
       {:info {::lease/id lease-id}
        :content-type :json
        :body {:lease_id lease-id}}))
@@ -53,7 +54,8 @@
   (list-leases
     [client prefix]
     (http/call-api
-      client :list (u/join-path "sys/leases/lookup" prefix)
+      client ::list-leases
+      :list (u/join-path "sys/leases/lookup" prefix)
       {:info {::prefix prefix}}))
 
 
@@ -62,7 +64,8 @@
      (renew-lease! client lease-id nil))
     ([client lease-id increment]
      (http/call-api
-       client :put "sys/leases/renew"
+       client ::renew-lease!
+       :put "sys/leases/renew"
        {:info {::lease/id lease-id}
         :content-type :json
         :body (cond-> {:lease_id lease-id}
@@ -78,7 +81,8 @@
     [client lease-id]
     (lease/delete! (:leases client) lease-id)
     (http/call-api
-      client :put "sys/leases/revoke"
+      client ::revoke-lease!
+      :put "sys/leases/revoke"
       {:info {::lease/id lease-id}
        :content-type :json
        :body {:lease_id lease-id}})))

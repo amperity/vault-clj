@@ -112,9 +112,11 @@
 (defn ^:no-doc call-api
   "Make an HTTP call to the Vault API, using the client's flow handler to
   prepare and initiate the call."
-  [client method path params]
+  [client api-label method path params]
   (when-not client
     (throw (IllegalArgumentException. "Cannot make API call on nil client")))
+  (when-not (keyword? api-label)
+    (throw (IllegalArgumentException. "Cannot make API call without keyword label")))
   (when-not (keyword? method)
     (throw (IllegalArgumentException. "Cannot make API call without keyword method")))
   (when (str/blank? path)
@@ -122,7 +124,8 @@
   (let [handler (:flow client)
         request (prepare-request client method path params)
         info (merge (:info params)
-                    {:vault.client/method method
+                    {:vault.client/api api-label
+                     :vault.client/method method
                      :vault.client/path path}
                     (when-let [query (not-empty (:query-params params))]
                       {:vault.client/query query}))]
@@ -275,7 +278,7 @@
 
 (defn ^:no-doc generate-rotatable-credentials!
   "Common logic for generating credentials which can be rotated in the future."
-  [client method path params opts]
+  [client api-label method path params opts]
   (if-let [data (and (not (:refresh? opts))
                      (lease/find-data (:leases client)
                                       (:cache-key params)))]
@@ -283,7 +286,7 @@
     (cached-response client (:info params) data)
     ;; No cached value available, call API.
     (call-api
-      client method path
+      client api-label method path
       {:info (:info params)
        :handle-response
        (fn handle-response
@@ -296,7 +299,8 @@
              (letfn [(rotate!
                        []
                        (generate-rotatable-credentials!
-                         client method path params
+                         client api-label
+                         method path params
                          (assoc opts :refresh? true)))]
                (lease/put!
                  (:leases client)

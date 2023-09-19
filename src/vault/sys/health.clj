@@ -52,5 +52,6 @@
   (read-health
     [client params]
     (http/call-api
-      client :get "sys/health"
+      client ::read-health
+      :get "sys/health"
       {:query-params params})))

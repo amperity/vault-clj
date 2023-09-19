@@ -77,7 +77,8 @@
   (list-mounts
     [client]
     (http/call-api
-      client :get "sys/mounts"
+      client ::list-mounts
+      :get "sys/mounts"
       {:handle-response
        (fn handle-response
          [body]
@@ -89,7 +90,8 @@
   (enable-secrets!
     [client path params]
     (http/call-api
-      client :post (u/join-path "sys/mounts" path)
+      client ::enable-secrets!
+      :post (u/join-path "sys/mounts" path)
       {:info {::path path, ::type (:type params)}
        :content-type :json
        :body (u/snakify-keys params)}))
@@ -98,14 +100,16 @@
   (disable-secrets!
     [client path]
     (http/call-api
-      client :delete (u/join-path "sys/mounts" path)
+      client ::disable-secrets!
+      :delete (u/join-path "sys/mounts" path)
       {:info {::path path}}))
 
 
   (read-secrets-configuration
     [client path]
     (http/call-api
-      client :get (u/join-path "sys/mounts" path)
+      client ::read-secrets-configuration
+      :get (u/join-path "sys/mounts" path)
       {:info {::path path}
        :handle-response u/kebabify-body-data}))
 
@@ -113,7 +117,8 @@
   (read-mount-configuration
     [client path]
     (http/call-api
-      client :get (u/join-path "sys/mounts" path "tune")
+      client ::read-mount-configuration
+      :get (u/join-path "sys/mounts" path "tune")
       {:info {::path path}
        :handle-response u/kebabify-body-data}))
 
@@ -121,7 +126,8 @@
   (tune-mount-configuration!
     [client path params]
     (http/call-api
-      client :post (u/join-path "sys/mounts" path "tune")
+      client ::tune-mount-configuration!
+      :post (u/join-path "sys/mounts" path "tune")
       {:info {::path path}
        :content-type :json
        :body (u/snakify-keys params)})))

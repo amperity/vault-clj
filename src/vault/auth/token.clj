@@ -122,17 +122,18 @@
           client
           (ex-info "Vault API errors: bad token"
                    {:vault.client/errors ["bad token"]
-                    :vault.client/status 403})))))
+                    :vault.client/status 403}))))))
 
-  ,,,)
 
+;; ## HTTP Client
 
 (defn- create-token*
   "Internal implementation of common token creation logic."
-  [client path params]
+  [client label path params]
   (let [wrap-ttl (:wrap-ttl params)]
     (http/call-api
-      client :post path
+      client label
+      :post path
       {:content-type :json
        :headers (when wrap-ttl
                   {"X-Vault-Wrap-TTL" wrap-ttl})
@@ -144,25 +145,32 @@
        :body (u/snakify-keys (dissoc params :wrap-ttl))})))
 
 
-;; ## HTTP Client
-
 (extend-type HTTPClient
 
   API
 
   (create-token!
     [client params]
-    (create-token* client "auth/token/create" params))
+    (create-token*
+      client ::create-token!
+      "auth/token/create"
+      params))
 
 
   (create-orphan-token!
     [client params]
-    (create-token* client "auth/token/create-orphan" params))
+    (create-token*
+      client ::create-orphan-token!
+      "auth/token/create-orphan"
+      params))
 
 
   (create-role-token!
     [client role-name params]
-    (create-token* client (u/join-path "auth/token/create" role-name) params))
+    (create-token*
+      client ::create-role-token!
+      (u/join-path "auth/token/create" role-name)
+      params))
 
 
   (lookup-token
@@ -170,21 +178,24 @@
     (cond
       (:token params)
       (http/call-api
-        client :post "auth/token/lookup"
+        client ::lookup-token
+        :post "auth/token/lookup"
         {:content-type :json
          :body {:token (:token params)}
          :handle-response u/kebabify-body-data})
 
       (:accessor params)
       (http/call-api
-        client :post "auth/token/lookup-accessor"
+        client ::lookup-token
+        :post "auth/token/lookup-accessor"
         {:content-type :json
          :body {:accessor (:accessor params)}
          :handle-response u/kebabify-body-data})
 
       :else
       (http/call-api
-        client :get "auth/token/lookup-self"
+        client ::lookup-token
+        :get "auth/token/lookup-self"
         {:handle-response u/kebabify-body-data})))
 
 
@@ -193,21 +204,24 @@
     (cond
       (:token params)
       (http/call-api
-        client :post "auth/token/renew"
+        client ::renew-token!
+        :post "auth/token/renew"
         {:content-type :json
          :body (select-keys params [:token :increment])
          :handle-response u/kebabify-body-auth})
 
       (:accessor params)
       (http/call-api
-        client :post "auth/token/renew-accessor"
+        client ::renew-token!
+        :post "auth/token/renew-accessor"
         {:content-type :json
          :body (select-keys params [:accessor :increment])
          :handle-response u/kebabify-body-auth})
 
       :else
       (http/call-api
-        client :post "auth/token/renew-self"
+        client ::renew-token!
+        :post "auth/token/renew-self"
         {:content-type :json
          :body (select-keys params [:increment])
          :handle-response u/kebabify-body-auth
@@ -221,17 +235,20 @@
     (cond
       (:token params)
       (http/call-api
-        client :post "auth/token/revoke"
+        client ::revoke-token!
+        :post "auth/token/revoke"
         {:content-type :json
          :body {:token (:token params)}})
 
       (:accessor params)
       (http/call-api
-        client :post "auth/token/revoke-accessor"
+        client ::revoke-token!
+        :post "auth/token/revoke-accessor"
         {:content-type :json
          :body {:accessor (:accessor params)}})
 
       :else
       (http/call-api
-        client :post "auth/token/revoke-self"
+        client ::revoke-token!
+        :post "auth/token/revoke-self"
         {}))))
