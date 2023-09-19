@@ -18,12 +18,15 @@ should be minor.
   comprehensive, to reduce repetition and ensure the info is available to
   the flow controller.
   [#102](https://github.com/amperity/vault-clj/pull/102)
+  [#104](https://github.com/amperity/vault-clj/pull/104)
 - `vault.client/config-wrapped-client` renamed to `unwrap-client`.
 - The transit engine automatically base64-encodes inputs where necessary,
   accepting both strings and bytes. Similarly, it will decode the decryption
   results from base64 back into strings or bytes.
+  [#103](https://github.com/amperity/vault-clj/pull/103)
 - Batch-mode encryption and decryption in the transit engine is simpler to do
   and based off the type of the input data argument.
+  [#103](https://github.com/amperity/vault-clj/pull/103)
 
 ### Fixed
 - Several response shapes from the transit engine methods are correctly coerced
@@ -36,8 +39,6 @@ should be minor.
   if they support metadata, similar to normal responses.
 - `vault.client/config-client` accepts options for configuring the Vault
   client, as in `new-client`.
-- Control flow handler callbacks accept result observability information
-  directly, in addition to it being passed as value metadata or exception data.
 
 ### Removed
 - Removed the unused `vault.util/sha-256` function.
