@@ -113,7 +113,7 @@
       handler nil
       (fn success
         [state]
-        (f/on-success! handler state data)))))
+        (f/on-success! handler state nil data)))))
 
 
 (defn ^:no-doc error-response
@@ -124,7 +124,7 @@
       handler nil
       (fn error
         [state]
-        (f/on-error! handler state ex)))))
+        (f/on-error! handler state nil ex)))))
 
 
 (defn ^:no-doc list-paths

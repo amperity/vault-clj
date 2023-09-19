@@ -18,7 +18,7 @@
                    (:flow client) nil
                    (fn request
                      [state]
-                     (f/on-success! handler state :ok))))]
+                     (f/on-success! handler state nil :ok))))]
     (is (= :ok (f/call-sync api-fn client 123 true)))))
 
 
@@ -31,7 +31,7 @@
                        [state]
                        (is (instance? IPending state))
                        (is (not (realized? state)))
-                       (is (any? (f/on-success! handler state :ok)))
+                       (is (any? (f/on-success! handler state nil :ok)))
                        (is (realized? state))))]
         (is (= :ok result))
         (is (= :ok (f/await handler result 1 :not-yet)))
@@ -44,7 +44,7 @@
                 [state]
                 (is (instance? IPending state))
                 (is (not (realized? state)))
-                (is (any? (f/on-error! handler state (RuntimeException. "BOOM"))))
+                (is (any? (f/on-error! handler state nil (RuntimeException. "BOOM"))))
                 (is (realized? state)))))))))
 
 
@@ -62,7 +62,7 @@
         (is (instance? IPending result))
         (is (not (realized? result)))
         (is (= :not-yet (f/await handler result 1 :not-yet)))
-        (is (any? (f/on-success! handler @state-ref :ok)))
+        (is (any? (f/on-success! handler @state-ref nil :ok)))
         (is (realized? result))
         (is (= :ok @result))
         (is (= :ok (f/await handler result 1 :not-yet)))
@@ -79,7 +79,7 @@
         (is (instance? IPending result))
         (is (not (realized? result)))
         (is (= :not-yet (f/await handler result 1 :not-yet)))
-        (is (any? (f/on-error! handler @state-ref (RuntimeException. "BOOM"))))
+        (is (any? (f/on-error! handler @state-ref nil (RuntimeException. "BOOM"))))
         (is (realized? result))
         (is (instance? RuntimeException @result))
         (is (= "BOOM" (ex-message @result)))
@@ -103,7 +103,7 @@
         (is (instance? CompletableFuture result))
         (is (not (.isDone result)))
         (is (= :not-yet (f/await handler result 1 :not-yet)))
-        (is (any? (f/on-success! handler @state-ref :ok)))
+        (is (any? (f/on-success! handler @state-ref nil :ok)))
         (is (.isDone result))
         (is (= :ok @result))
         (is (= :ok (f/await handler result 1 :not-yet)))
@@ -120,7 +120,7 @@
         (is (instance? CompletableFuture result))
         (is (not (.isDone result)))
         (is (= :not-yet (f/await handler result 1 :not-yet)))
-        (is (any? (f/on-error! handler @state-ref (RuntimeException. "BOOM"))))
+        (is (any? (f/on-error! handler @state-ref nil (RuntimeException. "BOOM"))))
         (is (.isDone result))
         (is (thrown-with-msg? Exception #"BOOM"
               @result))
