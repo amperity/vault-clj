@@ -298,7 +298,8 @@
            (when lease
              (letfn [(rotate!
                        []
-                       (generate-rotatable-credentials!
+                       (f/call-sync
+                         generate-rotatable-credentials!
                          client api-label
                          method path params
                          (assoc opts :refresh? true)))]
