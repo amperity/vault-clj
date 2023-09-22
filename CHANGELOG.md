@@ -19,7 +19,6 @@ should be minor.
   the flow controller.
   [#102](https://github.com/amperity/vault-clj/pull/102)
   [#104](https://github.com/amperity/vault-clj/pull/104)
-- `vault.client/config-wrapped-client` renamed to `unwrap-client`.
 - The transit engine automatically base64-encodes inputs where necessary,
   accepting both strings and bytes. Similarly, it will decode the decryption
   results from base64 back into strings or bytes.
@@ -27,6 +26,9 @@ should be minor.
 - Batch-mode encryption and decryption in the transit engine is simpler to do
   and based off the type of the input data argument.
   [#103](https://github.com/amperity/vault-clj/pull/103)
+- `vault.client/config-wrapped-client` has been changed slightly and is now
+  `vault.client/authenticate-wrapped!`, which acts on an existing client
+  instead of constructing one.
 
 ### Fixed
 - Several response shapes from the transit engine methods are correctly coerced

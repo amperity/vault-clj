@@ -52,6 +52,17 @@
   (proto/authenticate! client auth-info))
 
 
+(defn authenticate-wrapped!
+  "Authenticate the client by unwrapping a limited-use auth token. Returns the
+  client."
+  [client wrap-token]
+  (proto/authenticate! client wrap-token)
+  (let [result (f/call-sync sys.wrapping/unwrap client)]
+    (proto/authenticate! client (:client-token result))
+    (auth.token/resolve-auth! client)
+    client))
+
+
 ;; ## Maintenance Task
 
 (defn- maintenance-task
@@ -190,19 +201,4 @@
         client (new-client address opts)]
     (when-not (str/blank? token)
       (proto/authenticate! client token))
-    client))
-
-
-(defn unwrap-client
-  "Construct a new client for the URI address and authenticate it with a
-  wrapped single-use token. Returns the initialized client, or throws an
-  exception.
-
-  Accepts the same options as [[new-client]]."
-  [address token & {:as opts}]
-  (let [client (new-client address opts)
-        _ (proto/authenticate! client token)
-        result (sys.wrapping/unwrap client)]
-    (proto/authenticate! client (:client-token result))
-    (auth.token/resolve-auth! client)
     client))
