@@ -70,22 +70,26 @@
   maintenance work."
   ^Runnable
   [client]
-  (fn tick
-    []
-    (try
-      (auth/maintain!
-        (:auth client)
-        #(f/call-sync auth.token/renew-token! client {}))
-      (lease/maintain!
-        client
-        #(f/call-sync sys.leases/renew-lease!
-                      client
-                      (::lease/id %)
-                      (::lease/renew-increment %)))
-      (catch InterruptedException _
-        nil)
-      (catch Exception ex
-        (log/error ex "Unhandled error while running maintenance task!")))))
+  (letfn [(renew-auth-token!
+            []
+            (f/call-sync auth.token/renew-token! client {}))
+
+          (renew-lease!
+            [lease]
+            (f/call-sync
+              sys.leases/renew-lease!
+              client
+              (::lease/id lease)
+              (::lease/renew-increment lease)))]
+    (fn tick
+      []
+      (try
+        (auth/maintain! (:auth client) renew-auth-token!)
+        (lease/maintain! client renew-lease!)
+        (catch InterruptedException _
+          nil)
+        (catch Exception ex
+          (log/error ex "Unhandled error while running maintenance task!"))))))
 
 
 #?(:bb nil
