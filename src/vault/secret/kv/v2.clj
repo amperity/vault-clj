@@ -676,7 +676,7 @@
        (if (and cached
                 (or (nil? version)
                     (= version (::version (meta cached)))))
-         (http/cached-response client info cached)
+         (http/cached-response client ::read-secret info cached)
          (http/call-api
            client ::read-secret
            :get (u/join-path mount "data" path)

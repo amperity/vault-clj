@@ -203,9 +203,11 @@
 (defn ^:no-doc cached-response
   "Return a response without calling the API. Uses the client's flow handler
   to prepare and return the cached secret data."
-  [client info data]
+  [client api-label info data]
   (let [handler (:flow client)
-        info (assoc info :vault.client/cached? true)
+        info (assoc info
+                    :vault.client/api api-label
+                    :vault.client/cached? true)
         data (vary-meta data merge info)]
     (f/call
       handler info
@@ -283,7 +285,7 @@
                      (lease/find-data (:leases client)
                                       (:cache-key params)))]
     ;; Re-use cached secret.
-    (cached-response client (:info params) data)
+    (cached-response client api-label (:info params) data)
     ;; No cached value available, call API.
     (call-api
       client api-label method path

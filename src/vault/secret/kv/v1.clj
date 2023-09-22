@@ -210,7 +210,7 @@
            cached (when-not (:refresh? opts)
                     (lease/find-data (:leases client) cache-key))]
        (if cached
-         (http/cached-response client info cached)
+         (http/cached-response client ::read-secret info cached)
          (http/call-api
            client ::read-secret
            :get (u/join-path mount path)
