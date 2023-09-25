@@ -6,8 +6,13 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 
 ## [Unreleased]
 
+...
+
+
+## [2.1.583] - 2023-09-25
+
 This release contains a number of potentially breaking changes, though they
-should be minor.
+should only require minor updates.
 
 ### Changed
 - The default logic in the HTTP client no longer automatically retries 5xx
@@ -379,7 +384,8 @@ With this version, the project has been forked to the Amperity organization.
 - Initial library implementation.
 
 
-[Unreleased]: https://github.com/amperity/vault-clj/compare/2.0.560...HEAD
+[Unreleased]: https://github.com/amperity/vault-clj/compare/2.1.583...HEAD
+[2.1.583]: https://github.com/amperity/vault-clj/compare/2.0.560...2.1.583
 [2.0.560]: https://github.com/amperity/vault-clj/compare/1.1.3...2.0.560
 [1.1.3]: https://github.com/amperity/vault-clj/compare/1.1.2...1.1.3
 [1.1.2]: https://github.com/amperity/vault-clj/compare/1.1.1...1.1.2
