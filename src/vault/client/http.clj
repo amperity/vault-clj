@@ -282,8 +282,7 @@
   "Common logic for generating credentials which can be rotated in the future."
   [client api-label method path params opts]
   (if-let [data (and (not (:refresh? opts))
-                     (lease/find-data (:leases client)
-                                      (:cache-key params)))]
+                     (lease/find-data client (:cache-key params)))]
     ;; Re-use cached secret.
     (cached-response client api-label (:info params) data)
     ;; No cached value available, call API.
@@ -306,7 +305,7 @@
                          method path params
                          (assoc opts :refresh? true)))]
                (lease/put!
-                 (:leases client)
+                 client
                  (-> lease
                      (assoc ::lease/key (:cache-key params))
                      (lease/renewable-lease opts)

@@ -208,7 +208,7 @@
            info {::mount mount, ::path path}
            cache-key [::secret mount path]
            cached (when-not (:refresh? opts)
-                    (lease/find-data (:leases client) cache-key))]
+                    (lease/find-data client cache-key))]
        (if cached
          (http/cached-response client ::read-secret info cached)
          (http/call-api
@@ -224,8 +224,8 @@
                             (:ttl opts))
                     data (u/keywordize-keys (get body "data"))]
                 (when lease
-                  (lease/invalidate! (:leases client) cache-key)
-                  (lease/put! (:leases client) lease data))
+                  (lease/invalidate! client cache-key)
+                  (lease/put! client lease data))
                 (vary-meta data merge lease)))
             :handle-error
             (fn handle-error
@@ -245,7 +245,7 @@
     (let [mount (::mount client default-mount)
           path (u/trim-path path)
           cache-key [::secret mount path]]
-      (lease/invalidate! (:leases client) cache-key)
+      (lease/invalidate! client cache-key)
       (http/call-api
         client ::write-secret!
         :post (u/join-path mount path)
@@ -259,7 +259,7 @@
     (let [mount (::mount client default-mount)
           path (u/trim-path path)
           cache-key [::secret mount path]]
-      (lease/invalidate! (:leases client) cache-key)
+      (lease/invalidate! client cache-key)
       (http/call-api
         client ::delete-secret!
         :delete (u/join-path mount path)

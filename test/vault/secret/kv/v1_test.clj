@@ -4,7 +4,8 @@
     [vault.client.mock :refer [mock-client]]
     [vault.integration :refer [with-dev-server cli]]
     [vault.lease :as lease]
-    [vault.secret.kv.v1 :as kv1]))
+    [vault.secret.kv.v1 :as kv1]
+    [vault.util :as u]))
 
 
 (deftest mock-api
@@ -114,18 +115,18 @@
           (is (= :shrug (kv1/read-secret client' "test/foo/alpha" {:not-found :shrug})))))
       (testing "lease caching"
         (let [cache-key [::kv1/secret "secret" "test/foo/beta"]]
-          (lease/invalidate! (:leases client) cache-key)
+          (lease/invalidate! client cache-key)
           (testing "with zero ttl"
             (let [result (kv1/read-secret client "test/foo/beta" {:ttl 0})]
               (is (= {:xyz ["abc"]} result))
               (is (not (:vault.client/cached? (meta result)))
                   "should read a new result")
-              (is (nil? (lease/find-data (:leases client) cache-key))
+              (is (nil? (lease/find-data client cache-key))
                   "should not cache data")))
           (testing "with positive ttl"
             (is (= {:xyz ["abc"]}
                    (kv1/read-secret client "test/foo/beta" {:ttl 300})))
-            (is (= {:xyz ["abc"]} (lease/find-data (:leases client) cache-key))
+            (is (= {:xyz ["abc"]} (lease/find-data client cache-key))
                 "should cache data")
             (let [result (kv1/read-secret client "test/foo/beta" {:ttl 300})]
               (is (:vault.client/cached? (meta result))
@@ -134,7 +135,8 @@
             (let [result (kv1/read-secret client "test/foo/beta" {:refresh? true})]
               (is (not (:vault.client/cached? (meta result)))
                   "should read a new result")
-              (is (= 1 (count (filter #(= cache-key (::lease/key (val %))) @(:leases client))))
+              (is (= 1 (count (filter #(= cache-key (::lease/key (val %)))
+                                      @(u/unveil (:leases client)))))
                   "should replace old lease"))))))
     (testing "write-secret! update"
       (is (nil? (kv1/write-secret! client "test/foo/beta" {:qrs false})))

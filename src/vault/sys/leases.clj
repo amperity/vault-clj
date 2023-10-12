@@ -74,12 +74,12 @@
         :handle-response http/lease-info
         :on-success (fn update-lease
                       [lease]
-                      (lease/update! (:leases client) lease))})))
+                      (lease/update! client lease))})))
 
 
   (revoke-lease!
     [client lease-id]
-    (lease/delete! (:leases client) lease-id)
+    (lease/delete! client lease-id)
     (http/call-api
       client ::revoke-lease!
       :put "sys/leases/revoke"

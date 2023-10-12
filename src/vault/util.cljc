@@ -194,3 +194,26 @@
   [inst & body]
   `(with-redefs [now (constantly ~inst)]
      ~@body))
+
+
+;; ## Secret Protection
+
+#?(:bb nil
+   :clj (deftype Veil [value]))
+
+
+(defn veil
+  "Wrap the provided value in an opaque type which will not reveal its contents
+  when printed. No effect in babashka."
+  [x]
+  #?(:bb x
+     :clj (->Veil x)))
+
+
+(defn unveil
+  "Unwrap the hidden value if `x` is veiled. Otherwise, returns `x` directly."
+  [x]
+  #?(:bb x
+     :clj (if (instance? Veil x)
+            (.-value ^Veil x)
+            x)))
