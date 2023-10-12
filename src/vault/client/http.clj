@@ -21,7 +21,7 @@
   "Produce a map of options to pass to the HTTP client from the provided
   method, API path, and other request parameters."
   [client method path params]
-  (let [token (::auth/token @(:auth client))]
+  (let [token (::auth/token (auth/current (:auth client)))]
     (->
       (:http-opts client)
       (assoc :accept :json)
@@ -282,8 +282,7 @@
   "Common logic for generating credentials which can be rotated in the future."
   [client api-label method path params opts]
   (if-let [data (and (not (:refresh? opts))
-                     (lease/find-data (:leases client)
-                                      (:cache-key params)))]
+                     (lease/find-data client (:cache-key params)))]
     ;; Re-use cached secret.
     (cached-response client api-label (:info params) data)
     ;; No cached value available, call API.
@@ -306,7 +305,7 @@
                          method path params
                          (assoc opts :refresh? true)))]
                (lease/put!
-                 (:leases client)
+                 client
                  (-> lease
                      (assoc ::lease/key (:cache-key params))
                      (lease/renewable-lease opts)
@@ -345,7 +344,7 @@
 
   (auth-info
     [_]
-    @auth)
+    (auth/current auth))
 
 
   (authenticate!
@@ -356,7 +355,7 @@
       (when-not (and (map? auth-info) (::auth/token auth-info))
         (throw (IllegalArgumentException.
                  "Client authentication must be a map of information containing an auth token.")))
-      (reset! auth auth-info)
+      (auth/set! auth auth-info)
       this)))
 
 

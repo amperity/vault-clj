@@ -1,5 +1,6 @@
 (ns vault.auth
   "High-level namespace for client authentication."
+  (:refer-clojure :exclude [set!])
   (:require
     [clojure.tools.logging :as log]
     [vault.util :as u]))
@@ -78,17 +79,31 @@
 ;; ## State Maintenance
 
 (defn new-state
-  "Construct a new auth state atom."
+  "Construct a new auth state store."
   []
-  (atom {} :validator valid?))
+  (u/veil (atom {} :validator valid?)))
+
+
+(defn current
+  "Return the current auth store state."
+  [auth]
+  @(u/unveil auth))
+
+
+(defn set!
+  "Set the auth store state to the provided info."
+  [auth info]
+  (let [state (u/unveil auth)]
+    (reset! state info)))
 
 
 (defn maintain!
-  "Maintain authentication state. Returns a keyword indicating the maintenance
-  result."
-  [state f]
+  "Maintain client authentication state. Returns a keyword indicating the
+  maintenance result."
+  [client f]
   (let [renew-within 60
         renew-backoff 60
+        state (u/unveil (:auth client))
         auth @state]
     (try
       (cond

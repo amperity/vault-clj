@@ -186,33 +186,36 @@
 (defn new-store
   "Construct a new stateful store for leased secrets."
   []
-  (atom {} :validator valid-store?))
+  (u/veil (atom {} :validator valid-store?)))
 
 
 (defn get-lease
   "Retrieve a lease from the store. Returns the lease information, including
   secret data, or nil if not found or expired."
-  [store lease-id]
-  (when-let [lease (get @store lease-id)]
-    (when-not (expired? lease)
-      lease)))
+  [client lease-id]
+  (when-let [store (u/unveil (:leases client))]
+    (when-let [lease (get @store lease-id)]
+      (when-not (expired? lease)
+        lease))))
 
 
 (defn find-data
   "Retrieve an existing leased secret from the store by cache key. Returns the
   secret data, or nil if not found or expired."
-  [store cache-key]
-  (let [lease (first (filter (comp #{cache-key} ::key) (vals @store)))
-        data (::data lease)]
-    (when (and data (not (expired? lease)))
-      (vary-meta data merge (dissoc lease ::data)))))
+  [client cache-key]
+  (when-let [store (u/unveil (:leases client))]
+    (let [lease (first (filter (comp #{cache-key} ::key) (vals @store)))
+          data (::data lease)]
+      (when (and data (not (expired? lease)))
+        (vary-meta data merge (dissoc lease ::data))))))
 
 
 (defn put!
   "Persist a leased secret in the store. Returns the lease data."
-  [store lease data]
-  (when-not (expired? lease)
-    (swap! store assoc (::id lease) (assoc lease ::data data)))
+  [client lease data]
+  (when-let [store (u/unveil (:leases client))]
+    (when-not (expired? lease)
+      (swap! store assoc (::id lease) (assoc lease ::data data))))
   (vary-meta data merge lease))
 
 
@@ -220,28 +223,31 @@
   "Merge some updated information into an existing lease. Updates should
   contain a `::lease/id`. Returns the updated lease, or nil if no such lease
   was present."
-  [store updates]
-  (let [lease-id (::id updates)]
-    (-> store
-        (swap! u/update-some lease-id merge updates)
-        (get lease-id))))
+  [client updates]
+  (when-let [store (u/unveil (:leases client))]
+    (let [lease-id (::id updates)]
+      (-> store
+          (swap! u/update-some lease-id merge updates)
+          (get lease-id)))))
 
 
 (defn delete!
   "Remove an entry for the given lease, if present."
-  [store lease-id]
-  (swap! store dissoc lease-id)
+  [client lease-id]
+  (when-let [store (u/unveil (:leases client))]
+    (swap! store dissoc lease-id))
   nil)
 
 
 (defn invalidate!
   "Remove entries matching the given cache key."
-  [store cache-key]
-  (swap! store (fn remove-keys
-                 [leases]
-                 (into (empty leases)
-                       (remove (comp #{cache-key} ::key val))
-                       leases)))
+  [client cache-key]
+  (when-let [store (u/unveil (:leases client))]
+    (swap! store (fn remove-keys
+                   [leases]
+                   (into (empty leases)
+                         (remove (comp #{cache-key} ::key val))
+                         leases))))
   nil)
 
 
@@ -346,7 +352,7 @@
 (defn maintain!
   "Maintain all the leases in the store, blocking until complete."
   [client renew-fn]
-  (when-let [store (:leases client)]
+  (when-let [store (u/unveil (:leases client))]
     (doseq [[lease-id lease] @store]
       (case (maintain-lease! client lease renew-fn)
         ;; After successful renewal, set a backoff before we try to renew again.

@@ -672,7 +672,7 @@
                   (assoc ::version version))
            cache-key [::secret mount path]
            cached (when-not (:refresh? opts)
-                    (lease/find-data (:leases client) cache-key))]
+                    (lease/find-data client cache-key))]
        (if (and cached
                 (or (nil? version)
                     (= version (::version (meta cached)))))
@@ -696,8 +696,8 @@
                              (u/keywordize-keys)
                              (vary-meta merge metadata))]
                 (when lease
-                  (lease/invalidate! (:leases client) cache-key)
-                  (lease/put! (:leases client) lease data))
+                  (lease/invalidate! client cache-key)
+                  (lease/put! client lease data))
                 (vary-meta data merge lease)))
             :handle-error
             (fn handle-error
@@ -718,7 +718,7 @@
      (let [mount (::mount client default-mount)
            path (u/trim-path path)
            cache-key [::secret mount path]]
-       (lease/invalidate! (:leases client) cache-key)
+       (lease/invalidate! client cache-key)
        (http/call-api
          client ::write-secret!
          :post (u/join-path mount "data" path)
@@ -736,7 +736,7 @@
      (let [mount (::mount client default-mount)
            path (u/trim-path path)
            cache-key [::secret mount path]]
-       (lease/invalidate! (:leases client) cache-key)
+       (lease/invalidate! client cache-key)
        (http/call-api
          client ::patch-secret!
          :patch (u/join-path mount "data" path)
@@ -754,7 +754,7 @@
     (let [mount (::mount client default-mount)
           path (u/trim-path path)
           cache-key [::secret mount path]]
-      (lease/invalidate! (:leases client) cache-key)
+      (lease/invalidate! client cache-key)
       (http/call-api
         client ::delete-secret!
         :delete (u/join-path mount "data" path)
@@ -766,7 +766,7 @@
     (let [mount (::mount client default-mount)
           path (u/trim-path path)
           cache-key [::secret mount path]]
-      (lease/invalidate! (:leases client) cache-key)
+      (lease/invalidate! client cache-key)
       (http/call-api
         client ::destroy-secret!
         :delete (u/join-path mount "metadata" path)
@@ -778,7 +778,7 @@
     (let [mount (::mount client default-mount)
           path (u/trim-path path)
           cache-key [::secret mount path]]
-      (lease/invalidate! (:leases client) cache-key)
+      (lease/invalidate! client cache-key)
       (http/call-api
         client ::delete-versions!
         :post (u/join-path mount "delete" path)
@@ -792,7 +792,7 @@
     (let [mount (::mount client default-mount)
           path (u/trim-path path)
           cache-key [::secret mount path]]
-      (lease/invalidate! (:leases client) cache-key)
+      (lease/invalidate! client cache-key)
       (http/call-api
         client ::undelete-versions!
         :post (u/join-path mount "undelete" path)
@@ -806,7 +806,7 @@
     (let [mount (::mount client default-mount)
           path (u/trim-path path)
           cache-key [::secret mount path]]
-      (lease/invalidate! (:leases client) cache-key)
+      (lease/invalidate! client cache-key)
       (http/call-api
         client ::destroy-versions!
         :post (u/join-path mount "destroy" path)
