@@ -84,7 +84,7 @@
     (fn tick
       []
       (try
-        (auth/maintain! (:auth client) renew-auth-token!)
+        (auth/maintain! client renew-auth-token!)
         (lease/maintain! client renew-lease!)
         (catch InterruptedException _
           nil)

@@ -21,7 +21,7 @@
   "Produce a map of options to pass to the HTTP client from the provided
   method, API path, and other request parameters."
   [client method path params]
-  (let [token (::auth/token @(:auth client))]
+  (let [token (::auth/token (auth/current (:auth client)))]
     (->
       (:http-opts client)
       (assoc :accept :json)
@@ -344,7 +344,7 @@
 
   (auth-info
     [_]
-    @auth)
+    (auth/current auth))
 
 
   (authenticate!
@@ -355,7 +355,7 @@
       (when-not (and (map? auth-info) (::auth/token auth-info))
         (throw (IllegalArgumentException.
                  "Client authentication must be a map of information containing an auth token.")))
-      (reset! auth auth-info)
+      (auth/set! auth auth-info)
       this)))
 
 
