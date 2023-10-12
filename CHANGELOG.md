@@ -6,7 +6,9 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 
 ## [Unreleased]
 
-...
+### Changed
+- The client authentication state and lease store are now wrapped in an opaque
+  data type to prevent accidental exposure in logs and other printed output.
 
 
 ## [2.1.583] - 2023-09-25
