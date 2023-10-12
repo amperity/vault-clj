@@ -199,7 +199,8 @@
 ;; ## Secret Protection
 
 #?(:bb nil
-   :clj (deftype Veil [value]))
+   :clj (deftype Veil
+          [value]))
 
 
 (defn veil
