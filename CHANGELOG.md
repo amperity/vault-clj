@@ -6,6 +6,11 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 
 ## [Unreleased]
 
+...
+
+
+## [2.2.586] - 2023-10-13
+
 ### Changed
 - The client authentication state and lease store are now wrapped in an opaque
   data type to prevent accidental exposure in logs and other printed output.
@@ -387,7 +392,8 @@ With this version, the project has been forked to the Amperity organization.
 - Initial library implementation.
 
 
-[Unreleased]: https://github.com/amperity/vault-clj/compare/2.1.583...HEAD
+[Unreleased]: https://github.com/amperity/vault-clj/compare/2.2.586...HEAD
+[2.2.586]: https://github.com/amperity/vault-clj/compare/2.1.583...2.2.586
 [2.1.583]: https://github.com/amperity/vault-clj/compare/2.0.560...2.1.583
 [2.0.560]: https://github.com/amperity/vault-clj/compare/1.1.3...2.0.560
 [1.1.3]: https://github.com/amperity/vault-clj/compare/1.1.2...1.1.3
