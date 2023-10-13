@@ -12,7 +12,7 @@
 (def basis (b/create-basis {:project "deps.edn"}))
 
 (def lib-name 'com.amperity/vault-clj)
-(def major-version "2.1")
+(def major-version "2.2")
 
 (def src-dirs ["src"])
 (def target-dir "target")
