@@ -126,7 +126,8 @@
         info (merge (:info params)
                     {:vault.client/api api-label
                      :vault.client/method method
-                     :vault.client/path path}
+                     :vault.client/path path
+                     :vault.client/address (:address client)}
                     (when-let [query (not-empty (:query-params params))]
                       {:vault.client/query query}))]
     (letfn [(make-request
