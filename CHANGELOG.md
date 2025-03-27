@@ -6,7 +6,9 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 
 ## [Unreleased]
 
-...
+### Added
+- The `info` map passed into control flow handler methods now includes
+  the client's Vault address as `:vault.client/address`.
 
 
 ## [2.2.586] - 2023-10-13
