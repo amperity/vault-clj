@@ -6,6 +6,11 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 
 ## [Unreleased]
 
+...
+
+
+## [2.3.588] - 2025-03-28
+
 ### Added
 - The `info` map passed into control flow handler methods now includes
   the client's Vault address as `:vault.client/address`.
@@ -394,7 +399,8 @@ With this version, the project has been forked to the Amperity organization.
 - Initial library implementation.
 
 
-[Unreleased]: https://github.com/amperity/vault-clj/compare/2.2.586...HEAD
+[Unreleased]: https://github.com/amperity/vault-clj/compare/2.3.588...HEAD
+[2.3.588]: https://github.com/amperity/vault-clj/compare/2.2.586...2.3.588
 [2.2.586]: https://github.com/amperity/vault-clj/compare/2.1.583...2.2.586
 [2.1.583]: https://github.com/amperity/vault-clj/compare/2.0.560...2.1.583
 [2.0.560]: https://github.com/amperity/vault-clj/compare/1.1.3...2.0.560
