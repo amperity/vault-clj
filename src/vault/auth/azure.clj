@@ -1,6 +1,5 @@
 (ns vault.auth.azure
   (:require
-    [clojure.data.json :as json]
     [vault.client.http :as http]
     [vault.client.proto :as proto]
     [vault.util :as u])
@@ -45,10 +44,9 @@
   API
 
   (login
-    [client {:keys [role jwt] :as params}]
+    [client params]
     (let [mount (::mount client default-mount)
           api-path (u/join-path "auth" mount "login")
-          _ (prn params)
           body (u/snakify-keys params)]
       (http/call-api
         client ::login
