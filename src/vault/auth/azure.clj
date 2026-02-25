@@ -29,7 +29,7 @@
     - `:jwt` - Azure access token
     - `:subscription-id` - Azure subscription ID
     - `:resource-group-name` - Azure resource group name
-    - `:vm-name` - When using an Azure VM system-assigned identity or managed identity, the name of the Azure VM")
+    - `:vm-name` - When using an Azure VM's system-assigned or user-assigned identity, the name of the Azure VM")
 
   (with-mount
     [client mount]
