@@ -6,6 +6,11 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 
 ## [Unreleased]
 
+...
+
+
+## [2.3.591] - 2026-03-02
+
 ### Added
 - Implemented the [Azure auth method](https://developer.hashicorp.com/vault/docs/auth/azure) in a new namespace, `vault.auth.azure`.
   [#109](https://github.com/amperity/vault-clj/pull/109)
@@ -400,7 +405,8 @@ With this version, the project has been forked to the Amperity organization.
 - Initial library implementation.
 
 
-[Unreleased]: https://github.com/amperity/vault-clj/compare/2.3.588...HEAD
+[Unreleased]: https://github.com/amperity/vault-clj/compare/2.3.591...HEAD
+[2.3.591]: https://github.com/amperity/vault-clj/compare/2.3.588...2.3.591
 [2.3.588]: https://github.com/amperity/vault-clj/compare/2.2.586...2.3.588
 [2.2.586]: https://github.com/amperity/vault-clj/compare/2.1.583...2.2.586
 [2.1.583]: https://github.com/amperity/vault-clj/compare/2.0.560...2.1.583
