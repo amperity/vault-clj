@@ -6,8 +6,9 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 
 ## [Unreleased]
 
-...
-
+### Added
+- Implemented the [Azure auth method](https://developer.hashicorp.com/vault/docs/auth/azure) in a new namespace, `vault.auth.azure`.
+  [#109](https://github.com/amperity/vault-clj/pull/109)
 
 ## [2.3.588] - 2025-03-28
 
