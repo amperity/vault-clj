@@ -111,7 +111,23 @@
           (is (= {:result true}
                  (http/call-api
                    client :foo :get "foo/bar"
-                   {:handle-response (constantly {:result true})}))))))))
+                   {:handle-response (constantly {:result true})}))))))
+    (testing "with per-request headers"
+      (let [client (assoc client :http-opts {:headers {"X-Vault-Namespace" "admin"}})
+            captured (atom nil)]
+        (with-redefs [http-client/request (fn [req callback]
+                                            (reset! captured req)
+                                            (callback {:opts req :status 204 :headers {} :body ""}))]
+          (http/call-api
+            client :foo :patch "foo/bar"
+            {:headers {"content-type" "application/merge-patch+json"}
+             :body "{}"}))
+        (testing "preserves the client's configured headers"
+          (is (= "admin" (get-in @captured [:headers "X-Vault-Namespace"]))))
+        (testing "keeps the per-request headers"
+          (is (= "application/merge-patch+json" (get-in @captured [:headers "content-type"]))))
+        (testing "keeps the auth token header"
+          (is (= "t0p-53cr5t" (get-in @captured [:headers "X-Vault-Token"]))))))))
 
 
 (deftest authentication

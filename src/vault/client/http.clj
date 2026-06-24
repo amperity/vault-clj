@@ -21,11 +21,13 @@
   "Produce a map of options to pass to the HTTP client from the provided
   method, API path, and other request parameters."
   [client method path params]
-  (let [token (::auth/token (auth/current (:auth client)))]
+  (let [token (::auth/token (auth/current (:auth client)))
+        opts (:http-opts client)]
     (->
-      (:http-opts client)
+      opts
       (assoc :accept :json)
       (merge params)
+      (assoc :headers (merge (:headers opts) (:headers params)))
       (assoc :method method
              :url (str (:address client) "/v1/" path))
       (cond->
