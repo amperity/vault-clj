@@ -29,7 +29,7 @@
       (merge params)
       (assoc :method method
              :url (str (:address client) "/v1/" path)
-             :headers (merge (:headers opts) (:headers params))))
+             :headers (merge (:headers opts) (:headers params)))
       (cond->
         token
         (assoc-in [:headers "X-Vault-Token"] token)
