@@ -27,9 +27,9 @@
       opts
       (assoc :accept :json)
       (merge params)
-      (assoc :headers (merge (:headers opts) (:headers params)))
       (assoc :method method
-             :url (str (:address client) "/v1/" path))
+             :url (str (:address client) "/v1/" path)
+             :headers (merge (:headers opts) (:headers params))))
       (cond->
         token
         (assoc-in [:headers "X-Vault-Token"] token)
