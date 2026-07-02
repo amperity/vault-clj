@@ -122,12 +122,12 @@
             client :foo :patch "foo/bar"
             {:headers {"content-type" "application/merge-patch+json"}
              :body "{}"}))
-        (testing "preserves the client's configured headers"
-          (is (= "admin" (get-in @captured [:headers "X-Vault-Namespace"]))))
-        (testing "keeps the per-request headers"
-          (is (= "application/merge-patch+json" (get-in @captured [:headers "content-type"]))))
-        (testing "keeps the auth token header"
-          (is (= "t0p-53cr5t" (get-in @captured [:headers "X-Vault-Token"]))))))))
+        (is (= "admin" (get-in @captured [:headers "X-Vault-Namespace"]))
+            "preserves the client's configured headers")
+        (is (= "application/merge-patch+json" (get-in @captured [:headers "content-type"]))
+            "keeps the per-request headers")
+        (is (= "t0p-53cr5t" (get-in @captured [:headers "X-Vault-Token"]))
+            "keeps the auth token header")))))
 
 
 (deftest authentication
