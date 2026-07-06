@@ -86,6 +86,16 @@
                  :uuid "fcd3aea9-d682-3143-72d3-938c3f666d62"}}))
 
 
+  (enable-method!
+    [_ _ _]
+    (throw (ex-info "Not Implemented" {})))
+
+
+  (disable-method!
+    [_ _]
+    (throw (ex-info "Not Implemented" {})))
+
+
   (read-method-tuning
     [client path]
     (if (= "token" (u/trim-path path))
@@ -101,7 +111,12 @@
         (let [error (str "cannot fetch sysview for path \"" path \")]
           (ex-info (str "Vault API errors: " error)
                    {:vault.client/errors [error]
-                    :vault.client/status 400}))))))
+                    :vault.client/status 400})))))
+
+
+  (tune-method!
+    [_ _ _]
+    (throw (ex-info "Not Implemented" {}))))
 
 
 ;; ## HTTP Client

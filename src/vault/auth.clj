@@ -1,6 +1,6 @@
 (ns vault.auth
   "High-level namespace for client authentication."
-  (:refer-clojure :exclude [set!])
+  (:refer-clojure :exclude [^{:clj-kondo/ignore [:unresolved-excluded-var]} set!])
   (:require
     [clojure.tools.logging :as log]
     [vault.util :as u]))

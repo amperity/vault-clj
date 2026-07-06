@@ -6,7 +6,8 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 
 ## [Unreleased]
 
-...
+### Fixed
+- Updated CI configuration and fixed CodeCov integration.
 
 
 ## [2.3.591] - 2026-03-02

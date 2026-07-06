@@ -89,6 +89,21 @@
 
   API
 
+  (create-token!
+    [_ _]
+    (throw (ex-info "Not Implemented" {})))
+
+
+  (create-orphan-token!
+    [_ _]
+    (throw (ex-info "Not Implemented" {})))
+
+
+  (create-role-token!
+    [_ _ _]
+    (throw (ex-info "Not Implemented" {})))
+
+
   (lookup-token
     [client params]
     (let [root-token "r00t"
@@ -122,7 +137,17 @@
           client
           (ex-info "Vault API errors: bad token"
                    {:vault.client/errors ["bad token"]
-                    :vault.client/status 403}))))))
+                    :vault.client/status 403})))))
+
+
+  (renew-token!
+    [_ _]
+    (throw (ex-info "Not Implemented" {})))
+
+
+  (revoke-token!
+    [_ _]
+    (throw (ex-info "Not Implemented" {}))))
 
 
 ;; ## HTTP Client

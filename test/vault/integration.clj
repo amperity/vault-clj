@@ -65,7 +65,7 @@
                   "bound on " interface " - check `lsof -i TCP:" port
                   "` and kill the offending process."))))
   (let [command ["vault" "server" "-dev"
-                 (str "-dev-listen-address=" (str interface ":" port))
+                 (str "-dev-listen-address=" interface ":" port)
                  (str "-dev-root-token-id=" root-token)
                  "-dev-no-store-token"]
         work-dir (io/file "target/vault")
