@@ -22,6 +22,9 @@ commands:
             unzip vault_${VAULT_VERSION}_linux_amd64.zip
             sudo mv vault /usr/local/bin/vault
 
+orbs:
+  codecov: codecov/codecov@6.0.0
+
 
 # Job definitions
 jobs:
@@ -32,10 +35,10 @@ jobs:
       - run:
           name: Install cljstyle
           environment:
-            CLJSTYLE_VERSION: 0.15.0
+            CLJSTYLE_VERSION: 0.17.642
           command: |
-            wget https://github.com/greglook/cljstyle/releases/download/${CLJSTYLE_VERSION}/cljstyle_${CLJSTYLE_VERSION}_linux.zip
-            unzip cljstyle_${CLJSTYLE_VERSION}_linux.zip
+            wget https://github.com/greglook/cljstyle/releases/download/${CLJSTYLE_VERSION}/cljstyle_${CLJSTYLE_VERSION}_linux_amd64.zip
+            unzip cljstyle_${CLJSTYLE_VERSION}_linux_amd64.zip
       - run:
           name: Check source formatting
           command: "./cljstyle check --report"
@@ -47,7 +50,7 @@ jobs:
       - run:
           name: Install clj-kondo
           environment:
-            CLJ_KONDO_VERSION: 2022.11.02
+            CLJ_KONDO_VERSION: 2026.05.25
           command: |
             wget https://github.com/clj-kondo/clj-kondo/releases/download/v${CLJ_KONDO_VERSION}/clj-kondo-${CLJ_KONDO_VERSION}-linux-amd64.zip
             unzip clj-kondo-${CLJ_KONDO_VERSION}-linux-amd64.zip
@@ -101,20 +104,9 @@ jobs:
       - store_artifacts:
           path: target/coverage
           destination: coverage
-      - run:
-          name: Install codecov
-          command: |
-            sudo apt-get update && sudo apt-get install gpg
-            curl https://keybase.io/codecovsecurity/pgp_keys.asc | gpg --no-default-keyring --keyring trustedkeys.gpg --import
-            curl -Os https://uploader.codecov.io/latest/linux/codecov
-            curl -Os https://uploader.codecov.io/latest/linux/codecov.SHA256SUM
-            curl -Os https://uploader.codecov.io/latest/linux/codecov.SHA256SUM.sig
-            gpgv codecov.SHA256SUM.sig codecov.SHA256SUM
-            shasum -a 256 -c codecov.SHA256SUM
-            chmod +x codecov
-      - run:
-          name: Publish coverage report
-          command: './codecov -f target/coverage/codecov.json'
+      - codecov/upload:
+          files: target/coverage/codecov.json
+          disable_search: true
 
   auth-ldap:
     docker:

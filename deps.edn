@@ -36,7 +36,8 @@
    :jvm-opts ["-Ddialog.profile=test"]
    :main-opts ["-m" "cloverage.coverage"
                "--src-ns-path" "src"
-               "--test-ns-path" "test"]}
+               "--test-ns-path" "test"
+               "--codecov"]}
 
   :hiera
   {:deps {io.github.greglook/clj-hiera {:git/tag "2.0.0", :git/sha "b14e514"}}
