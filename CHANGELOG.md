@@ -6,8 +6,15 @@ This change log follows the conventions of [keepachangelog.com](http://keepachan
 
 ## [Unreleased]
 
+...
+
+
+## [2.3.594] - 2026-07-17
+
 ### Fixed
 - Updated CI configuration and fixed CodeCov integration.
+- Merge per-request headers with client headers, fixing overrides from `PATCH` requests.
+  [#110](https://github.com/amperity/vault-clj/pull/110)
 
 
 ## [2.3.591] - 2026-03-02
@@ -406,7 +413,8 @@ With this version, the project has been forked to the Amperity organization.
 - Initial library implementation.
 
 
-[Unreleased]: https://github.com/amperity/vault-clj/compare/2.3.591...HEAD
+[Unreleased]: https://github.com/amperity/vault-clj/compare/2.3.594...HEAD
+[2.3.594]: https://github.com/amperity/vault-clj/compare/2.3.591...2.3.594
 [2.3.591]: https://github.com/amperity/vault-clj/compare/2.3.588...2.3.591
 [2.3.588]: https://github.com/amperity/vault-clj/compare/2.2.586...2.3.588
 [2.2.586]: https://github.com/amperity/vault-clj/compare/2.1.583...2.2.586
